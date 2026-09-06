@@ -1,0 +1,106 @@
+{
+  "env": {
+    "PATH": "/Users/tkay/.local/bin:/Users/tkay/.cargo/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/tkay/.krew/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/opt/homebrew/share/google-cloud-sdk/bin:/Users/tkay/go/bin:/Users/tkay/repos/atero-um/venv/bin:/Users/tkay/.gvm/pkgsets/go1.24.10/global/bin:/Users/tkay/.gvm/gos/go1.24.10/bin:/Users/tkay/.gvm/pkgsets/go1.24.10/global/overlay/bin:/Users/tkay/.gvm/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Applications/iTerm.app/Contents/Resources/utilities:/Users/tkay/.fzf/bin"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(/tmp/claude/simple_tests/run_tests.sh:*)",
+      "SandboxNetworkAccess",
+      "Bash(.venv/bin/atero-grafana deploy:*)",
+      "Bash(helm template:*)",
+      "Bash(awk -F: 'NR>=340 && NR<=355 {print}')",
+      "Bash(python3 -m pytest benchmarks/performance/python/test/ -x)",
+      "Bash(kubectl port-forward:*)",
+      "Bash(python atero_grafana.py --help)",
+      "Bash(atero-grafana --help)",
+      "Bash(.venv/bin/atero-grafana targets:*)",
+      "Read(//Users/tkay/repos/local-grafana/**)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(t['labels'],t['health'],t['lastError']\\) for t in d['data']['activeTargets']]\")",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(awk -F: '$2 <= 3759 {last=$0} END {print last}')",
+      "Bash(awk -F: '{if \\($1 <= 3759\\) last=$0} END {print last}')",
+      "Bash(awk 'NR>=3880' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
+      "Bash(awk -F: '$2>=3460 && $2<=3530')",
+      "Bash(.venv/bin/python -m pytest benchmarks/performance/python/tests/test_prompt_generation.py -x)",
+      "Bash(sed -i '' s/localhost:8000/localhost:8002/g /Users/tkay/repos/wrenchmark/scripts/test-slack-webhooks.sh /Users/tkay/repos/wrenchmark/scripts/test-single-slack-preview.sh /Users/tkay/repos/wrenchmark/scripts/show-slack-preview.sh)",
+      "Bash(sed -i '' s/BACKEND_PORT=8000/BACKEND_PORT=8002/g /Users/tkay/repos/wrenchmark/scripts/dev.sh /Users/tkay/repos/wrenchmark/scripts/dev-stop.sh)",
+      "Bash(sed -i '' 's/hostname}:8000/hostname}:8002/g' /Users/tkay/repos/wrenchmark/web-dashboard/frontend/src/api/client.ts)",
+      "Bash(sed -i '' s/BACKEND_PORT=8000/BACKEND_PORT=8002/g /Users/tkay/repos/wrenchmark/web-dashboard/run-frontend.sh /Users/tkay/repos/wrenchmark/web-dashboard/run-backend.sh)",
+      "Bash(sed -i '' 's/i:8000/i:8002/g' /Users/tkay/repos/wrenchmark/.claude/CLAUDE.md)",
+      "Bash(/Users/tkay/repos/wrenchmark/.venv/bin/python -m pytest benchmarks/performance/python/tests/test_prompt_generation.py -v)",
+      "Bash(/Users/tkay/repos/wrenchmark/.venv/bin/python -m pytest benchmarks/performance/python/tests/ -v --ignore=benchmarks/performance/python/tests/test_prompt_generation.py)",
+      "Bash(/Users/tkay/repos/wrenchmark/.venv/bin/python -m pytest benchmarks/performance/python/tests/ --ignore=benchmarks/performance/python/tests/test_prompt_generation.py -v)",
+      "Bash(awk 'NR>=90 && NR<=130')",
+      "Bash(awk -F: '$2 <= 4626 {last=$0} END {print last}')",
+      "Bash(awk -F: '$2 > 4626 {print; exit}')",
+      "Bash(awk -F: '$2 >= 4625 && $2 <= 4784')",
+      "Bash(awk '/^@dataclass/{found=1} found && /^class BenchmarkSummary/{in_class=1} in_class && /^    [a-z_].*:/{count++} in_class && /^    @/{if\\(count>0\\){print count; exit}}' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
+      "Bash(venv/bin/pytest benchmarks/performance/python/tests/ tests/ -q)",
+      "Bash(awk -F: 'NR==1{start=$1; name=$2; next} {print start, name, \"to\", $1-1; start=$1; name=$2} END{print start, name, \"to end\"}')",
+      "Bash(\n# Extract fieldnames from to_csv\ngrep -A 300 \"def to_csv\" /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py | grep '\"' | grep -v \"def \\\\|writer\\\\|DictWriter\\\\|with open\\\\|newline\\\\|getattr\\\\|writeheader\\\\|writerow\\\\|fieldnames\\\\|#\" | sed 's/.*\"\\\\\\(.*\\\\\\)\".*/\\\\1/' | sort > /tmp/csv_fields.txt\n\n# Extract field names from BenchmarkSummary class definition \\(between class BenchmarkSummary and def from_results\\)\nawk '/^class BenchmarkSummary:/,/def from_results/' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py | grep \"^    [a-z].*:.*\" | grep -v \"def \" | sed 's/: .*//' | sed 's/^    //' | sort > /tmp/class_fields.txt\n\necho \"=== Fields in class but NOT in to_csv ===\"\ncomm -23 /tmp/class_fields.txt /tmp/csv_fields.txt\n\necho \"\"\necho \"=== Fields in to_csv but NOT in class ===\"\ncomm -13 /tmp/class_fields.txt /tmp/csv_fields.txt\n\necho \"\"\necho \"Total class fields: $\\(wc -l < /tmp/class_fields.txt\\)\"\necho \"Total CSV fields: $\\(wc -l < /tmp/csv_fields.txt\\)\"\n)",
+      "Bash(awk -F: '$2 <= 4590 && $2 >= 4550')",
+      "Bash(awk -F: '{if \\($2 < 4590\\) last=$0} END {print last}')",
+      "Bash(awk 'NR>=4450 && NR<=4470' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
+      "Bash(npx tsc *)",
+      "Bash(awk '{print $6}')",
+      "Bash(awk '{print $1}')",
+      "Bash(awk '/CREATE VIEW benchmark_runs_detailed/,/CREATE OR REPLACE VIEW quality_runs_summary/' /Users/tkay/repos/wrenchmark/src/db/schema/schema.sql)",
+      "Bash(awk -F: '$2 >= 3338 && $2 <= 3422')",
+      "Bash(awk 'NR>=3338 && NR<=3422 && /endpoint/' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
+      "Bash(python3 -c ' *)",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(head -5 ~/Downloads/requests_2026-04-23_09-31-07.jsonl | python3 -c \"import sys,json; [print\\(json.dumps\\(json.loads\\(l\\), indent=2\\)\\) for l in sys.stdin]\" 2>&1 | head -80)",
+      "Read(//Users/tkay/Downloads/**)",
+      "Bash(tar -tzf charts/model/il-model/charts/atero-model-common-0.1.0.tgz)",
+      "Bash(mkdir -p /tmp/claude/common-extract)",
+      "Bash(tar -xzf charts/model/il-model/charts/common-0.1.0.tgz -C /tmp/claude/common-extract/)",
+      "Bash(helm dependency *)",
+      "Bash(helm install:*)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/Users/tkay/misc/values"
+    ]
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "SandboxNetworkAccess",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"PermissionRequest\", \"decision\": {\"behavior\": \"allow\"}}}'"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true,
+    "plumber-claude@crusoe-plumber": true
+  },
+  "extraKnownMarketplaces": {
+    "crusoe-plumber": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/tkay/repos/plugin"
+      }
+    }
+  },
+  "sandbox": {
+    "filesystem": {
+      "allowRead": [
+        "~/.config/gcloud"
+      ]
+    },
+    "autoAllowBash": true
+  },
+  "effortLevel": "xhigh",
+  "tui": "default",
+  "skipWorkflowUsageWarning": true
+}
