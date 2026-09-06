@@ -1,0 +1,34 @@
+[user]
+	email = tkay@crusoeenergy.com
+	name = tkay
+	signingkey = D07B37AA6558492679499A20DB915178326D62E2
+[core]
+        editor = vim
+	excludesfile = /Users/tkay/.gitignore
+	pager = less
+[push]
+        autoSetupRemote = true
+	default = current
+[interactive]
+        diffFilter = delta --color-only
+[delta]
+        navigate = true
+[merge]
+        conflictstyle = diff3
+[url "ssh://git@gitlab.com/"]
+    insteadOf = https://gitlab.com/
+
+[url "ssh://git@github.com/"]
+    insteadOf = https://github.com/
+
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+[commit]
+	gpgsign = true
+[gpg]
+	format = openpgp
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
