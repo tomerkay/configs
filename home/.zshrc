@@ -188,15 +188,14 @@ export NVM_DIR="$HOME/.nvm"
 export NVM_DIR="$HOME/.nvm"
 source "$NVM_DIR/nvm.sh"
 
-export HF_TOKEN=
 export NAMESPACE=***REMOVED***
 export GITHUB_EMAIL=***REMOVED***
 export GITHUB_USER=***REMOVED***
-export GITHUB_TOKEN=
+#export GITLAB_EMAIL=***REMOVED***
+#export GITLAB_USER=***REMOVED***
 export GITLAB_EMAIL=***REMOVED***
 export GITLAB_USER=***REMOVED***
-export GITLAB_TOKEN=
-export INFLECTION_APIKEY=
+
 
 function knodes() {
     local nodes pools body uptime
@@ -212,7 +211,7 @@ function knodes() {
       def dage(t): ((now - (t | fromdateiso8601)) / 86400 | floor | tostring) + "d";
       ($up | split("\n") | map(select(length > 0) | split(" ")
              | {key: .[0], value: ((.[1] | tonumber | floor | tostring) + "d")}) | from_entries) as $uptime
-      | ["NAME","STATUS","AGE","UPTIME","VERSION","INSTANCE-TYPE"],
+      | ["NAME","STATUS","AGE","UPTIME","VERSION","INSTANCE-TYPE","USER"],
         (.items[] | [
           .metadata.name,
           (([.status.conditions[]? | select(.type == "Ready")
@@ -223,7 +222,8 @@ function knodes() {
           dage(.metadata.creationTimestamp),
           ($uptime[.metadata.labels["crusoe.ai/instance.id"]] // "-"),
           .status.nodeInfo.kubeletVersion,
-          (.metadata.labels["beta.kubernetes.io/instance-type"] // "<none>")
+          (.metadata.labels["beta.kubernetes.io/instance-type"] // "<none>"),
+          (.metadata.labels["atero/user"] // "<none>")
         ]) | @tsv' | column -t
 }
 

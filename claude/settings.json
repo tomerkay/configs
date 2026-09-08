@@ -82,7 +82,9 @@
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
-    "plumber-claude@crusoe-plumber": true
+    "plumber-claude@crusoe-plumber": true,
+    "alertmanager-silence@atero-skills": true,
+    "wrenchmark@wrenchmark": true
   },
   "extraKnownMarketplaces": {
     "crusoe-plumber": {
@@ -90,10 +92,25 @@
         "source": "directory",
         "path": "/Users/tkay/repos/plugin"
       }
+    },
+    "atero-skills": {
+      "source": {
+        "source": "git",
+        "url": "https://gitlab.com/crusoeenergy/atero/atero-skills.git"
+      }
+    },
+    "wrenchmark": {
+      "source": {
+        "source": "git",
+        "url": "https://gitlab.com/crusoeenergy/atero/wrenchmark.git"
+      }
     }
   },
   "sandbox": {
     "filesystem": {
+      "allowWrite": [
+        "~/.config/gcloud"
+      ],
       "allowRead": [
         "~/.config/gcloud"
       ]

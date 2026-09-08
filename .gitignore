@@ -1,0 +1,3 @@
+# ~/.gitignore is this machine's core.excludesfile and ignores bin/, which
+# silently dropped the sync script from every commit until this negation.
+!bin/
