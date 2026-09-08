@@ -192,7 +192,6 @@ export NAMESPACE=***REMOVED***
 export GITHUB_EMAIL=***REMOVED***
 export GITHUB_USER=***REMOVED***
 #export GITLAB_EMAIL=***REMOVED***
-#export GITLAB_USER=***REMOVED***
 export GITLAB_EMAIL=***REMOVED***
 export GITLAB_USER=***REMOVED***
 
