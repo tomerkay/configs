@@ -297,7 +297,7 @@ action of that kind.**
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
 | build or edit a Grafana dashboard, panel or template variable | `tkay-grafana` |
-| investigate a fired alert | the repo skill named in "Alert Investigation TL;DRs" |
+| investigate a fired alert | `investigate-alert` |
 
 `tkay-code` then routes to its own reference file for the specific task - read
 the one it names before writing a single finding or commit message.
@@ -340,6 +340,27 @@ nobody's standards.
    was wrong, not "quietly in the background because it does not interrupt".
    Nothing I say is a signal to file one - the ONLY exception is me asking for it
    in those words. I do not want to see that card again.
+
+# BRACKET EVERYTHING I AM MEANT TO COPY
+
+**Anything you hand me to copy-paste gets a line of exactly 32 `=` immediately
+before it and another immediately after** - a command to run, a `! <command>`
+suggestion, a config or YAML snippet, a PromQL query, a commit message, a Slack
+message, a value to paste into a UI. If I am going to select it with the mouse
+and paste it somewhere else, it is bracketed.
+
+================================
+the thing I copy
+================================
+
+**The markers go OUTSIDE the code fence, on their own lines.** Everything between
+them is then exactly what I paste and nothing more. Inside the fence they become
+part of what I copy and the command breaks.
+
+**Output I only read gets no markers** - explanations, findings, a diff you are
+showing me, a TL;DR you are about to post yourself, an illustrative snippet of my
+own code. Bracketing those buries the real ones. Two blocks I am meant to copy get
+two bracketed blocks, never one bracket around both.
 
 # CODE RULES THAT ARE ALWAYS IN FORCE
 
@@ -604,14 +625,19 @@ reporting a dead connection that is actually fine sends me chasing nothing.
 
 ## Start from the investigate-alert skill
 
-data-path carries `.claude/skills/investigate-alert/SKILL.md`: the cell and
-cluster architecture, a deep dive per alert type, the known root causes, the
-kubectl reference, how to read the runbook, and in its Step 5 the shape,
-length and content of the TL;DR. In a session opened from data-path, invoke the
-skill. From any other repo it is not loaded - read
-`~/repos/data-path/.claude/skills/investigate-alert/SKILL.md` in full. The repo
-file is the single source and the team's copy - never duplicate it into
-another repo or into `~/.claude/skills`.
+`investigate-alert` carries the cell and cluster architecture, a deep dive per
+alert type, the known root causes, the kubectl reference, how to read the
+runbook, and in its Step 5 the shape, length and content of the TL;DR. Invoke
+it before the first alert, whatever repo the session was opened from - it
+ships as a plugin from the atero-skills marketplace, so it is loaded
+everywhere and no longer needs opening by path.
+
+The source is `~/repos/atero-skills/.claude/skills/investigate-alert/SKILL.md`
+and it is the team's copy. Every other copy on this machine is a build
+artifact of it: the marketplace checkout under `~/.claude/plugins`, and
+`~/.claude/skills/investigate-alert` if the npx installer ever put one there.
+**Edit the atero-skills file and nothing else** - a change made in an
+installed copy is overwritten on the next update and never reaches the team.
 
 ## Posting
 

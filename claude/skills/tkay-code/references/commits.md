@@ -5,8 +5,8 @@ it is not restated in this file.
 
 ## Squash or New Commit - Decide Every Time, and Say Which
 
-**Before every commit on an unpushed branch, work out which of the two it is and
-tell me in one line.** Do not default to a new commit.
+**Before every commit, work out which of the two it is and tell me in one line.**
+Do not default to a new commit.
 
 - **Squash it into the earlier commit** when the change only exists because that
   commit got something wrong or left it half done: it corrects a claim that commit
@@ -27,8 +27,12 @@ That is my history, not your convenience. When a squash needs a rewrite: branch 
 backup first, do it, then prove it with `git diff <backup> HEAD` returning empty -
 and say the backup's name so I can drop it.
 
-Pushed commits are the exception: never rewrite them. Squash before I push, or not
-at all.
+**Whether the branch is already pushed is NOT an input to this decision - ever.**
+Do not check it, do not ask about it, do not mention it as a factor. I force-push
+my branches, so a commit that is already on the remote squashes and amends exactly
+like one that is not. "It's already pushed" is never a reason to make a new commit
+instead of amending, and it is never a reason to leave a bad message standing.
+Other reasons to prefer a new commit still hold; that one does not exist.
 
 **When I ask whether the branch is ready and the answer is yes, ask in the same
 message whether to delete the backup branches you made** - by name. Lead with the
