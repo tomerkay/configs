@@ -1,6 +1,6 @@
 ---
 name: tkay-cluster-ops
-description: Tomer's procedures for helm upgrades against a live release and for tearing his deployments off a node. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, or when asked to take down / remove / drain everything he owns in a namespace before a cluster is destroyed or a node is drained.
+description: Tomer's procedures for helm upgrades against a live release, for tearing his deployments off a node, and the rule that node labels are never Claude's to write. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything he owns in a namespace before a cluster is destroyed or a node is drained, and whenever a node label such as `atero/user` would have to be added, changed or removed to make something schedule.
 ---
 
 # Cluster operations
@@ -67,12 +67,44 @@ and the next upgrade silently drops the change).
 
 ---
 
+## Never Label a Node Yourself - Labelling Is ALWAYS Mine
+
+**`kubectl label node` is not yours to run, in either direction, ever.** Not
+claiming a node with `atero/user=tkay`, not freeing one with `atero/user-` or
+setting it to anything else, not "correcting" a label that looks wrong, not as
+the last step of a teardown, not when I have said the node is mine, not when the
+label is the single thing standing between a Pending pod and a running one. An
+open `LFG!` does not cover it - it sits with `helm uninstall` and the rest of
+state-changing `kubectl`. Print the exact command and suggest it as
+`! <command>` so it runs in my session.
+
+The label is how the fleet is carved up between people, so writing it does two
+things at once: it moves a machine between engineers' hands, and it retargets
+every `nodeSelector` in the cluster at once - somebody else's daemonset drops to
+`DESIRED 0` and their pods go Pending, with nothing in any log saying why. A
+wrong `nodeSelector` costs me one values edit; a wrong node label breaks
+workloads that were never mine to touch.
+
+Reading labels is free and expected: `kubectl get nodes --context <ctx> -L
+atero/user` as often as you need. When a label is missing, stale or pointing at
+someone else, **say so plainly and tell me the command** - that is the whole
+deliverable. Do not fix it and mention it afterwards.
+
+---
+
 ## Removing Myself From a Node
 
 When I say a cluster is being drained or destroyed, or ask you to take my
 deployments down, the target is **`k9s -n <ns>` showing nothing** - not "the
 helm releases are gone". Nothing running, nothing pending, nothing holding a
 GPU.
+
+**A teardown removes what RUNS. It never removes what STORES, and never the
+namespace.** PVCs, secrets, configmaps and the namespace itself stay unless I
+ask for them by name, in that message - they are what the next round rebuilds
+from, and re-copying pull secrets into a fresh namespace is a tax I pay for
+nothing. Report them, hand me the command if you think one is warranted, and
+stop there. Deleting a PVC is the one step here that nobody can undo.
 
 ### Never hardcode the node - discover it every time
 
@@ -109,25 +141,40 @@ currently matches its selector - the object is still there and still needs
 deleting. A node being drained or relabelled out from under it produces exactly
 this.
 
-Then give me three lists: what one `helm uninstall` takes, what needs
-`kubectl delete` because nothing owns it, and what survives both.
+Then give me three lists: what one `helm uninstall` takes, what is still
+RUNNING that helm does not own and so needs `kubectl delete`, and what is left
+standing on purpose - storage, config, the namespace - for me to decide about.
 
-### What survives `helm uninstall` and still needs deleting
+### What survives `helm uninstall` - and which half of it you may delete
 
-- StatefulSet `volumeClaimTemplate` PVCs - helm never created them, so it never
-  removes them.
+Still running, so it IS part of the teardown:
+
 - Objects a controller created rather than the chart, such as a
   LeaderWorkerSet's per-replica StatefulSets. If the LWS itself is helm-owned
   the cascade handles them; if it is not, they are a separate delete.
-- Hand-applied daemonsets, services, PVCs, secrets and configmaps.
+- Hand-applied daemonsets, deployments, jobs and bare pods - these are what is
+  holding the GPU the teardown exists to free.
 
-### Two commands, batched - not one per object
+Persists on purpose, so you REPORT it and leave it alone:
+
+- StatefulSet `volumeClaimTemplate` PVCs - helm never created them, so it never
+  removes them, and they are data.
+- Hand-applied services, secrets and configmaps - including any pull secret
+  copied into the namespace to make the deploy work in the first place.
+- The namespace itself, which is never part of a teardown at all.
+
+Naming those in the final message is the deliverable. Deleting them is not, and
+neither is folding them into a namespace delete because it happens to sweep
+them all at once.
+
+### Batch it - not one command per object
 
 `helm uninstall` accepts every release name in a single invocation, and so does
-`kubectl delete <kind>`. Collapse the teardown into exactly two commands - one
-helm, one kubectl - in that order. Each separate invocation is another approval
-I have to sit through, and a teardown is the worst possible time to make me
-click twenty times.
+`kubectl delete <kind>`. Most teardowns are therefore ONE command, the helm one.
+A second, batched `kubectl delete` shows up only when something hand-applied is
+still running - never for storage, config or the namespace. Each separate
+invocation is another approval I have to sit through, and a teardown is the
+worst possible time to make me click twenty times.
 
 ### The things that actually block a drain
 
@@ -146,11 +193,7 @@ It must come back `No resources found`. Pair it with an empty
 `helm list --kube-context <ctx> -n <ns>`, and show me both - do not tell me it
 is done without them.
 
-### Two more things
-
-**Name every data-bearing volume separately and wait for my answer**, rather
-than folding it into the teardown list. Deleting a PVC is the one step here
-nobody can undo.
+### One more thing
 
 **A refused command does not mean access is gone.** A denied mutation can black
 out reads to the same cluster host for a moment afterwards. Re-test with one
