@@ -1,6 +1,7 @@
 # Writing Project CLAUDE.md Files
 
-When I ask you to update or create a project's `.claude/CLAUDE.md` file:
+When creating or updating a project's `.claude/CLAUDE.md` file, whether I asked
+for it or it is a side effect of a code change:
 
 **CRITICAL RULES:**
 
@@ -75,19 +76,7 @@ inference. Only health check runs.
 
 ## Each file has one job
 
-Applying the one-source-of-truth rule to a repo's documentation:
-
-- **values.yaml** is the config reference: what can be set, what it means, what
-  it is. It earns that by carrying a comment on every key.
-- **The repo CLAUDE.md** is design: why it works this way, gotchas, edge cases -
-  no key-by-key listings, no values.
-- **README.md** is the operator guide: what it is, how to deploy, the metrics or
-  API contract consumers depend on, troubleshooting.
-
-Something that fits two of them is written in one and pointed at from the other.
-
-**Docs never restate a value.** No "(default 15)", no example block pasted with
-the current numbers, no table with a Default column, no "the threshold is 0.4".
-Name the key and point at values.yaml. Three files agreeing today is not a
-defence: I have had values.yaml, README.md and CLAUDE.md each stating the same
-defaults in one chart, two of them stale.
+Which file owns what - values.yaml, the repo CLAUDE.md, README.md - and the ban
+on a doc restating a value live in the global CLAUDE.md, "One source of truth",
+the "Docs are copies too" paragraph. They are always in force and are not
+repeated here; this file only covers the shape of a good CLAUDE.md, above.

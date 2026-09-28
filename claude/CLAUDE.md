@@ -127,19 +127,19 @@ implementation.** Never use the gate as an excuse to stop thinking.
 ## Alert investigation is ungated END TO END - including the Slack post
 
 **Oncall does not wait for a token.** When I hand you a link to a Slack thread
-whose root message is a fired alert - `***REMOVED***`, the
-`*-info-alerts` channels, any alert channel - the whole job runs without `LFG!`
-and without asking: read the thread, read the runbook, investigate, write the
-TL;DR, **post it into that thread**. Not "the investigation is free but the post
-needs a token". The post IS the deliverable; findings sitting in my terminal
-while the thread stays empty is a failed oncall shift. Shape and content in
-"Alert Investigation TL;DRs".
+whose root message is a fired alert, in any alert channel, the whole job runs
+without `LFG!` and without asking: read the thread, read the runbook,
+investigate, write the TL;DR, **post it into that thread**. Not "the
+investigation is free but the post needs a token". The post IS the deliverable;
+findings sitting in my terminal while the thread stays empty is a failed oncall
+shift. Shape and content are the skill's - "Alert Investigation TL;DRs" names
+it.
 
 The carve-out is exactly that wide and no wider: one message, the TL;DR, into
-the alert thread I linked. Any other Slack message -
-another channel, a DM, a thread I did not hand you - is sent on my behalf and
-asks first, every time. And nothing in it touches a cluster: Immediate Action
-is what someone should run, never what you ran.
+the alert thread I linked. Any other Slack message - another channel, a DM, a
+thread I did not hand you - is sent on my behalf and asks first, every time,
+with the text shown. When I tell you to post one of those, post it and do not
+ask again for that thread. And nothing in it touches a cluster.
 
 ## An `LFG!` is a signature, not a mood
 
@@ -297,7 +297,7 @@ action of that kind.**
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
 | build or edit a Grafana dashboard, panel or template variable | `tkay-grafana` |
-| investigate a fired alert | `investigate-alert` |
+| investigate a fired alert | `atero-skills:investigate-alert` |
 
 `tkay-code` then routes to its own reference file for the specific task - read
 the one it names before writing a single finding or commit message.
@@ -377,12 +377,13 @@ two bracketed blocks, never one bracket around both.
 
 # CODE RULES THAT ARE ALWAYS IN FORCE
 
-These apply to every line you write for me, in every session, whether or not any
-skill is loaded - because "write some code" has no trigger phrase to catch.
-**The worked examples and full banned lists behind every rule here are in the
-`tkay-code` skill, `references/code-examples.md`** - read it whenever you are
-unsure whether a specific comment, mechanism, default or config key is
-acceptable.
+These apply to every line you write for me - code, chart, dashboard or doc - in
+every session, whether or not any skill is loaded, because "write some code" has
+no trigger phrase to catch. **The worked examples and full banned lists behind
+every rule here are in the `tkay-code` skill, `references/code-examples.md`** -
+read it whenever you are unsure whether a specific comment, mechanism, default
+or config key is acceptable. The docs half of the one-source-of-truth rule has
+its examples in `references/project-claude-md.md` of the same skill.
 
 ## Comments
 
@@ -454,9 +455,24 @@ WILL turn at 3am.
 you edit the same value in a second file, STOP - the second copy is the bug.
 Replace it with a pointer to the source in that same commit.
 
+**Docs are copies too, and this binds every one of them.** A README, a design
+doc and a repo `CLAUDE.md` - ANY repo, whether I asked you to write it or you
+are touching it on the way through a code change - never restate a value and
+never paste code. No "(default 15)", no example block carrying the current
+numbers, no table with a Default column, no function body, no snippet that is
+wrong after the next edit. Name the key, the function or the file and point at
+the one that owns it; describe the pattern, do not copy it. **Each file has one
+job:** values.yaml is what can be set and what it means, and earns that with a
+comment on every key; the repo `CLAUDE.md` is why it works that way and where it
+bites; the README is how to operate it - deploy, the contract consumers depend
+on, troubleshooting. Anything that fits two of them is written in one and
+pointed at from the other. Three copies agreeing today is not a defence - I have
+had values.yaml, README and CLAUDE.md each state the same defaults, two of them
+stale, and nobody noticed because only values.yaml was ever deployed.
+
 Flag both directions when you spot them: a default hiding in code for a value the
 chart also sets, and a never-change constant sitting in values.yaml. The same
-instinct applies beyond config - dashboards, constants, contracts.
+instinct applies beyond config - dashboards, constants, contracts, docs.
 
 ## Enums over strings
 
@@ -509,8 +525,6 @@ pieces are auto-allowed.
 **No `>` or `>>` either.** A redirect into a file turns an auto-allowed read
 (`jq`, `grep`, `kubectl get`) into a write and prompts, and a `$TMPDIR` path the
 harness cannot resolve prompts on its own. Pipe into the next command instead.
-The one exception is the runbook cache write in "Read the runbook before you
-write a word", allowlisted by its exact jq filter.
 
 **No inline interpreter either.** `| python3 -c "..."` is arbitrary code to the
 harness and prompts every time, whatever it computes. Slice output with
@@ -638,35 +652,24 @@ reporting a dead connection that is actually fine sends me chasing nothing.
 
 ## Start from the investigate-alert skill
 
-`investigate-alert` carries the cell and cluster architecture, a deep dive per
-alert type, the known root causes, the kubectl reference, how to read the
-runbook, and in its Step 5 the shape, length and content of the TL;DR. Invoke
-it before the first alert, whatever repo the session was opened from - it
-ships as a plugin from the atero-skills marketplace, so it is loaded
-everywhere and no longer needs opening by path.
+Invoke `atero-skills:investigate-alert` before the first alert, whatever repo
+the session was opened from. It is installed from the atero-skills marketplace,
+so it is loaded everywhere and needs no opening by path. Everything about the
+investigation and the report lives in it and nowhere in this file.
 
-The source is `~/repos/atero-skills/.claude/skills/investigate-alert/SKILL.md`
-and it is the team's copy. Every other copy on this machine is a build
-artifact of it: the marketplace checkout under `~/.claude/plugins`, and
-`~/.claude/skills/investigate-alert` if the npx installer ever put one there.
-**Edit the atero-skills file and nothing else** - a change made in an
-installed copy is overwritten on the next update and never reaches the team.
+The source is `~/repos/atero-skills/.claude/skills/investigate-alert/SKILL.md`,
+the only copy the team edits. Every other copy on this machine - the
+marketplace checkout and the plugin cache under `~/.claude/plugins` - is a
+build artifact of it, overwritten on the next update. **Edit the atero-skills
+file and nothing else**, and treat a copy under any other repo's
+`.claude/skills` as drift to delete, not a source.
 
 ## Posting
 
-**A link to an alert thread is the whole assignment: investigate, then post
-the TL;DR into that thread.** No `LFG!`, no "shall I post?", no showing me the
-text first and waiting. This is oncall duty and it does not stop for a token -
-see "Alert investigation is ungated END TO END" in the gate section. Post it,
-then give me the permalink to the post - the link only, never the text again.
-
-**Report mode: TL;DR, always.** The skill offers a TL;DR or a full report once
-per session; this line is my answer, so never ask me which.
-
-That covers the alert thread I linked and nothing else. A TL;DR for a thread I
-did not hand you, a message to any other channel, a DM - those are sent on my
-behalf and ask first, every time, with the text shown. When I tell you to post
-one of those, post it and do not ask again for that thread.
+"Alert investigation is ungated END TO END" in the gate section is the rule:
+the TL;DR goes into the thread I linked without a token and without asking.
+Post it, then give me the permalink to the post - the link only, never the
+text again.
 
 # Git Configuration
 
