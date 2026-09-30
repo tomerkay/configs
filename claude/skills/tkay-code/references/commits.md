@@ -24,8 +24,11 @@ rule exists to prevent.
 
 **Never choose "new commit" because rewriting history is inconvenient for you.**
 That is my history, not your convenience. When a squash needs a rewrite: branch a
-backup first, do it, then prove it with `git diff <backup> HEAD` returning empty -
-and say the backup's name so I can drop it.
+backup first, do it, then prove it with `git diff <backup> HEAD` returning empty.
+An empty diff means the rewrite is proven: delete the backup straight away without
+asking, with `git branch -D` (squashed commits never count as merged, so `-d`
+refuses), and report the `Deleted branch ... (was <sha>)` line. A non-empty diff
+means the rewrite changed content: stop, keep the backup, and show me the diff.
 
 **Whether the branch is already pushed is NOT an input to this decision - ever.**
 Do not check it, do not ask about it, do not mention it as a factor. I force-push
@@ -33,13 +36,6 @@ my branches, so a commit that is already on the remote squashes and amends exact
 like one that is not. "It's already pushed" is never a reason to make a new commit
 instead of amending, and it is never a reason to leave a bad message standing.
 Other reasons to prefer a new commit still hold; that one does not exist.
-
-**When I ask whether the branch is ready and the answer is yes, ask in the same
-message whether to delete the backup branches you made** - by name. Lead with the
-yes, then the question. A branch I am about to ship should not leave
-`pre-squash-backup` and friends sitting in my branch list, and I am the one who
-decides when the safety net comes down - never delete one on your own
-initiative, and never quietly leave one behind either.
 
 ## Documentation Sync on Every Commit
 

@@ -547,6 +547,29 @@ memory for the project, not in git.
 A commit body that records where a change was verified is the one exception,
 for the same reason stale values are allowed there: it describes a frozen fact.
 
+## Values for a chart live with the chart
+
+**A repo never carries a values file for a chart it does not own.** Helm
+ignores a key the chart does not know, so when the chart renames or drops a
+key the foreign copy keeps rendering and the setting silently does nothing -
+that is how the monitor fleet's endpoint rotted. No pin file, no checker and
+no header fixes that; they only guard the copy. Do not make the copy.
+
+- **The values go in the chart's own repo as an example** under its
+  `examples/`, which that repo's CI renders on every change, so a rename
+  breaks at the commit that causes it and not in somebody else's dev run.
+- **The consumer repo points at the example** from a checkout of the chart
+  repo, and adds only what is per install - the node pin, the cluster name,
+  the image tag - as `--set` flags. Whatever commit the checkout is at is the
+  version; chart and example come from one commit and cannot disagree.
+- **An example is not a dev setup**: placeholders no node or cluster carries
+  where the install-time values go, the chart's own conventions for versions,
+  no person, node, namespace or cluster named.
+
+A `values.schema.json` with `additionalProperties: false` in the chart makes
+Helm refuse the unknown key for every installer, the ones that paste values
+into a UI included; propose it to the chart's repo when the chance comes.
+
 ## Enums over strings
 
 **ALWAYS use an enum instead of string literals for a fixed set of values** -

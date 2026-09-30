@@ -119,6 +119,12 @@
     "autoAllowBash": true
   },
   "effortLevel": "xhigh",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "xhigh"
+    }
+  },
   "tui": "default",
-  "skipWorkflowUsageWarning": true
+  "skipWorkflowUsageWarning": true,
+  "cleanupPeriodDays": 365
 }
