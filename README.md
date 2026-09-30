@@ -23,11 +23,10 @@ Cron runs it at 12:00 and 18:00:
 0 12,18 * * * $HOME/repos/configs/bin/sync-configs.sh >> $HOME/Library/Logs/sync-configs.log 2>&1
 ```
 
-`claude/skills/` holds hand-written skills only. A skill installed from a public
-repo is skipped, whether it sits under `~/.claude/skills` as a symlink into
-`~/.agents/skills` or as a real directory named in `~/.agents/.skill-lock.json`.
-The directory is rebuilt on every run, so a skill deleted at home disappears here
-too.
+`claude/skills/` holds the `tkay-*` skills from `~/.claude/skills` and nothing
+else: the prefix marks a skill as hand-written, so anything installed from a
+public repo or synced from the claude.ai account stays out. The directory is
+rebuilt on every run, so a skill deleted or renamed at home disappears here too.
 
 ## Secrets
 

@@ -30,8 +30,6 @@ CLAUDE_FILES=(
     settings.json
 )
 
-SKILL_LOCK="$HOME/.agents/.skill-lock.json"
-
 TOKENS_OPEN='# >>> TOKENS >>>'
 TOKENS_CLOSE='# <<< TOKENS <<<'
 
@@ -60,29 +58,12 @@ for f in "${CLAUDE_FILES[@]}"; do
     install_file "$HOME/.claude/$f" "claude/$f"
 done
 
-# Skills installed from a public repo belong to their upstream. The manifest is
-# the only place that records where a skill came from, so read it rather than
-# keeping a second list here; a skill installed as a real directory rather than
-# a symlink is otherwise indistinguishable from a hand-written one.
-web_skills=""
-if [ -f "$SKILL_LOCK" ]; then
-    web_skills="$(jq -r '.skills | keys[]' "$SKILL_LOCK")"
-fi
-
+# The tkay- prefix is what marks a hand-written skill; everything else under
+# ~/.claude/skills is installed from a public repo or synced from claude.ai.
 # Rebuilt from scratch so a skill deleted at home disappears here too.
 rm -rf "$REPO/claude/skills"
 mkdir -p "$REPO/claude/skills"
-for dir in "$HOME"/.claude/skills/*/; do
-    name="$(basename "$dir")"
-    if [ -L "${dir%/}" ]; then
-        continue
-    fi
-    if printf '%s\n' "$web_skills" | grep -qxF "$name"; then
-        log "skipping $name, installed from a public repo"
-        continue
-    fi
-    cp -R "${dir%/}" "$REPO/claude/skills/"
-done
+cp -R "$HOME"/.claude/skills/tkay-* "$REPO/claude/skills/"
 
 # A renamed or hand-deleted marker turns the strip below into a silent no-op and
 # publishes every token in the file, so refuse to continue without both.
