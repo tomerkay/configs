@@ -93,6 +93,33 @@ Then exactly two sections, in this order, with the divider. **The buckets split 
 
 **If a bucket is empty, SAY IT OUT LOUD** - and say what you actually checked, not that correctness is proven: "REAL ISSUES: none - I traced both new branches and grepped every caller in HEAD." An empty bucket means you found nothing, so don't write "the code is correct" as if you'd proved it. Never make me infer emptiness from absence. Same for the roll-up: "MUST HAVE: none."
 
+### The closing table — the last thing in every CR
+
+After the last commit's review, end the CR with one table: one row per commit,
+in branch order, three columns.
+
+| What the commit does | Score | Verdict |
+|---|---|---|
+| `<short-sha>` <one sentence> | <n>/10 | <verdict> |
+
+- **What the commit does** — one sentence on what the diff actually does,
+  verified against it. Never the subject line pasted in: the subject may be the
+  very claim the review flagged as false.
+- **Score** — the same number as that commit's `Score:` line.
+- **Verdict** — exactly one of these, followed by the reason in a few words for
+  anything other than SHIP IT:
+
+| Verdict | When |
+|---|---|
+| `✅ SHIP IT` | 0 MUST HAVE |
+| `🔧 NEEDS CHANGE` | at least one MUST HAVE, and amending this commit fixes it |
+| `🔀 SQUASH INTO <short-sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done — the squash rule in `references/commits.md` |
+| `🗑 DROP` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
+
+The verdict agrees with that commit's VERDICT line: never `✅ SHIP IT` while its
+MUST HAVE count is above zero. A single-commit CR still ends with a one-row
+table. This is the one summary allowed in a CR, and it closes the review.
+
 ### Rules that keep the tags honest
 
 - **No severity inflation.** If you cannot write the concrete failure scenario, it is NOT a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
@@ -174,6 +201,7 @@ Each category below has a **default severity** - deviate only with a stated reas
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
 - Give each commit a score out of 10
+- **End the CR with the closing table** (see "The closing table" above)
 - **Open with the VERDICT line + MUST-HAVE roll-up, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Verdict vocabulary is fixed" above)

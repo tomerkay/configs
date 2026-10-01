@@ -61,7 +61,7 @@ This applies to every commit, not just when I explicitly ask for documentation u
 ```
 <type>(<scope>): <subject>
 
-[body: WHY this change + OUTCOME/IMPACT]
+[body: Before / Change / Why - see "The Body"]
 
 [footers: BREAKING CHANGE, Closes #123, Co-authored-by]
 ```
@@ -83,21 +83,35 @@ This applies to every commit, not just when I explicitly ask for documentation u
 - `ci:` - CI config changes (None)
 - `chore:` - deps, build tools (None)
 
-**The Body (wrap at 72 chars):**
+**The Body (wrap at 72 chars): three labelled sections, short**
 
-**START with this structure whenever it's relevant (i.e. the commit changes
-existing behavior — most feat/fix/perf/refactor commits):**
-1. **What used to be** — the previous state/behavior and its problem
-2. **What this changes** — what the commit does about it
-3. **Why** — the motivation / rationale for this approach
-Then, after that narrative, add implementation details (bullets, technical
-rationale, impact numbers). Skip the structure only where it genuinely
-doesn't apply (e.g. a trivial chore/docs commit with no "before").
+Every body is exactly these three sections, in this order, each its own
+paragraph opening with its label:
 
-- Explain WHY the change was necessary (the problem)
-- Detail the OUTCOME/IMPACT (benchmarks, behavior, architecture wins)
-- Contrast old vs new behavior
-- Include technical rationale
+```
+Before: what the code did or lacked, and the problem that caused.
+
+Change: what this commit does about it.
+
+Why: why this is the right fix - the failure it prevents, the outcome
+it delivers.
+```
+
+- **Concise.** Each section is one to three sentences. A section that runs
+  longer is carrying something that belongs in the diff, a code comment or
+  the MR description.
+- **Before is never empty.** For something new, it says what was missing or
+  what had to be done by hand.
+- **Change describes behavior, not files.** "The bundle loads every skill
+  under .claude/skills", not "edit plugin.json and .gitlab-ci.yml" - the diff
+  already lists the files. A commit that spans several areas may use one
+  short bullet per area inside Change.
+- **Why is the argument, not a restatement.** Never "this makes it better":
+  name the failure it prevents, the number it moves, or the rule it
+  satisfies. Impact numbers and how it was verified go here, in a clause. A
+  rejected alternative goes here too, in one clause, when the next person
+  would otherwise retry it.
+- **Nothing after Why** except the footers.
 
 **Examples (WRONG vs RIGHT):**
 
@@ -106,12 +120,13 @@ doesn't apply (e.g. a trivial chore/docs commit with no "before").
 - ❌ `perf(validator): swapped out hashX because it was slow` (past tense, vague)
 - ✅ `perf(validator): use hashY instead of hashX for lookups`
   ```
-  Reduces validation latency by 50% (from 100ms to 50ms per pod)
-  under peak traffic loads.
+  Before: blacklist lookups went through hashX, iterating the whole
+  array per key, so large blacklist payloads spiked CPU at peak traffic.
 
-  Previous implementation used hashX with O(n) array iteration.
-  Replacing with hashY enforces O(1) direct key lookups, preventing
-  CPU spikes when handling large blacklist payloads.
+  Change: lookups use hashY, a direct O(1) key lookup.
+
+  Why: validation latency per pod halves at peak (100ms to 50ms), and
+  CPU no longer grows with the size of the blacklist.
   ```
 
 **Bug Fix (fix):**
@@ -119,11 +134,14 @@ doesn't apply (e.g. a trivial chore/docs commit with no "before").
 - ❌ `fix(auth): clean up auth flow bugs` (vague, actionless)
 - ✅ `fix(auth): add null coalescing to token extractor`
   ```
-  Prevents unhandled ReferenceErrors when incoming requests omit
-  Authorization headers.
+  Before: headers.authorization.split(' ')[1] threw a ReferenceError
+  whenever a request omitted the Authorization header.
 
-  Previously headers.authorization.split(' ')[1] threw crashes when
-  headers.authorization was undefined. Now returns empty string fallback.
+  Change: the token extractor falls back to an empty string when the
+  header is missing.
+
+  Why: a missing header is the client's mistake; the request now fails
+  authentication instead of crashing the handler.
   ```
 
 **New Feature (feat):**
@@ -131,11 +149,14 @@ doesn't apply (e.g. a trivial chore/docs commit with no "before").
 - ❌ `feat(billing): add a bunch of stripe stuff` (vague)
 - ✅ `feat(billing): implement multi-currency stripe webhooks`
   ```
-  Adds support for capturing and persisting non-USD transaction events
-  from Stripe API gateway.
+  Before: Stripe webhooks carrying a non-USD currency were dropped, so
+  those payments never reached customer balances.
 
-  Processes invoice.payment_succeeded payloads with ISO currency codes,
-  runs real-time conversion via ledger service before updating balances.
+  Change: invoice.payment_succeeded payloads with any ISO currency code
+  are converted through the ledger service before balances update.
+
+  Why: non-USD payments land in the ledger with no manual
+  reconciliation.
   ```
 
 **Refactor (refactor):**
@@ -143,11 +164,14 @@ doesn't apply (e.g. a trivial chore/docs commit with no "before").
 - ❌ `refactor(db): modify user queries` (too generic)
 - ✅ `refactor(db): extract user query pipeline to repository class`
   ```
-  Decouples raw SQL compilation from HTTP controllers, isolating data
-  hydration in /repositories.
+  Before: HTTP controllers compiled raw SQL and hydrated users inline,
+  so testing a controller meant starting a PostgreSQL container.
 
-  Enables easier unit testing by mocking data interfaces without spinning
-  up PostgreSQL test containers.
+  Change: user queries move into a repository class under
+  /repositories, and controllers only call it.
+
+  Why: controllers are unit-tested against a mocked repository, with no
+  database.
   ```
 
 **Footers:**

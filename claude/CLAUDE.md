@@ -292,7 +292,7 @@ action of that kind.**
 |---|---|
 | a code review / CR / "review my branch, my PR, my commits" | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
-| create or update a repo's `CLAUDE.md` | `tkay-code` |
+| create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan, design doc or implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
@@ -382,8 +382,8 @@ every session, whether or not any skill is loaded, because "write some code" has
 no trigger phrase to catch. **The worked examples and full banned lists behind
 every rule here are in the `tkay-code` skill, `references/code-examples.md`** -
 read it whenever you are unsure whether a specific comment, mechanism, default
-or config key is acceptable. The docs half of the one-source-of-truth rule has
-its examples in `references/project-claude-md.md` of the same skill.
+or config key is acceptable. The docs half of the one-source-of-truth rule lives
+in the `tkay-writing-mds` skill.
 
 ## Comments
 
@@ -454,21 +454,6 @@ WILL turn at 3am.
 **Fixing drift means deleting the copy, not updating it.** When a change makes
 you edit the same value in a second file, STOP - the second copy is the bug.
 Replace it with a pointer to the source in that same commit.
-
-**Docs are copies too, and this binds every one of them.** A README, a design
-doc and a repo `CLAUDE.md` - ANY repo, whether I asked you to write it or you
-are touching it on the way through a code change - never restate a value and
-never paste code. No "(default 15)", no example block carrying the current
-numbers, no table with a Default column, no function body, no snippet that is
-wrong after the next edit. Name the key, the function or the file and point at
-the one that owns it; describe the pattern, do not copy it. **Each file has one
-job:** values.yaml is what can be set and what it means, and earns that with a
-comment on every key; the repo `CLAUDE.md` is why it works that way and where it
-bites; the README is how to operate it - deploy, the contract consumers depend
-on, troubleshooting. Anything that fits two of them is written in one and
-pointed at from the other. Three copies agreeing today is not a defence - I have
-had values.yaml, README and CLAUDE.md each state the same defaults, two of them
-stale, and nobody noticed because only values.yaml was ever deployed.
 
 Flag both directions when you spot them: a default hiding in code for a value the
 chart also sets, and a never-change constant sitting in values.yaml. The same
@@ -752,13 +737,6 @@ Invoke `atero-skills:investigate-alert` before the first alert, whatever repo
 the session was opened from. It is installed from the atero-skills marketplace,
 so it is loaded everywhere and needs no opening by path. Everything about the
 investigation and the report lives in it and nowhere in this file.
-
-The source is `~/repos/atero-skills/.claude/skills/investigate-alert/SKILL.md`,
-the only copy the team edits. Every other copy on this machine - the
-marketplace checkout and the plugin cache under `~/.claude/plugins` - is a
-build artifact of it, overwritten on the next update. **Edit the atero-skills
-file and nothing else**, and treat a copy under any other repo's
-`.claude/skills` as drift to delete, not a source.
 
 ## Posting
 

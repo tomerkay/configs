@@ -202,8 +202,8 @@ bugs are born.
 - The same instinct applies beyond config: dashboards, constants,
   contracts - one authoritative place, everything else points at it.
 
-Documentation's share of this rule — which file carries what — is in
-`project-claude-md.md`.
+Documentation's share of this rule — which file carries what — is in the
+`tkay-writing-mds` skill.
 
 ---
 

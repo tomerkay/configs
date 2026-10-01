@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Tomer's standards for code reviews (CR), commit messages, and project CLAUDE.md files, plus the worked examples behind his comment / over-engineering / one-source-of-truth / enum rules. Use whenever asked to review code, a branch, a PR or commits; to commit, amend or write a commit message; to create or update a repo's CLAUDE.md; or when unsure whether a comment, mechanism, default or config key is acceptable.
+description: Tomer's standards for code reviews (CR), commit messages, and where dev versus production deployment material lives in a repo, plus the worked examples behind his comment / over-engineering / one-source-of-truth / enum rules. Use whenever asked to review code, a branch, a PR or commits; to commit, amend or write a commit message; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable.
 ---
 
 # Tomer's code standards
@@ -16,7 +16,7 @@ those always-on rules.
 |---|---|
 | A code review / CR / "review my branch, PR, commits" | `references/code-review.md` — **before writing a single finding** |
 | Writing or amending ANY commit message, or committing at all | `references/commits.md` — **before you type the message** |
-| Creating or updating a repo's `CLAUDE.md` | `references/project-claude-md.md` — before the first edit |
+| Writing or moving deploy tooling, a topology file or values — anything that decides what lives under `dev/` versus `deploy/` | `references/deploy-layout.md` — before creating or moving the file |
 | Unsure whether a comment, mechanism, default or config key is acceptable | `references/code-examples.md` |
 
 **If you are unsure whether a row applies, read it.** Loading a reference I did

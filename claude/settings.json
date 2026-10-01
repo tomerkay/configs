@@ -110,7 +110,8 @@
   "sandbox": {
     "filesystem": {
       "allowWrite": [
-        "~/.config/gcloud"
+        "~/.config/gcloud",
+        "~/repos"
       ],
       "allowRead": [
         "~/.config/gcloud"
