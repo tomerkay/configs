@@ -28,6 +28,19 @@ from the other. Three copies agreeing today is not a defence - I have had
 values.yaml, README and CLAUDE.md each state the same defaults, two of them
 stale, and nobody noticed because only values.yaml was ever deployed.
 
+**Two docs pointing at each other is not the failure; the same content in
+both is.** A pointer each way is fine when each is for a different topic and
+following it lands on that topic's one home. So when I ask whether docs are
+"circular", audit what each file *states*, not what it links - the duplicate
+hides behind the pointers, and it has usually drifted already. A pointer names
+the home and stops; the moment it summarises what it points at, it is a copy.
+
+**A fact that holds for every consumer lives in the shared doc.** Every team's
+directory, every chart a repo deploys: the shared README or `CLAUDE.md` owns
+it, and a per-team or per-component doc keeps only what is its own and points
+up. A shared fact written in one team's README is a copy by the time the
+second team needs it.
+
 ## A repo CLAUDE.md
 
 Why the code works the way it does and where it bites. Never what the code

@@ -118,7 +118,32 @@ in branch order, three columns.
 
 The verdict agrees with that commit's VERDICT line: never `✅ SHIP IT` while its
 MUST HAVE count is above zero. A single-commit CR still ends with a one-row
-table. This is the one summary allowed in a CR, and it closes the review.
+table. The closing table and the leftovers table below are the only summaries
+allowed in a CR.
+
+### The leftovers table — right after the closing table, every CR
+
+The closing table judges the commits. The leftovers table holds what the review
+turned up on the way that is NOT a finding against a commit: a pre-existing bug
+in a file the branch touched, a stale or false doc next to the change, a trap
+the diff happened to expose. Three columns:
+
+| Issue and how bad | Introduced by this branch? | Verdict |
+|---|---|---|
+| <what it is, with `file`, and its severity tag> | `yes <short-sha>` / `no, pre-existing` | 🔧 ADD FIX / ⏸ LEAVE FOR NOW (why) |
+
+- **Issue and how bad** — one sentence plus the severity tag, so I can tell a
+  lying doc from a typo without re-reading the findings.
+- **Introduced by this branch?** — `yes <short-sha>` or `no, pre-existing`.
+  Blame it; never guess. A `yes` means the finding also belongs in that
+  commit's review above, and this row points at it.
+- **Verdict** — what you think I should do, as a recommendation I can
+  overrule: 🔧 ADD FIX (a new commit on this branch, or amend the commit that
+  introduced it) or ⏸ LEAVE FOR NOW with the reason in a few words - out of the
+  branch's scope, another owner's file, not worth the review cost today.
+
+When nothing came up, the table is one line instead: "Leftovers: none found on
+the way." Never skip it silently - an absent table reads as "did not look".
 
 ### Rules that keep the tags honest
 
@@ -201,7 +226,7 @@ Each category below has a **default severity** - deviate only with a stated reas
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
 - Give each commit a score out of 10
-- **End the CR with the closing table** (see "The closing table" above)
+- **End the CR with the closing table, then the leftovers table** (see "The closing table" and "The leftovers table" above)
 - **Open with the VERDICT line + MUST-HAVE roll-up, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Verdict vocabulary is fixed" above)
