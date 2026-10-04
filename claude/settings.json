@@ -60,15 +60,33 @@
       "Bash(mkdir -p /tmp/claude/common-extract)",
       "Bash(tar -xzf charts/model/il-model/charts/common-0.1.0.tgz -C /tmp/claude/common-extract/)",
       "Bash(helm dependency *)",
-      "Bash(helm install:*)"
+      "Bash(helm install:*)",
+      "Bash(rm /tmp/claude:*)",
+      "Bash(rm -f /tmp/claude:*)",
+      "Bash(rm -rf /tmp/claude:*)",
+      "Bash(rm /private/tmp/claude:*)",
+      "Bash(rm -f /private/tmp/claude:*)",
+      "Bash(rm -rf /private/tmp/claude:*)"
     ],
     "additionalDirectories": [
       "/tmp",
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "claude-fable-5-1",
+  "model": "opus",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/bash-rw-label.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PermissionRequest": [
       {
         "matcher": "SandboxNetworkAccess",
@@ -112,7 +130,8 @@
     "filesystem": {
       "allowWrite": [
         "~/.config/gcloud",
-        "~/repos"
+        "~/repos",
+        "/private/tmp"
       ],
       "allowRead": [
         "~/.config/gcloud"
@@ -124,6 +143,9 @@
   "modelSettings": {
     "claude-opus-5-5": {
       "effortLevel": "xhigh"
+    },
+    "claude-fable-5-1": {
+      "effortLevel": "high"
     }
   },
   "tui": "default",

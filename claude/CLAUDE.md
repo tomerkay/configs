@@ -291,6 +291,7 @@ action of that kind.**
 | When I ask for, or you are about to do | Invoke |
 |---|---|
 | a code review / CR / "review my branch, my PR, my commits" | `tkay-code` |
+| read a GitLab MR, its review threads or its CI through `glab` | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
 | create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan, design doc or implementation write-up | `tkay-writing-plans` |
@@ -562,11 +563,32 @@ status codes, result types, fixed categories, bounded config options. Typos get
 caught at development time, all possible values live in one place, and renames
 are safe. Never list an enum's values in a docstring; reference the enum class.
 
+# TEMP FILES GO UNDER /private/tmp/claude
+
+Every scratch file you create for your own work lives under `/private/tmp/claude/`
+(the session scratchpad, or `$TMPDIR`, both resolve there), never as a bare
+`/tmp/<file>`. `/tmp` is a symlink to `/private/tmp` on macOS and the sandbox
+checks the resolved path, so a file at the top of `/tmp` is one you can create
+through a hook or a tool but never delete. Create the directory if it is missing,
+and clean up what you made without asking me - the `rm` rules for that path are
+in `permissions.allow`.
+
 # Screenshots
 
 **My screenshots live in `/Users/tkay/Screenshots`.** When I reference a bare screenshot filename - e.g. `Screenshot 2025-12-03 at 15.22.51.png` or the shell-escaped `Screenshot\ 2025-12-03\ at\ 15.22.51.png` - resolve it to `/Users/tkay/Screenshots/<name>` and read it straight away. Don't ask me where it is, don't search the repo or the Desktop for it.
 
 The names contain spaces: quote or escape the path in shell commands.
+
+# EVERY BASH PROMPT SAYS WHAT IT CAN CHANGE
+
+A PreToolUse hook, `~/.claude/hooks/bash-rw-label.py`, rewrites every Bash
+`description` to open with a verdict: 🟢 READ changes nothing, 🟠 WRITE changes
+local, recoverable state, 🔴 DANGER destroys data or touches live cluster or
+remote state. Anything it does not recognise is 🟠. The classifier is the one
+source of that verdict: never write the emoji into a description yourself, and
+when a verdict is wrong, fix the handler in the script and tell me which
+command it misread. Run the script with commands as arguments to see what it
+would say.
 
 # ALWAYS PIN THE CONTEXT AND THE NAMESPACE - EVERY CLUSTER COMMAND, NO EXCEPTIONS
 

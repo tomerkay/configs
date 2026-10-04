@@ -1,6 +1,6 @@
 ---
 name: tkay-writing-mds
-description: Tomer's standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers which file owns what, the ban on a doc restating a value or pasting code, the shape of a good CLAUDE.md, which copy of a skill to edit and how to name a new one. Use before creating or editing any of them, including a doc touched on the way through a code change.
+description: Tomer's standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md, the shape of a README, which copy of a skill to edit and how to name a new one. Use before creating or editing any of them, including a doc touched on the way through a code change.
 ---
 
 # Writing markdown files
@@ -18,22 +18,34 @@ function body, no snippet that is wrong after the next edit. Name the key, the
 function or the file and point at the one that owns it; describe the pattern, do
 not copy it.
 
-## Each file has one job
+## Where a fact goes
 
-values.yaml is what can be set and what it means, and earns that with a comment
-on every key; the repo `CLAUDE.md` is why it works that way and where it bites;
-the README is how to operate it - deploy, the contract consumers depend on,
-troubleshooting. Anything that fits two of them is written in one and pointed at
-from the other. Three copies agreeing today is not a defence - I have had
-values.yaml, README and CLAUDE.md each state the same defaults, two of them
-stale, and nobody noticed because only values.yaml was ever deployed.
+Four homes, tried in this order. The first that fits is where the fact is
+written, once; every other file that needs it points there.
 
-**Two docs pointing at each other is not the failure; the same content in
-both is.** A pointer each way is fine when each is for a different topic and
-following it lands on that topic's one home. So when I ask whether docs are
-"circular", audit what each file *states*, not what it links - the duplicate
-hides behind the pointers, and it has usually drifted already. A pointer names
-the home and stops; the moment it summarises what it points at, it is a copy.
+1. **The code**, when the code can say it: a name, a WHY comment, a `required`
+   in a template, the header a generator stamps on its output. A doc never
+   says what the code says.
+2. **A skill**, when one kind of task needs it. Its body loads only when its
+   description matches the task, so a procedure, a convention or an inventory
+   for one job costs nothing in every other session. The `CLAUDE.md` names the
+   skill and when to load it, and nothing more.
+3. **The repo `CLAUDE.md`**, when every session needs it before the first tool
+   call. It is loaded whole into every session, so every line is paid for on
+   every turn, and the harness warns at startup when it grows past its size
+   target. It holds why the code works the way it does, where it bites, and how
+   Claude behaves in this repo - see "A repo CLAUDE.md".
+4. **The README**, when a human operating the thing needs it: setup, the
+   commit or deploy steps, the contract consumers depend on, troubleshooting.
+
+Most "fits both" cases are two facts. The bite is the `CLAUDE.md`'s, the steps
+that work around it are the README's, and each points at the other. When one
+fact truly fits two homes, the earlier one wins.
+
+**The split is by topic, never by reader.** Claude follows the README when it
+commits, and a human opens the `CLAUDE.md` to find the gotcha that just bit
+them. A README "for humans" and a `CLAUDE.md` "for Claude" ends with the commit
+steps written twice.
 
 **A fact that holds for every consumer lives in the shared doc.** Every team's
 directory, every chart a repo deploys: the shared README or `CLAUDE.md` owns
@@ -41,25 +53,57 @@ it, and a per-team or per-component doc keeps only what is its own and points
 up. A shared fact written in one team's README is a copy by the time the
 second team needs it.
 
+**Two docs pointing at each other is not the failure; the same content in
+both is.** A pointer each way is fine when each is for a different topic and
+following it lands on that topic's one home. So when I ask whether docs are
+"circular", audit what each file *states*, not what it links - the duplicate
+hides behind the pointers, and it has usually drifted already. Three copies
+agreeing today is not a defence - I have had values.yaml, README and
+`CLAUDE.md` each state the same defaults, two of them stale, and nobody noticed
+because only values.yaml was ever deployed.
+
+A design doc takes its shape from `tkay-writing-plans` and its content rules
+from here.
+
+## A pointer
+
+A pointer names the file and a name inside it that survives an edit - a key, a
+function, a flag, a filename, a metric - and stops. "The commit steps are the
+root README's" is a pointer. The moment it goes on to say what those steps
+are, it is a copy.
+
+A section heading is not a name that survives: markdown has no anchor that
+outlives a rename, and nothing tells the pointing file. Point at a heading only
+inside a directory one owner edits. Across an ownership boundary - a CODEOWNERS
+line, another team's skill - point at the file and the topic, so a
+reorganisation on their side strands nothing on yours.
+
+**The one line that may repeat is a warning with no value in it** - "these
+three files are generated, never edit them" at every place a reader could
+otherwise act wrongly. Nothing in it moves, so it cannot drift. A value, a
+list, a snippet or a procedure never repeats.
+
 ## A repo CLAUDE.md
 
-Why the code works the way it does and where it bites. Never what the code
-does - the code says that - and never how to use it - that is the README.
+Two jobs. **Engineering notes:** why the code works the way it does and where
+it bites. **Behaviour:** how Claude works in this repo. Never what the code
+does - the code says that - and never how to operate it - that is the README.
 
-**DO:**
-- Document design decisions and WHY they were made
-- Explain architecture patterns and how components interact
-- Capture non-obvious behaviors, gotchas, edge cases
-- Describe algorithms/flows at a high level
-- Note important configuration patterns
-- Name the trade-offs made, and why
-- Keep it concise - engineering notes, not essays
+The engineering notes carry design decisions and the reason behind them, the
+trade-offs, and each gotcha with the mechanism behind it. A flow or an
+architecture line earns its place only as the frame for the decision or gotcha
+that follows it; on its own it is a retelling of the code, and the harness's
+own `/doctor` trims exactly that kind of content from a `CLAUDE.md` while
+keeping pitfalls, rationale and conventions.
 
-**DON'T:**
-- Write an absolute path into anyone's machine - name files relative to the repo root
-- Be verbose with generic explanations
-- Repeat information obvious from code/comments
-- Use tutorial language ("let's explore", "as you can see")
+The behaviour half is instructions: the evidence a reply owes after a commit, a
+warning or reply whose wording matters, written verbatim, which skill to load
+before which task. Only what every session needs - a protocol for one kind of
+task goes in that task's skill.
+
+Name files relative to the repo root, never an absolute path into anyone's
+machine. No generic explanation, no tutorial voice ("let's explore", "as you
+can see"), nothing the code or its comments already say.
 
 **Example - BAD (code implementation):**
 ````markdown
@@ -92,11 +136,32 @@ blacklisting - prevents pods being blacklisted during temporary infrastructure i
 inference. Only health check runs.
 ````
 
+The Flow line stays because the Gotcha below it needs it.
+
 **Structure per section:**
 1. Problem/context (1 sentence)
 2. Design decision or architecture
 3. Key insights or trade-offs
 4. Gotchas or edge cases
+
+## A README
+
+The reader has a task and has not read the code.
+
+- **The first screen is the common path**: what this is, in a line, then the
+  steps most readers came for. Recovery, edge cases and opting in come after,
+  never as step one.
+- **A procedure is commands the reader runs in order**, with nothing to decide
+  in the middle. A decision is a sentence before the block, not a comment
+  inside it.
+- **What never to do is one list**, each line stating the fact and pointing at
+  the file that explains the mechanism.
+- **A README below the root keeps only what is that directory's own** and
+  points up for the rest.
+
+"Docs are copies too" binds here hardest: a README is where a setup snippet
+gets pasted and then forgotten. Name the file and the key, and give the command
+that reads it.
 
 ## A SKILL.md
 
@@ -117,6 +182,10 @@ update, so an edit there is either lost or lives just long enough to diverge.
 **A skill I own is named `tkay-<topic>`**: lowercase letters, digits and hyphens
 only, which is all the [Agent Skills spec](https://agentskills.io/specification)
 allows, and the prefix keeps it from reading as an installed public skill.
+
+**The description is the only part loaded in every session**, so it says when
+to load the skill, not what is in it. The body is read only after the
+description matched.
 
 **A skill never records the current state of something it doesn't control** - a
 dead alert, a blank field, an unfixed bug, a lagging deploy. Somebody fixes it

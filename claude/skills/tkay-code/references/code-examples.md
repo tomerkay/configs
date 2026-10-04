@@ -165,42 +165,19 @@ When reviewing code, flag ANY logic that handles scenarios impossible under curr
 
 # ONE SOURCE OF TRUTH - CONFIG, DEFAULTS, AND EVERYTHING ELSE
 
-I am obsessive about single source of truth. A value that lives in two places
-WILL drift, and then one change means hunting every copy — that is how config
-bugs are born.
+The rules are in my global CLAUDE.md. What they look like in practice:
 
-- **Binaries and services carry NO config defaults.** Every setting comes from
-  the deployment (the chart), written down exactly once. A missing or
-  unparseable setting fails startup LOUDLY and reports EVERY missing key at
-  once — never fall back to a number the deployment didn't choose, and never
-  fail one-key-at-a-time so I redeploy five times to find five problems.
-  models-monitor is the reference implementation of this pattern; mailroom
-  follows it.
-- **Charts set every value explicitly in values.yaml.** I want to open ONE
-  file and see the complete configuration of the thing. No defaults popping
-  out of code, templates, or helpers and surprising me at runtime. Templates
-  guard values with `required` so a nulled key fails the render, not the pod.
-- **values.yaml holds ONLY what is meant to be changed.** A setting earns a
-  key there because some deployment legitimately wants a different value:
-  intervals, thresholds, endpoints, selectors, replica counts, image tags.
-  A constant that must NEVER change — a protocol magic number, a wire-format
-  field name, a hash salt, a parameter the algorithm's correctness rests on —
-  is a named constant in the code and appears NOWHERE in the chart. That is
-  not a gap in configurability, it is the point: a key in values.yaml is a
-  knob, and a knob nobody should ever turn is a knob someone WILL turn at
-  3am. If the only correct value is the current one, do not expose it.
-- An empty environment variable reads as unset — an empty string default is
-  still a default.
-- When you spot a default hiding in code for a value the chart also sets (or
-  should set), FLAG IT — it is a bug in my book even while the two copies
-  happen to agree. Same in the other direction: a constant nobody should ever
-  change sitting in values.yaml is a bug too, FLAG IT.
-- **Fixing drift means deleting the copy, not updating it.** When a change
-  makes you edit the same value in a second file, STOP: the second copy is
-  the bug. Replace it with a pointer to the source in that same commit.
-  Updating it in place cures today's symptom and keeps the disease.
-- The same instinct applies beyond config: dashboards, constants,
-  contracts - one authoritative place, everything else points at it.
+- **No config defaults in a binary:** models-monitor is the reference
+  implementation - every setting read from the chart, startup fails listing
+  every missing key at once. mailroom follows it.
+- **Every value explicit in values.yaml**, so one file shows the complete
+  configuration of the thing, and templates guard each key with `required` so
+  a nulled key fails the render, not the pod.
+- **What earns a values.yaml key:** intervals, thresholds, endpoints,
+  selectors, replica counts, image tags - anything some deployment
+  legitimately sets differently. **What never does:** a protocol magic number,
+  a wire-format field name, a hash salt, a parameter the algorithm's
+  correctness rests on.
 
 Documentation's share of this rule — which file carries what — is in the
 `tkay-writing-mds` skill.

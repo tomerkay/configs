@@ -25,10 +25,24 @@ rule exists to prevent.
 **Never choose "new commit" because rewriting history is inconvenient for you.**
 That is my history, not your convenience. When a squash needs a rewrite: branch a
 backup first, do it, then prove it with `git diff <backup> HEAD` returning empty.
-An empty diff means the rewrite is proven: delete the backup straight away without
-asking, with `git branch -D` (squashed commits never count as merged, so `-d`
-refuses), and report the `Deleted branch ... (was <sha>)` line. A non-empty diff
-means the rewrite changed content: stop, keep the backup, and show me the diff.
+An empty diff means the rewrite is proven: **delete the backup branch straight
+away, WITHOUT asking permission** - no question in chat, no offer, no backup left
+behind for me to clean up - with `git branch -D` (squashed commits never count as
+merged, so `-d` refuses), and report the `Deleted branch ... (was <sha>)` line.
+A non-empty diff means the rewrite changed content: stop, keep the backup, and
+show me the diff.
+
+**The rewrite itself is scripted, because no interactive editor exists in this
+harness.** `git rebase -S -i <base>` works once `GIT_SEQUENCE_EDITOR` names a
+script that edits the todo and `GIT_EDITOR` one that overwrites the message
+file it is handed. Edit the todo by SHA - `s/^pick <sha>/reword <sha>/` - never
+by subject: the todo line may carry a comment marker between SHA and subject,
+and a pattern that matches nothing leaves every `pick` in place, so the rebase
+"succeeds" with nothing changed. Verify the new SHAs appeared before trusting
+it. `git commit --fixup=amend:<sha>` and `--fixup=reword:<sha>` refuse `-m` and
+`-F`, so a prepared message cannot ride on them; the `GIT_EDITOR` script is
+how it gets in. `-S` re-signs every rewritten commit - confirm with
+`git log --format='%h %G? %s'` before deleting the backup.
 
 **Whether the branch is already pushed is NOT an input to this decision - ever.**
 Do not check it, do not ask about it, do not mention it as a factor. I force-push
@@ -39,19 +53,12 @@ Other reasons to prefer a new commit still hold; that one does not exist.
 
 ## Documentation Sync on Every Commit
 
-**Before creating ANY commit, check whether the change makes existing documentation stale:**
-
-1. **Repo `CLAUDE.md` / `.claude/CLAUDE.md`**: Does the commit change architecture, design decisions, flows, config structure, metrics, gotchas, or any behavior documented there?
-2. **Any `README.md`** in the repo (root or subdirectories near the changed files): Does the commit change usage, setup, configuration, endpoints, or behavior documented there?
-
-If yes → first ask WHY it went stale. If the doc restated a value, a default
-or a list that lives in values.yaml or the code, the fix is to DELETE the
-restatement and point at the source - not to update the number, which keeps
-three copies alive (see the one-source-of-truth rule in my global CLAUDE.md).
-Only content with no other home - design rationale, gotchas, the operator guide,
-a contract consumers depend on - is updated in place. Either way, in the SAME
-commit. If the docs are already accurate, say so briefly and move on - don't
-update docs just to touch them.
+**Before creating ANY commit, check whether the change makes the repo
+`CLAUDE.md` or any `README.md` near the changed files stale.** Which file owns
+what, and whether a stale line is deleted or updated in place, is the
+`tkay-writing-mds` skill's - load it before touching the doc. Either way the
+doc change lands in the SAME commit. If the docs are already accurate, say so
+briefly and move on - don't update docs just to touch them.
 
 This applies to every commit, not just when I explicitly ask for documentation updates.
 

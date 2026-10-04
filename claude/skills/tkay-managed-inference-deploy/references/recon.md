@@ -117,14 +117,15 @@ sed -n '<N-30>,<N+5>p' /tmp/pod.log
 
 ## kubectl invocation gotcha
 
-Flags must follow the subcommand. `kubectl --context X exec ...` fails with
-`flags cannot be placed before plugin name` when krew plugins are installed, and
+Flags go after the subcommand. A built-in verb accepts them anywhere, but a
+krew plugin does not - `kubectl --context X ns` fails with
+`flags cannot be placed before plugin name` - and
 collapsing `-n ns --context ctx` into a shell variable used before the subcommand
 gets parsed as part of the namespace:
 
 ```
 kubectl exec -n <ns> --context <ctx> <pod> -- <cmd>     # correct
-kubectl --context <ctx> exec -n <ns> <pod> -- <cmd>     # fails with krew
+kubectl --context <ctx> ns <ns>                          # fails: ns is a plugin
 ```
 
 Prefer `--context <ctx>` on individual commands over `kubectl config use-context`
