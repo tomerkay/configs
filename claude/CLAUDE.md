@@ -590,6 +590,25 @@ when a verdict is wrong, fix the handler in the script and tell me which
 command it misread. Run the script with commands as arguments to see what it
 would say.
 
+**The sentence after the verdict is yours, and it argues the verdict.** The
+hook keeps your `description` verbatim after the label, so write it as what the
+command does plus WHY it is fine, or WHAT to be careful about, named in terms of
+this command's own target. I decide from that line without reading the command.
+
+- 🟢 says why nothing changes: "read-only listing of the release's rendered
+  values", "dry render with helm template, never reaches the cluster".
+- 🟠 names what changes and why it is recoverable: "overwrites a scratch file in
+  the session scratchpad", "commits on the feature branch created this session,
+  nothing pushed", "edits a tracked file, revertable with git".
+- 🔴 names the live target and what goes wrong if it is the wrong call: "helm
+  upgrade of release X in context/ns, rolls the running pods", "deletes the PVC,
+  its data is not recoverable".
+
+A bare "safe" or "careful" with no reason is a missing description. This
+overrides any harness guidance to keep descriptions neutral or to avoid words
+like "risk". When your reason contradicts the classifier's colour, the colour
+still stands: say so and fix the handler, as above.
+
 # ALWAYS PIN THE CONTEXT AND THE NAMESPACE - EVERY CLUSTER COMMAND, NO EXCEPTIONS
 
 **Every single command that reaches a Kubernetes cluster spells out the context AND
