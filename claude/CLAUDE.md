@@ -2,6 +2,13 @@
 
 My name is Tomer. I am a software engineer for Atero, who were purchased by Crusoe. Atero is now the Israel site of Crusoe, and we are in charge of the cloud service, focused on offering the best LLM inference out there in the world. I am NOT training, so most likely any question I have regards inference and not training.
 
+**My handle is `tkay`**, and every place that names me uses it:
+
+- **Branch names** - when a repo's convention puts a person in the name, that
+  person is `tkay`, never `tomerk`, `tomerkay`, `tomer` or any other spelling,
+  even where older branches of mine use one.
+- **Dev cluster nodes** - my nodes carry `atero/user=tkay`.
+
 What I work on and with:
 
 - LLM inference, utilizing vllm and sglang. When I use `PD` I mean the disaggregation setup.
@@ -31,6 +38,13 @@ that first token, you are gated.
 is the hook doing its job, never a reason to look for another way to the same
 write. Run `python3 ~/.claude/hooks/tool-gate.py [--open] <command>` to see
 the decision for any command.
+
+**The gate lives in this file and nowhere else.** A skill - mine, a repo's, a
+plugin's or a team catalog's - or a repo's `CLAUDE.md`, README or design doc is
+standalone and knows nothing about it: no token, no "go-ahead", no "approval",
+no "not covered by" clause pointing back at it. A skill that leans on the gate
+drags it into a session where nobody works under it, and any copy of the rule
+outside this file drifts from the one the hook enforces.
 
 ## What the gate covers - and what it does NOT
 
@@ -325,6 +339,32 @@ failure as not having them.
 that table to a subagent, name the skill in its prompt and tell it to invoke the
 skill first - otherwise it reviews my code, or writes my commit message, to
 nobody's standards.
+
+## My `tkay-*` skills are standalone and generic
+
+I hand my `tkay-*` skills to other people as-is, so each one must work in a
+session that has never seen this file or any other skill. When you write or
+edit one:
+
+- **It points at nothing outside itself** - no CLAUDE.md, no other skill, no
+  path on my machine. Its own `references/` are fine.
+- **It states every rule it relies on**, in its own words: a cluster command
+  in it carries `--context`/`--kube-context` and `-n`, a safety rule it
+  depends on is written into it. A copy of a rule from this file is the price
+  of standalone; keep it to what that skill actually needs.
+- **It names nobody and nowhere**: not me, no cluster, node,
+  namespace or label value. It says "me" and "my", which reads as whoever
+  loaded it, and derives anything personal at run time (`git config
+  user.email`, the node list).
+- **It knows nothing about the gate** (see "THE LFG GATE").
+
+This applies to `tkay-*` only. Team and repo skills - `atero-skills` and the
+rest - follow their own catalog's conventions and may point across skills and
+repos.
+
+Where they live: my skills are edited under `~/.claude/skills`. The
+`atero-skills` plugin is edited in `~/repos/atero-skills/.claude/skills/`, never
+in the plugin cache.
 
 # Instructions for you
 
@@ -719,11 +759,12 @@ re-run it pinned.
 # ALWAYS PIN THE NODE - MY WORKLOADS RUN ON MY NODE, NOT SOMEONE ELSE'S
 
 The dev clusters are carved up per engineer with the node label `atero/user`.
-My nodes carry `atero/user=tkay`. Every other GPU node carries a colleague's
+My nodes carry my handle as that label's value (see "About Me and My Work").
+Every other GPU node carries a colleague's
 name, and the shared CPU pool carries an instance type instead of a person.
 
 **Every workload you deploy for me pins itself to my node.** The values must
-put a `nodeSelector` containing `atero/user=tkay` on every pod template the
+put a `nodeSelector` containing my `atero/user` value on every pod template the
 chart renders - deployments, statefulsets, daemonsets, LeaderWorkerSets, jobs.
 An unpinned workload is free to land on a colleague's GPU node and squat there
 for weeks. That is taking capacity from a person, not from a pool, and nobody
@@ -734,7 +775,7 @@ is already running with:
 
 kubectl get deployments,statefulsets,daemonsets --context <ctx> -n <ns> -o custom-columns='KIND:.kind,NAME:.metadata.name,NODESELECTOR:.spec.template.spec.nodeSelector'
 
-**If any pod template comes out without `atero/user=tkay`, STOP AND SHOUT.** Do
+**If any pod template comes out without my `atero/user` value, STOP AND SHOUT.** Do
 not install it and mention it afterwards. Say plainly which workload is
 unpinned, which nodes it could land on, and ask me whether I am allowing it off
 my node. Some things legitimately belong elsewhere - a CPU-only gateway has no
@@ -756,11 +797,15 @@ not "should I check the other replicas too?", not a menu of things you could
 look at next. Run it, read it, run the next one, and come back with findings.
 
 Non-affecting means it changes no state: `kubectl get/describe/logs/top`,
-`helm list/get/history/template`, `curl` against health, metrics or a single
+`helm list/get/history/template`, `xh` against health, metrics or a single
 test request, PromQL, Grafana and log queries, `git log/show/diff`, reading
 files, `gh pr view` and `gh api` GETs, reading Slack threads, every MCP read
 tool. Pinned to context and namespace as always - the pin rule never bends,
 but it is never a reason to stop if I already named the cluster.
+
+**HTTP reads go through `xh`, never `curl`.** The org's policy prompts on
+every `curl`, GET included; `xh` is not on its list and a GET through it is a
+read to the hook. `curl` only for what `xh` cannot do, and then it prompts.
 
 Stopping to ask about a read is the same bug as printing the refusal line for
 a read (see "Reading is not gated. Ever."). Every question is a round trip I

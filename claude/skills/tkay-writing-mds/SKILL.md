@@ -1,12 +1,29 @@
 ---
 name: tkay-writing-mds
-description: Tomer's standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md, the shape of a README, which copy of a skill to edit and how to name a new one. Use before creating or editing any of them, including a doc touched on the way through a code change.
+description: Standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md, the shape of a README, which copy of a skill to edit and how to write one. Use before creating or editing any of them, including a doc touched on the way through a code change.
 ---
 
 # Writing markdown files
 
-"Nothing that goes stale silently" and "Nothing personal in a repo" in my global
-CLAUDE.md bind every file below and are not repeated here.
+Two rules bind every file below.
+
+**Nothing that goes stale silently.** A specific value the next change
+invalidates never gets written down: a count of things, a reading of live
+state ("currently disabled"), a date stamped on a claim, a measurement quoted
+as fact, a line number or position in a file. Name the owner instead - the
+function, the config key, the command that answers the question. The test:
+would this sentence need editing after a change nobody will connect to this
+file? A commit body is the exception, because the diff it describes is frozen.
+A deletion is not content - delete the entry, do not record what used to be
+there - but a rejected decision ("tried X, do not go back") stays.
+
+**Nothing personal in a repo.** No person's name, user label, namespace,
+cluster or context name, node hostname, pod IP or branch-built image tag in
+anything tracked - manifests, values, script defaults, docs, tests, examples.
+Anything that names a person or an environment is an install-time input (a
+`--set`, a required script argument, a variable defined once at the top), and
+where a file must carry the key it carries a placeholder no node or cluster
+has. The one exception is the production deploy config that owns a cluster.
 
 ## Docs are copies too
 
@@ -62,8 +79,7 @@ agreeing today is not a defence - I have had values.yaml, README and
 `CLAUDE.md` each state the same defaults, two of them stale, and nobody noticed
 because only values.yaml was ever deployed.
 
-A design doc takes its shape from `tkay-writing-plans` and its content rules
-from here.
+A design doc takes its content rules from here.
 
 ## A pointer
 
@@ -170,18 +186,13 @@ update, so an edit there is either lost or lives just long enough to diverge.
 
 - **A plugin skill** is edited in the repo that publishes the plugin. The
   marketplace checkout and the plugin cache under `~/.claude/plugins` are build
-  artifacts. `atero-skills:investigate-alert` lives in
-  `~/repos/atero-skills/.claude/skills/investigate-alert/SKILL.md`, the only
-  copy the team edits; a copy under any other repo's `.claude/skills` is drift
-  to delete, not a source.
-- **A public skill** - a symlink into `~/.agents/skills`, or a directory named
-  in `~/.agents/.skill-lock.json` - belongs to its upstream. Do not edit it.
-- **My own skills** are edited under `~/.claude/skills`.
-  `~/repos/configs/claude/skills` is a copy the configs sync overwrites.
+  artifacts, and a copy of the skill under any other repo's `.claude/skills` is
+  drift to delete, not a source.
+- **A public skill** installed from an upstream belongs to that upstream. Do
+  not edit it.
 
-**A skill I own is named `tkay-<topic>`**: lowercase letters, digits and hyphens
-only, which is all the [Agent Skills spec](https://agentskills.io/specification)
-allows, and the prefix keeps it from reading as an installed public skill.
+**A skill name** is lowercase letters, digits and hyphens only, which is all the
+[Agent Skills spec](https://agentskills.io/specification) allows.
 
 **The description is the only part loaded in every session**, so it says when
 to load the skill, not what is in it. The body is read only after the
@@ -194,8 +205,3 @@ with nothing to show it went wrong; the defect belongs in a ticket. **A
 workaround the procedure depends on stays, but names its trigger and its
 expiry**: the upstream issue or version it waits on, and the check that shows it
 still applies.
-
-**The `LFG!` gate is mine alone.** It lives in my global CLAUDE.md, and nobody
-else works under it. A skill anyone else loads - one in a repo, a plugin or a
-team catalog - never names it: write "the user's go-ahead" or "approval to make
-changes" instead.

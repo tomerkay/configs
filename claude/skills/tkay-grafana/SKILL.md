@@ -1,12 +1,11 @@
 ---
 name: tkay-grafana
-description: Tomer's conventions for Grafana dashboards, panels and template variables. Use when creating or editing a dashboard, naming or labelling a template variable / picker / dropdown, writing panel descriptions, or reviewing dashboard JSON. Covers what belongs in a variable label versus a panel description.
+description: Conventions for Grafana dashboards, panels and template variables. Use when creating or editing a dashboard, naming or labelling a template variable / picker / dropdown, writing panel descriptions, or reviewing dashboard JSON. Covers what belongs in a variable label versus a panel description.
 ---
 
 # Grafana conventions
 
-These are my house rules. They sit on top of the general `dashboarding` skill —
-load that one too when you are actually building or debugging dashboard JSON.
+These are my house rules for dashboards, on top of Grafana's own JSON model.
 
 ## Variables get NAMES, not notes
 

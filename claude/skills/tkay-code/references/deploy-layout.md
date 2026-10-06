@@ -13,11 +13,12 @@ Everything production needs to be installed, and only that:
   assumes nothing in it can touch production. Both assumptions are what the
   directory names are for.
 - **The topology** - which cluster, which namespace, which released version,
-  which components. This is the one place a cluster name may appear in a repo
-  ("Nothing personal in a repo" in my global CLAUDE.md).
+  which components. This is the one place a cluster name may appear in a repo:
+  nothing else tracked names a person, cluster, namespace or node.
 - **Production values** for the charts this repo owns. Values for a chart
-  another repo owns live in that repo's `examples/`, never here ("Values for a
-  chart live with the chart").
+  another repo owns live in that repo's `examples/`, never here: Helm ignores a
+  key the chart does not know, so when the chart renames or drops one a
+  foreign copy keeps rendering and the setting silently does nothing.
 
 ## `dev/` targets a dev cluster and nothing else
 

@@ -1,9 +1,8 @@
-# Worked examples behind the always-on code rules
+# Code rules and the worked examples behind them
 
-The rules themselves are in my global CLAUDE.md and are in force whether or not
-you read this file. This is the evidence behind them — read it when you are
-unsure whether a specific comment, mechanism, default or config key is
-acceptable.
+These rules apply to every line of code, chart, dashboard or config written for
+me. Read this file before writing code, and again whenever you are unsure
+whether a specific comment, mechanism, default or config key is acceptable.
 
 ---
 
@@ -55,7 +54,7 @@ Examples of BANNED comments:
 
 **What survives:** a comment stating a fact about the code as it exists that a careful reader could not deduce — a non-obvious invariant, an ordering requirement, a gotcha that will bite them. `# MUST NOT await: the loop is single-threaded, so yielding here allows a torn read` is fine. `# MUST NOT await, because I originally wrote this with an await and it broke` is not.
 
-**PRODUCTION CODE IS SACRED.** Every comment I add wastes the reader's time. The log message, function name, or variable name should make the intent clear. If you catch yourself writing a comment that just restates the code, STOP and delete it immediately.
+**PRODUCTION CODE IS SACRED.** Every needless comment wastes the reader's time. The log message, function name, or variable name should make the intent clear. If you catch yourself writing a comment that just restates the code, STOP and delete it immediately.
 
 ---
 
@@ -165,7 +164,26 @@ When reviewing code, flag ANY logic that handles scenarios impossible under curr
 
 # ONE SOURCE OF TRUTH - CONFIG, DEFAULTS, AND EVERYTHING ELSE
 
-The rules are in my global CLAUDE.md. What they look like in practice:
+A value that lives in two places WILL drift, and then one change means hunting
+every copy.
+
+- **Binaries and services carry NO config defaults.** Every setting comes from
+  the chart, written down exactly once. A missing or unparseable setting fails
+  startup LOUDLY, reporting EVERY missing key at once, not one per redeploy. An
+  empty environment variable reads as unset; an empty-string default is still a
+  default.
+- **values.yaml holds ONLY what is meant to be changed.** A constant whose only
+  correct value is the current one is a named constant in code and appears
+  nowhere in the chart. A knob nobody should ever turn is a knob someone WILL
+  turn at 3am.
+- **Fixing drift means deleting the copy, not updating it.** When a change
+  makes you edit the same value in a second file, STOP - the second copy is the
+  bug. Replace it with a pointer to the source in that same commit.
+- **Flag both directions**: a default hiding in code for a value the chart also
+  sets, and a never-change constant sitting in values.yaml. The same instinct
+  applies to dashboards, constants, contracts and docs.
+
+What that looks like in practice:
 
 - **No config defaults in a binary:** models-monitor is the reference
   implementation - every setting read from the chart, startup fails listing
@@ -179,8 +197,8 @@ The rules are in my global CLAUDE.md. What they look like in practice:
   a wire-format field name, a hash salt, a parameter the algorithm's
   correctness rests on.
 
-Documentation's share of this rule — which file carries what — is in the
-`tkay-writing-mds` skill.
+Docs fall under the same rule: a README or `CLAUDE.md` names the key and the
+file that owns it, and never restates the value.
 
 ---
 

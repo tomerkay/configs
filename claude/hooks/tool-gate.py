@@ -378,18 +378,62 @@ def http_method(args, short, long):
     return "GET"
 
 
+STDOUT_SINKS = ("/dev/null", "-")
+
+
+def curl_output_targets(args):
+    targets = []
+    for i, a in enumerate(args):
+        if a in ("-o", "--output"):
+            targets.append(args[i + 1] if i + 1 < len(args) else "")
+        elif a.startswith("--output="):
+            targets.append(a.split("=", 1)[1])
+        elif a.startswith("-o") and len(a) > 2:
+            targets.append(a[2:])
+    return targets
+
+
 def classify_curl(args):
     method = http_method(args, "-X", "--request")
     if method == "DELETE":
         return DANGER
     if method not in ("GET", "HEAD", "OPTIONS"):
         return WRITE
-    if has_flag(args, "-o", "--output", "-O", "--remote-name", "--remote-name-all", "-T",
+    if any(t not in STDOUT_SINKS for t in curl_output_targets(args)):
+        return WRITE
+    if has_flag(args, "-O", "--remote-name", "--remote-name-all", "-T",
                 "--upload-file", "-F", "--form", "--form-string", "-d", "--data", "--data-raw",
                 "--data-binary", "--data-urlencode", "--data-ascii", "--json"):
         return WRITE
-    if any(a.startswith(("-d", "-F", "-T", "-o")) and len(a) > 2 and not a.startswith("--")
+    if any(a.startswith(("-d", "-F", "-T")) and len(a) > 2 and not a.startswith("--")
            for a in args):
+        return WRITE
+    return READ
+
+
+HTTP_METHODS = {"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE", "TRACE", "CONNECT"}
+XH_VALUE_FLAGS = {"-a", "--auth", "-A", "--auth-type", "-o", "--output", "--raw", "-p",
+                  "--print", "-P", "--history-print", "--pretty", "-s", "--style", "--proxy",
+                  "--timeout", "--max-redirects", "--verify", "--cert", "--cert-key", "--ssl",
+                  "--http-version", "--resolve", "--interface", "--response-charset",
+                  "--response-mime", "--session", "--session-read-only", "--format-options",
+                  "--unix-socket", "--generate"}
+
+
+def classify_xh(args):
+    """httpie syntax: an optional method in any case, the URL, then items; a `key=value`,
+    `key:=json` or `key@file` item, or `--raw`, implies POST."""
+    rest, _ = split_globals(args, XH_VALUE_FLAGS)
+    pos = positionals(rest)
+    method = pos[0].upper() if pos and pos[0].upper() in HTTP_METHODS else None
+    items = pos[2:] if method else pos[1:]
+    if method == "DELETE":
+        return DANGER
+    body = (any(("=" in a and "==" not in a) or "@" in a for a in items)
+            or has_flag(args, "--raw"))
+    if method not in (None, "GET", "HEAD", "OPTIONS") or (method is None and body):
+        return WRITE
+    if has_flag(args, "-d", "--download", "-o", "--output"):
         return WRITE
     return READ
 
@@ -786,7 +830,7 @@ HANDLERS = {
     "kubectl": classify_kubectl, "k": classify_kubectl, "oc": classify_kubectl,
     "helm": classify_helm,
     "stern": classify_stern,
-    "curl": classify_curl, "http": classify_curl, "https": classify_curl, "xh": classify_curl,
+    "curl": classify_curl, "http": classify_xh, "https": classify_xh, "xh": classify_xh,
     "wget": classify_wget,
     "gh": classify_gh, "glab": classify_gh,
     "docker": classify_docker, "podman": classify_docker, "nerdctl": classify_docker,
@@ -864,7 +908,8 @@ def classify_program(prog, args):
 def strip_prefix(words):
     """Drop env assignments, transparent wrappers and `timeout <args>` ahead of the program."""
     words = list(words)
-    while words and (ENV_ASSIGN_RE.match(words[0]) or words[0] in TRANSPARENT):
+    # GOTCHA: shlex leaves a bare `$` behind when nested quotes split `$(...)` apart.
+    while words and (ENV_ASSIGN_RE.match(words[0]) or words[0] in TRANSPARENT or words[0] == "$"):
         words = words[1:]
     if words and words[0] == "timeout":
         words = words[1:]
@@ -906,10 +951,13 @@ def split_line(line):
             if segment:
                 segments.append(segment)
             segment = []
-        elif tok in REDIRECT_OUT:
-            targets.append(tokens[i + 1] if i + 1 < len(tokens) else "")
-            i += 1
-        elif tok in (">&", "<", "<<", "<<<", "<&", "<>"):
+        elif tok in REDIRECT_OUT or tok in (">&", "<", "<<", "<<<", "<&", "<>"):
+            # GOTCHA: shlex splits `2>&1` into `2`, `>&`, `1`; after a `)` or `;` the
+            # descriptor digit is a segment of its own and would read as a program.
+            if len(segment) == 1 and segment[0].isdigit():
+                segment.pop()
+            if tok in REDIRECT_OUT:
+                targets.append(tokens[i + 1] if i + 1 < len(tokens) else "")
             i += 1
         elif tok.startswith(">") or tok.startswith("<"):
             pass
@@ -1303,6 +1351,22 @@ def selftest():
         (False, "Bash", "kubectl --help", None),
         (False, "Bash", "python3 -m pytest tests/", None),
         (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
+        (False, "Bash", 'which claude; stat -f "%Sm %N" "$(readlink -f "$(which claude)")" 2>&1', None),
+        (False, "Bash", "xh :8081/api/clusters", None),
+        (False, "Bash", "xh GET localhost:8081/api/clusters Authorization:x | jq .", None),
+        (False, "Bash", "xh POST localhost:8081/api/clusters name=x", DENY),
+        (False, "Bash", "xh localhost:8081/api/clusters name=x", DENY),
+        (False, "Bash", "xh localhost:8081/api/clusters q==x", None),
+        (False, "Bash", "xh -d localhost:8081/file", DENY),
+        (True, "Bash", "xh DELETE localhost:8081/api/clusters/1", None),
+        (False, "Bash", "xh post localhost:8081/api/clusters", DENY),
+        (False, "Bash", "xh put localhost:8081/api/clusters/1 --raw '{}'", DENY),
+        (False, "Bash", "xh --form localhost:8081/upload f@/etc/hosts", DENY),
+        (False, "Bash", "xh 'localhost:8081/api/clusters?name=x'", None),
+        (False, "Bash", "xh -a u:p http://user@host/x", None),
+        (False, "Bash", "xh -a u:p http://host/x k=v", DENY),
+        (False, "Bash", "xh --verify no 'host/x?y=1'", None),
+        (False, "Bash", "kubectl get pods --context X -n 123 > /private/tmp/claude/p", None),
         (False, "Bash", "bash -lc 'touch /etc/x'", DENY),
         (False, "Bash", f"bash {scratch}check.sh", DENY),
         (False, "Bash", f"python3 {scratch}check.py", DENY),

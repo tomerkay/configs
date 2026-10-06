@@ -1,13 +1,26 @@
 ---
 name: tkay-cluster-ops
-description: Tomer's procedures for helm upgrades against a live release, for tearing his deployments off a node, and the rule that node labels are never Claude's to write. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything he owns in a namespace before a cluster is destroyed or a node is drained, and whenever a node label such as `atero/user` would have to be added, changed or removed to make something schedule.
+description: Procedures for helm upgrades against a live release, for tearing the user's deployments off a node, and the rule that node labels are never Claude's to write. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything the user owns in a namespace before a cluster is destroyed or a node is drained, and whenever a node label such as `atero/user` would have to be added, changed or removed to make something schedule.
 ---
 
 # Cluster operations
 
-Context and namespace pinning, node pinning, and who may run which command are
-in my global CLAUDE.md and always apply. This skill is the *how* for the two
-operations that have real procedure behind them.
+This skill is the *how* for the operations that have real procedure behind
+them. Two rules hold for every command in it.
+
+**Every command that reaches a cluster names its target**: `kubectl <verb> ...
+--context <ctx> -n <ns>`, `helm <verb> ... --kube-context <ctx> -n <ns>`. Never
+rely on the current context and never switch it with `kubectl config
+use-context` - I switch contexts constantly, so the current one is whatever I
+last pointed at elsewhere. If I did not name the cluster and namespace, ask.
+
+**Every workload I deploy lands on my node.** The dev clusters are carved up
+per engineer with the node label `atero/user`. Before any install or upgrade,
+check the rendered manifest: every pod template carries a `nodeSelector` with
+my `atero/user` value, and that value exists on a node
+(`kubectl get nodes --context <ctx> -L atero/user`). An unpinned workload can
+land on a colleague's GPU node; a selector no node carries schedules nothing
+while looking deployed. If either shows up, stop and ask before installing.
 
 ## Upgrading a Live Release: Get the Chart the Release Actually Used
 
@@ -21,20 +34,20 @@ different ConfigMap-mounted source — under what I asked to be a one-value twea
 Ways to get the real chart:
 
 - **OCI ref** — the normal one for atero-charts:
-  `helm upgrade <release> oci://registry.gitlab.com/crusoeenergy/atero/atero-charts/<chart> --version <version>`
+  `helm upgrade <release> oci://registry.gitlab.com/crusoeenergy/atero/atero-charts/<chart> --version <version> --kube-context <ctx> -n <ns>`
 - **Extract it from the release secret** (`sh.helm.release.v1.<release>.v<n>`:
   base64 → gzip → JSON carrying the chart files) when the registry is
   unreachable.
 
 Before every upgrade:
 
-- `helm get values <release>` first, then **ASK me whether `--reuse-values` is
+- `helm get values <release> --kube-context <ctx> -n <ns>` first, then **ASK me whether `--reuse-values` is
   wanted — do not decide it yourself.** It replays my previous user values on
   top of the *new* chart's defaults: a no-op when the release has none, and a
   silent carry-forward of stale values when it does.
 - Render with the identical flags (`helm template`, or `helm upgrade --dry-run`
   when `--reuse-values` is in play) and diff it against
-  `helm get manifest <release>`, so you can tell me every field that changes —
+  `helm get manifest <release> --kube-context <ctx> -n <ns>`, so you can tell me every field that changes —
   not just the one I asked for.
 
 ### Field-Manager Conflicts — `--force-conflicts` Is MY Call
@@ -70,13 +83,12 @@ and the next upgrade silently drops the change).
 ## Never Label a Node Yourself - Labelling Is ALWAYS Mine
 
 **`kubectl label node` is not yours to run, in either direction, ever.** Not
-claiming a node with `atero/user=tkay`, not freeing one with `atero/user-` or
+claiming a node with `atero/user=<my value>`, not freeing one with `atero/user-` or
 setting it to anything else, not "correcting" a label that looks wrong, not as
 the last step of a teardown, not when I have said the node is mine, not when the
-label is the single thing standing between a Pending pod and a running one. An
-open `LFG!` does not cover it - it sits with `helm uninstall` and the rest of
-state-changing `kubectl`. Print the exact command and suggest it as
-`! <command>` so it runs in my session.
+label is the single thing standing between a Pending pod and a running one.
+Print the exact command and suggest it as `! <command>` so it runs in my
+session.
 
 The label is how the fleet is carved up between people, so writing it does two
 things at once: it moves a machine between engineers' hands, and it retargets
@@ -172,9 +184,10 @@ them all at once.
 `helm uninstall` accepts every release name in a single invocation, and so does
 `kubectl delete <kind>`. Most teardowns are therefore ONE command, the helm one.
 A second, batched `kubectl delete` shows up only when something hand-applied is
-still running - never for storage, config or the namespace. Each separate
-invocation is another approval I have to sit through, and a teardown is the
-worst possible time to make me click twenty times.
+still running - never for storage, config or the namespace. **Both are mine to
+run**: print each one and suggest it as `! <command>`. Each separate invocation
+is another command I have to run, and a teardown is the worst possible time to
+make me run twenty.
 
 ### The things that actually block a drain
 

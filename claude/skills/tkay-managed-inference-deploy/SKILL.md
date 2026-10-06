@@ -24,6 +24,11 @@ concurrent load, and the error they surface with points at the wrong component.
 
 Run the verification gate below on **every** fresh deploy. It takes ten seconds.
 
+**Every command that reaches a cluster names its target**: `kubectl ...
+--context <ctx>` plus `-n <ns>` for anything namespaced, `helm ...
+--kube-context <ctx> -n <ns>`. Never rely on the current context. If the user
+did not name the cluster and namespace, ask.
+
 ## Pick the chart before writing values
 
 | Need | Chart |
@@ -66,7 +71,7 @@ and each produces its own false alarm:
   under `worker.useSts` never reaches the LWS path
 
 Before believing either from a **real** install, check the cluster:
-`kubectl get crd | grep -Ei 'atero|leaderworker'`.
+`kubectl get crd --context <ctx> | grep -Ei 'atero|leaderworker'`.
 
 Chart validation is `fail()`-based and runs at render time, so a bad values file
 never reaches the API server. Render errors are precise — read them literally.
@@ -112,7 +117,7 @@ which transport it selected.
 
 Pod names differ by chart — il-model pods come from a `Deployment` (hashed suffix),
 pd-model from LWS/StatefulSet (`-prefill-0` / `-decode-0`). Resolve with
-`kubectl get pods -n <ns> -l app.kubernetes.io/instance=<release>`.
+`kubectl get pods --context <ctx> -n <ns> -l app.kubernetes.io/instance=<release>`.
 
 Then a real request through the gateway. If the gateway returns no route, check
 `/v1/inference_servers` on the management port: `{"models":[]}` means pod
@@ -145,7 +150,7 @@ limits:
 Sizing: match the node's GPU:NIC ratio (H100 SXM 8x is 8:8, so 1 NIC per GPU).
 Both PD pods usually land on the same node, so their combined `hostdev` request
 must fit that node's allocatable — check with
-`kubectl describe node <node> | grep hostdev`.
+`kubectl describe node <node> --context <ctx> | grep hostdev`.
 
 `nvidia.com/hostdev` is the SR-IOV device plugin resource
 (`network-operator-sriovdp-config`, selector `isRdma: true`), which is what

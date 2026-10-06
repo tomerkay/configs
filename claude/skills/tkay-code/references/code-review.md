@@ -46,9 +46,9 @@ Severity says **how broken** it is. Policy says **whether I have to act before m
 - `🟠 RISK · NICE TO HAVE [pre-existing on main, this commit didn't introduce it - ticket it]`
 - `🟠 RISK · NICE TO HAVE [only triggers above ~10k RPS, we're at 800 - track it]`
 - `🟡 QUALITY · MUST HAVE [commit message falsely claims X changed to Y; history is permanent]`
-- `🟡 QUALITY · MUST HAVE [violates an explicit rule in my CLAUDE.md or a tkay-* skill - name the rule]`
+- `🟡 QUALITY · MUST HAVE [violates an explicit rule in this skill or the repo's CLAUDE.md - name the rule]`
 
-**Legitimate reasons to promote 🟡/⚪ → MUST HAVE:** false or misleading commit message (git history is permanent), a violation of a rule stated explicitly in my CLAUDE.md or one of my `tkay-*` skills, or docs that now actively lie about behavior.
+**Legitimate reasons to promote 🟡/⚪ → MUST HAVE:** false or misleading commit message (git history is permanent), a violation of a rule stated explicitly in this skill or the repo's `CLAUDE.md`, or docs that now actively lie about behavior.
 **Legitimate reasons to demote 🟠 → NICE TO HAVE:** pre-existing condition this commit didn't introduce, or a trigger threshold we are provably nowhere near. Say which.
 
 **Never demote to dodge an argument.** If you're unsure whether it blocks, it's MUST HAVE and you say you're unsure. NICE TO HAVE is a claim that shipping without it is safe - own it.
@@ -199,7 +199,7 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Ordering issues? (should things be grouped differently?)
    - Naming clarity? (are variables/functions named clearly?)
    - Any TODOs or FIXMEs that shouldn't be there?
-   - **Redundant comments**: the comment rules are in my global CLAUDE.md and the worked examples in `references/code-examples.md`. Flag ANY comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be DELETED.
+   - **Redundant comments**: the comment rules and their worked examples are in `references/code-examples.md`. Flag ANY comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be DELETED.
    - **Inconsistent spacing/indentation in YAML/config files**:
      - Check for extra blank lines between similar sections (e.g., model entries in config)
      - Flag trailing whitespace (spaces after content on a line)

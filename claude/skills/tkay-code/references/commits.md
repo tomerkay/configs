@@ -1,7 +1,9 @@
 # Commit Standards
 
-GPG signing config is in my global CLAUDE.md and applies to every commit here —
-it is not restated in this file.
+**Every commit is signed.** Never `--no-gpg-sign`, and a rebase or
+cherry-pick re-signs with `-S`. If signing fails inside a sandbox, the gpg
+agent is unreachable from it: rerun the commit outside the sandbox, never
+without the signature.
 
 ## Squash or New Commit - Decide Every Time, and Say Which
 
@@ -51,12 +53,14 @@ it. `git commit --fixup=amend:<sha>` and `--fixup=reword:<sha>` refuse `-m` and
 how it gets in. `-S` re-signs every rewritten commit - confirm with
 `git log --format='%h %G? %s'` before deleting the backup.
 
-**Whether the branch is already pushed is NOT an input to this decision - ever.**
-Do not check it, do not ask about it, do not mention it as a factor. I force-push
-my branches, so a commit that is already on the remote squashes and amends exactly
-like one that is not. "It's already pushed" is never a reason to make a new commit
-instead of amending, and it is never a reason to leave a bad message standing.
-Other reasons to prefer a new commit still hold; that one does not exist.
+**On a branch only I push to, whether it is already pushed is NOT an input to
+this decision.** I force-push my own branches, so a commit already on the remote
+squashes and amends exactly like one that is not. "It's already pushed" is never
+a reason to make a new commit instead of amending there, and never a reason to
+leave a bad message standing. **A branch someone else also pushes to or builds
+on is different**: rewriting what is already on its remote breaks their copy, so
+ask before touching any commit that is there. When you cannot tell which kind
+the branch is, ask once.
 
 ## Branch Names
 
@@ -68,10 +72,10 @@ separator. Check the repo's `CONTRIBUTING.md`, `CLAUDE.md` and README too, and
 any CI rule that matches on the branch name: a name that misses such a rule
 runs a different pipeline without saying so.
 
-**When the convention puts a person in the name, that person is `tkay`** -
-never `tomerk`, `tomerkay`, `tomer` or any other spelling, even where older
-branches of mine use one. When the convention carries no person, do not add
-one.
+**When the convention puts a person in the name, that person is me, spelled as
+the local part of `git config user.email`** - never another spelling, even
+where older branches of mine use one. When the convention carries no person,
+do not add one.
 
 **The rest of the name is the change, in kebab case** - what the branch does,
 never who asked for it or what wrote it (`fix-by-claude` says nothing). A
@@ -83,9 +87,9 @@ one line.
 ## Documentation Sync on Every Commit
 
 **Before creating ANY commit, check whether the change makes the repo
-`CLAUDE.md` or any `README.md` near the changed files stale.** Which file owns
-what, and whether a stale line is deleted or updated in place, is the
-`tkay-writing-mds` skill's - load it before touching the doc. Either way the
+`CLAUDE.md` or any `README.md` near the changed files stale.** A line about
+something that no longer exists is deleted, never turned into a record of what
+used to be there; a line that is now wrong is corrected in place. Either way the
 doc change lands in the SAME commit. If the docs are already accurate, say so
 briefly and move on - don't update docs just to touch them.
 

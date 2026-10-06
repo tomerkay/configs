@@ -9,11 +9,11 @@ Remove all traces of a cluster from `~/.kube/config`: its `context` entry, its `
 
 **NEVER Read or Edit ~/.kube/config directly.** The file is full of multi-KB base64 cert blobs — reading it wastes context, and exact-match edits break the moment kubectl rewrites the file (any `kubectl config use-context` reorders it). Always use `kubectl config` subcommands; they handle the YAML atomically in one shot.
 
-All commands below that modify the file must run with sandbox disabled (`~/.kube/config` is outside the sandbox write allowlist — the user has approved this workflow). The global allowlist has rules for `kubectl config delete-context:*` / `delete-cluster:*` / `delete-user:*` and the exact backup command — use the exact command forms written below (including the literal `~/.kube/config` paths) so they match without prompting.
+The commands that modify the file need write access to `~/.kube/config`. If a sandbox blocks the write, say so and let the user approve the bypass or run the command themselves — never route around it. Use the exact command forms below, literal `~/.kube/config` paths included, so a permission rule the user has for them can match.
 
 ## Steps
 
-Input: one or more context/cluster names (e.g. `***REMOVED***`). If the user gave a partial name, resolve it against `kubectl config get-contexts -o name` first.
+Input: one or more context/cluster names. If the user gave a partial name, resolve it against `kubectl config get-contexts -o name` first.
 
 1. **Backup** (cheap insurance — client keys are not recoverable):
    ```

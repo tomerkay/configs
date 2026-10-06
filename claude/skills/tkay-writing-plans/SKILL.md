@@ -1,6 +1,6 @@
 ---
 name: tkay-writing-plans
-description: The shape Tomer wants for a plan document - problem first, one section per commit, reference material below a divider. Use when asked to write, update, re-check or keep alive a plan, design doc, proposal or implementation write-up.
+description: The shape for a plan document - problem first, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked to write, update, re-check or keep alive a plan, design doc, proposal or implementation write-up, and when implementing an agreed plan.
 ---
 
 # Writing Plans
@@ -64,6 +64,22 @@ whose answer changed the plan is answered as the plan now stands.
 - **Flag what rests on an inference rather than a measurement**, say what would falsify
   it, and if a cheap check exists, make it a step in the plan. Do not let a chain of
   reasoning quietly become a stated fact - I will press on exactly that.
+
+## Executing a plan
+
+Implementing a plan is where its holes show: a race nobody traced, an input that does
+not exist, an assumption the code contradicts. **When you find a hole or a break in the
+plan's architecture, stop and ask me before you write more code on top of it.** Lay it
+out as a concrete scenario - the state, the sequence, what goes wrong - then give me
+the options with your recommendation, and wait.
+
+That stop is for what needs a discussion: a flaw in the design, a fix that changes how
+components interact, adds state or a read, or reverses a decision the plan settled.
+A bug you can fix inside the agreed design - a wrong comparator, a missed condition, an
+off-by-one - is not a stop: fix it and name it in your next message.
+
+Once we agree on the answer, update the plan in the same pass: the design section it
+changes, and a question and answer for the hole.
 
 ## Keeping it alive
 

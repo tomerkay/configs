@@ -89,7 +89,7 @@ kubectl exec deploy/atero-gateway --context <ctx> -n <ns> -- \
 ```
 
 Readiness is `/v1/models`, not the `AteroModelSpec` CR the chart creates: the CR
-is a readiness signal only if `kubectl get ateromodelspec -n <ns> -o yaml` shows
+is a readiness signal only if `kubectl get ateromodelspec --context <ctx> -n <ns> -o yaml` shows
 a `.status` that something maintains.
 
 ## Reading engine logs
