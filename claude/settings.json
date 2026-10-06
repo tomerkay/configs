@@ -25,11 +25,6 @@
       "Bash(awk 'NR>=3880' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
       "Bash(awk -F: '$2>=3460 && $2<=3530')",
       "Bash(.venv/bin/python -m pytest benchmarks/performance/python/tests/test_prompt_generation.py -x)",
-      "Bash(sed -i '' s/localhost:8000/localhost:8002/g /Users/tkay/repos/wrenchmark/scripts/test-slack-webhooks.sh /Users/tkay/repos/wrenchmark/scripts/test-single-slack-preview.sh /Users/tkay/repos/wrenchmark/scripts/show-slack-preview.sh)",
-      "Bash(sed -i '' s/BACKEND_PORT=8000/BACKEND_PORT=8002/g /Users/tkay/repos/wrenchmark/scripts/dev.sh /Users/tkay/repos/wrenchmark/scripts/dev-stop.sh)",
-      "Bash(sed -i '' 's/hostname}:8000/hostname}:8002/g' /Users/tkay/repos/wrenchmark/web-dashboard/frontend/src/api/client.ts)",
-      "Bash(sed -i '' s/BACKEND_PORT=8000/BACKEND_PORT=8002/g /Users/tkay/repos/wrenchmark/web-dashboard/run-frontend.sh /Users/tkay/repos/wrenchmark/web-dashboard/run-backend.sh)",
-      "Bash(sed -i '' 's/i:8000/i:8002/g' /Users/tkay/repos/wrenchmark/.claude/CLAUDE.md)",
       "Bash(/Users/tkay/repos/wrenchmark/.venv/bin/python -m pytest benchmarks/performance/python/tests/test_prompt_generation.py -v)",
       "Bash(/Users/tkay/repos/wrenchmark/.venv/bin/python -m pytest benchmarks/performance/python/tests/ -v --ignore=benchmarks/performance/python/tests/test_prompt_generation.py)",
       "Bash(/Users/tkay/repos/wrenchmark/.venv/bin/python -m pytest benchmarks/performance/python/tests/ --ignore=benchmarks/performance/python/tests/test_prompt_generation.py -v)",
@@ -40,7 +35,6 @@
       "Bash(awk '/^@dataclass/{found=1} found && /^class BenchmarkSummary/{in_class=1} in_class && /^    [a-z_].*:/{count++} in_class && /^    @/{if\\(count>0\\){print count; exit}}' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
       "Bash(venv/bin/pytest benchmarks/performance/python/tests/ tests/ -q)",
       "Bash(awk -F: 'NR==1{start=$1; name=$2; next} {print start, name, \"to\", $1-1; start=$1; name=$2} END{print start, name, \"to end\"}')",
-      "Bash(\n# Extract fieldnames from to_csv\ngrep -A 300 \"def to_csv\" /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py | grep '\"' | grep -v \"def \\\\|writer\\\\|DictWriter\\\\|with open\\\\|newline\\\\|getattr\\\\|writeheader\\\\|writerow\\\\|fieldnames\\\\|#\" | sed 's/.*\"\\\\\\(.*\\\\\\)\".*/\\\\1/' | sort > /tmp/csv_fields.txt\n\n# Extract field names from BenchmarkSummary class definition \\(between class BenchmarkSummary and def from_results\\)\nawk '/^class BenchmarkSummary:/,/def from_results/' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py | grep \"^    [a-z].*:.*\" | grep -v \"def \" | sed 's/: .*//' | sed 's/^    //' | sort > /tmp/class_fields.txt\n\necho \"=== Fields in class but NOT in to_csv ===\"\ncomm -23 /tmp/class_fields.txt /tmp/csv_fields.txt\n\necho \"\"\necho \"=== Fields in to_csv but NOT in class ===\"\ncomm -13 /tmp/class_fields.txt /tmp/csv_fields.txt\n\necho \"\"\necho \"Total class fields: $\\(wc -l < /tmp/class_fields.txt\\)\"\necho \"Total CSV fields: $\\(wc -l < /tmp/csv_fields.txt\\)\"\n)",
       "Bash(awk -F: '$2 <= 4590 && $2 >= 4550')",
       "Bash(awk -F: '{if \\($2 < 4590\\) last=$0} END {print last}')",
       "Bash(awk 'NR>=4450 && NR<=4470' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
@@ -50,7 +44,6 @@
       "Bash(awk '/CREATE VIEW benchmark_runs_detailed/,/CREATE OR REPLACE VIEW quality_runs_summary/' /Users/tkay/repos/wrenchmark/src/db/schema/schema.sql)",
       "Bash(awk -F: '$2 >= 3338 && $2 <= 3422')",
       "Bash(awk 'NR>=3338 && NR<=3422 && /endpoint/' /Users/tkay/repos/wrenchmark/benchmarks/performance/python/simple_llm_bench.py)",
-      "Bash(python3 -c ' *)",
       "Skill(deep-research)",
       "Skill(deep-research:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
@@ -76,12 +69,42 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "^(Bash|Edit|Write|NotebookEdit|mcp__.*)$",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$HOME/.claude/hooks/bash-rw-label.py\"",
-            "timeout": 5
+            "command": "python3 \"$HOME/.claude/hooks/tool-gate.py\" || exit 2",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/lfg-state.py\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/lfg-state.py\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/lfg-state.py\""
           }
         ]
       }
@@ -135,8 +158,7 @@
       "allowRead": [
         "~/.config/gcloud"
       ]
-    },
-    "autoAllowBash": true
+    }
   },
   "effortLevel": "high",
   "modelSettings": {

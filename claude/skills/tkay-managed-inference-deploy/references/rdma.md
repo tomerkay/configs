@@ -69,16 +69,16 @@ benchmark 55 minutes later with an error that blames the wrong pod.
 
 ```
 # 1. Did RDMA ever initialize? This is the whole question.
-kubectl logs -n <ns> <pod> | grep -E "Found . HCAs|Skipping unavailable"
+kubectl logs <pod> --context <ctx> -n <ns> | grep -E "Found . HCAs|Skipping unavailable"
 
 # 2. Which transport is actually in use?
-kubectl logs -n <ns> <pod> | grep -o -E "[A-Za-z]+Transport::" | sort | uniq -c
+kubectl logs <pod> --context <ctx> -n <ns> | grep -o -E "[A-Za-z]+Transport::" | sort | uniq -c
 
 # 3. Did anything actually die?
-kubectl get pod -n <ns> <pod> -o jsonpath='{.status.containerStatuses[0].restartCount}'
+kubectl get pod <pod> --context <ctx> -n <ns> -o jsonpath='{.status.containerStatuses[0].restartCount}'
 
 # 4. Prove the device cgroup is the blocker
-kubectl exec -n <ns> <pod> -- python3 -c \
+kubectl exec <pod> --context <ctx> -n <ns> -- python3 -c \
   "import os; os.open('/dev/infiniband/uverbs1', os.O_RDWR); print('OK')"
 ```
 

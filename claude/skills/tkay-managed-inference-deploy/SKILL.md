@@ -82,7 +82,7 @@ namespace and cluster in the current session.
 **All deployments** — did the KV pool actually get the memory you paid for?
 
 ```
-kubectl logs -n <ns> <pod> | grep -E "max_total_num_tokens|KV Cache is allocated"
+kubectl logs <pod> --context <ctx> -n <ns> | grep -E "max_total_num_tokens|KV Cache is allocated"
 ```
 
 **PD only** — is RDMA alive? `0` HCAs means mooncake silently fell back to TCP
@@ -92,8 +92,8 @@ rotates it under traffic (see `references/recon.md` for age-independent checks):
 
 ```
 for p in prefill decode; do
-  kubectl logs -n <ns> <release>-pd-model-$p-0 | grep -E "Found . HCAs"
-  kubectl logs -n <ns> <release>-pd-model-$p-0 | grep -c TcpTransport   # must be 0
+  kubectl logs <release>-pd-model-$p-0 --context <ctx> -n <ns> | grep -E "Found . HCAs"
+  kubectl logs <release>-pd-model-$p-0 --context <ctx> -n <ns> | grep -c TcpTransport   # must be 0
 done
 ```
 
@@ -101,8 +101,8 @@ done
 PD is not functioning as PD:
 
 ```
-kubectl logs -n <ns> <release>-pd-model-prefill-0 | grep "Prefill batch" | tail -2
-kubectl logs -n <ns> <release>-pd-model-decode-0  | grep "Decode batch"  | tail -2
+kubectl logs <release>-pd-model-prefill-0 --context <ctx> -n <ns> | grep "Prefill batch" | tail -2
+kubectl logs <release>-pd-model-decode-0 --context <ctx> -n <ns> | grep "Decode batch"  | tail -2
 ```
 
 **Multi-node** — only rank 0 serves. Workers are headless: no HTTP server, no

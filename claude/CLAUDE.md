@@ -25,6 +25,13 @@ to be helpful. Planning is free. Acting is gated. **When in doubt, you are gated
 is session-wide by default" below. It closes again only when I close it. Until
 that first token, you are gated.
 
+**The gate and its permanent exclusions are enforced by
+`~/.claude/hooks/tool-gate.py`**, a PreToolUse hook that reads the state
+`~/.claude/hooks/lfg-state.py` records when I type the token. A call it denies
+is the hook doing its job, never a reason to look for another way to the same
+write. Run `python3 ~/.claude/hooks/tool-gate.py [--open] <command>` to see
+the decision for any command.
+
 ## What the gate covers - and what it does NOT
 
 **The gate governs exactly one category: CHANGING THINGS.** Implementing,
@@ -582,7 +589,7 @@ The names contain spaces: quote or escape the path in shell commands.
 
 # EVERY BASH PROMPT SAYS WHAT IT CAN CHANGE
 
-A PreToolUse hook, `~/.claude/hooks/bash-rw-label.py`, rewrites every Bash
+A PreToolUse hook, `~/.claude/hooks/tool-gate.py`, rewrites every Bash
 `description` to open with a verdict: 🟢 READ changes nothing, 🟠 WRITE changes
 local, recoverable state, 🔴 DANGER destroys data or touches live cluster or
 remote state. Anything it does not recognise is 🟠. The classifier is the one
@@ -753,18 +760,17 @@ Everything else: do it. **If you are about to type a question that starts with
 "should I", "shall I" or "do you want me to" and the answer would be a read,
 delete the question and run the command.**
 
-Harness permission prompts are not this rule - the allowlist is. The read-only
-kubectl/helm verbs, `curl`, and every MCP read tool (data-mcp, backoffice,
-Slack reads, Confluence reads - under BOTH server-name forms the claude.ai
-connectors show up as) sit in the global `~/.claude/settings.json` under
-`permissions.allow`, so they hold in every repo. A rule matches a command
-prefix and nothing else, which is why the pin section demands verb-first, flat
-commands - a loop or a `$VAR` prompts no matter what is allowlisted. If a read
-still prompts, that is an allowlist gap, not a reason to ask: run it, and name
-the missing pattern once in the final message so I can add it. You cannot add
-it yourself - the harness blocks a session editing its own permission rules -
-so hand me the exact line and move on. Never pre-empt a harness prompt by
-asking me in chat.
+Harness permission prompts are not this rule - the hook is. A read runs
+without a prompt because `tool-gate.py` returns no decision for it: the
+read-only kubectl/helm verbs, and every MCP read tool under BOTH server-name
+forms the claude.ai connectors show up as, in every repo. The managed
+policy's own ask rules (`rm`, `curl`, `gcloud`, `ssh` and the like) still
+prompt, and they are not yours to change. A rule matches a command prefix and
+nothing else, which is why the pin section demands verb-first, flat commands -
+a loop or a `$VAR` prompts no matter what is allowlisted. If a read still
+prompts or is denied, that is a classifier gap, not a reason to ask: name the
+command the hook misread and the handler fix, and apply the fix once the gate
+is open. Never pre-empt a harness prompt by asking me in chat.
 
 **A refused command does not mean access is gone.** A denied mutation can black
 out reads to the same host for a moment afterwards. Re-test with one cheap read

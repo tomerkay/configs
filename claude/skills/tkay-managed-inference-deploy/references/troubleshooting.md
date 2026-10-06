@@ -8,9 +8,9 @@ the *actual* fault. Always grep the raw log around the first failure rather than
 reading the summarized exception.
 
 ```
-kubectl logs -n <ns> <pod> > /tmp/pod.log
-grep -n "transfer failed" /tmp/pod.log | head -1     # find the FIRST one
-sed -n '<N-30>,<N+5>p' /tmp/pod.log                  # read what preceded it
+kubectl logs <pod> --context <ctx> -n <ns> > /tmp/claude/pod.log
+grep -n "transfer failed" /tmp/claude/pod.log | head -1     # find the FIRST one
+sed -n '<N-30>,<N+5>p' /tmp/claude/pod.log                  # read what preceded it
 ```
 
 The first failure is almost always more informative than the thousand that
@@ -68,7 +68,7 @@ together. Consequences worth remembering:
 Check how many nodes actually match before assuming a spread:
 
 ```
-kubectl get nodes -l <your-selector> -o wide
+kubectl get nodes --context <ctx> -l <your-selector> -o wide
 ```
 
 ## Getting evidence out of a multi-node group

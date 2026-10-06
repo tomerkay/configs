@@ -19,11 +19,11 @@ HCA check within minutes of deploying, or use the age-independent checks below.
 
 ```
 # 1. Was the RDMA resource even requested?  (the root cause, not a symptom)
-kubectl get pod -n <ns> <pod> -o jsonpath='{.spec.containers[0].resources}'
+kubectl get pod <pod> --context <ctx> -n <ns> -o jsonpath='{.spec.containers[0].resources}'
 #    -> must contain nvidia.com/hostdev
 
 # 2. Can the container actually open a uverbs device?
-kubectl exec -n <ns> <pod> -- python3 -c \
+kubectl exec <pod> --context <ctx> -n <ns> -- python3 -c \
   "import os; os.open('/dev/infiniband/uverbs1', os.O_RDWR); print('OPEN OK')"
 #    EPERM  -> device cgroup blocked (missing hostdev)
 #    EACCES -> file permissions (different problem)
@@ -37,15 +37,15 @@ nodes show `crw-rw-rw-` even when every open fails.
 
 ```
 # GPU and RDMA headroom on the target node(s)
-kubectl describe node <node> | grep -E "nvidia.com/(gpu|hostdev)"
-kubectl describe node <node> | grep -A15 "Allocated resources"
+kubectl describe node <node> --context <ctx> | grep -E "nvidia.com/(gpu|hostdev)"
+kubectl describe node <node> --context <ctx> | grep -A15 "Allocated resources"
 
 # How many nodes does your selector actually match?
 # One match => prefill and decode co-locate; the fabric is never crossed.
-kubectl get nodes -l <your-selector> -o wide
+kubectl get nodes --context <ctx> -l <your-selector> -o wide
 
 # Which NICs are InfiniBand vs the Ethernet frontend?
-kubectl exec -n <ns> <any-pod-on-that-node> -- sh -c \
+kubectl exec <any-pod-on-that-node> --context <ctx> -n <ns> -- sh -c \
   'for d in /sys/class/infiniband/*; do printf "%s %s %s\n" \
    "$(basename $d)" "$(cat $d/ports/1/link_layer)" "$(cat $d/ports/1/state)"; done'
 ```
@@ -66,7 +66,7 @@ This is how to check the claim behind the chart's `privileged: false` default â€
 that the NVIDIA device plugin gives each pod only its allocation:
 
 ```
-kubectl exec -n <ns> <pod> -- sh -c 'echo $NVIDIA_VISIBLE_DEVICES; nvidia-smi -L'
+kubectl exec <pod> --context <ctx> -n <ns> -- sh -c 'echo $NVIDIA_VISIBLE_DEVICES; nvidia-smi -L'
 ```
 
 Healthy result: `NVIDIA_VISIBLE_DEVICES` is a **single GPU UUID** and `nvidia-smi -L`
@@ -84,7 +84,7 @@ Do not take an endpoint name from another component's source: whether the
 running gateway build serves it is only settled by probing it.
 
 ```
-kubectl exec -n <ns> deploy/atero-gateway -- \
+kubectl exec deploy/atero-gateway --context <ctx> -n <ns> -- \
   curl -s --max-time 10 http://localhost:8080/v1/models
 ```
 
@@ -110,9 +110,9 @@ first error names the real fault, later ones degrade into generic
 "session is not alive":
 
 ```
-kubectl logs -n <ns> <pod> > /tmp/pod.log
-grep -n "transfer failed" /tmp/pod.log | head -1
-sed -n '<N-30>,<N+5>p' /tmp/pod.log
+kubectl logs <pod> --context <ctx> -n <ns> > /tmp/claude/pod.log
+grep -n "transfer failed" /tmp/claude/pod.log | head -1
+sed -n '<N-30>,<N+5>p' /tmp/claude/pod.log
 ```
 
 ## kubectl invocation gotcha

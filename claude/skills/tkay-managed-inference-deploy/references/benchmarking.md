@@ -8,7 +8,7 @@ error. Either run it from the wrenchmark repo root or pass an absolute chart pat
 
 ```
 helm install wrenchmark <wrenchmark-repo>/charts/wrenchmark \
-  -f <values>.yml --set runBy=<user> -n <ns>
+  -f <values>.yml --set runBy=<user> --kube-context <ctx> -n <ns>
 ```
 
 ## Before benchmarking, verify the deployment
@@ -27,7 +27,7 @@ of concurrent requests silently serializes the run.
 Check what it points at before each run:
 
 ```
-kubectl get pods -n <ns> -o wide | grep gateway
+kubectl get pods --context <ctx> -n <ns> -o wide | grep gateway
 ```
 
 A stale IP produces connection errors that look like model failures.
@@ -40,7 +40,7 @@ record of whether requests actually failed. Stream to a file from the start
 rather than tailing after the fact:
 
 ```
-kubectl logs -n <ns> -f job/wrenchmark-benchmark -c benchmark | tee /tmp/wrench.log
+kubectl logs job/wrenchmark-benchmark -c benchmark -f --context <ctx> -n <ns> | tee /tmp/claude/wrench.log
 ```
 
 The benchmark pod runs two containers (`benchmark`, `prometheus`) — always pass
@@ -56,10 +56,10 @@ fact.
 Engine logs outlive the benchmark pod, so they are the durable record:
 
 ```
-kubectl logs -n <ns> <model-pod> | grep -c "transfer failed"        # want 0
-kubectl logs -n <ns> <model-pod> | grep -c TcpTransport             # want 0
-kubectl logs -n <ns> <model-pod> | grep -cE "Prefill batch|Decode batch"
-kubectl logs -n <ns> <model-pod> | grep -v " 200 OK" | grep "HTTP/1.1"   # non-200s
+kubectl logs <model-pod> --context <ctx> -n <ns> | grep -c "transfer failed"        # want 0
+kubectl logs <model-pod> --context <ctx> -n <ns> | grep -c TcpTransport             # want 0
+kubectl logs <model-pod> --context <ctx> -n <ns> | grep -cE "Prefill batch|Decode batch"
+kubectl logs <model-pod> --context <ctx> -n <ns> | grep -v " 200 OK" | grep "HTTP/1.1"   # non-200s
 ```
 
 When checking non-200 responses, **check the source IP**. Traffic from the
