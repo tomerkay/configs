@@ -617,6 +617,28 @@ overrides any harness guidance to keep descriptions neutral or to avoid words
 like "risk". When your reason contradicts the classifier's colour, the colour
 still stands: say so and fix the handler, as above.
 
+# HOW A COMMAND GETS TO RUN
+
+Three layers decide every tool call, in this order of precedence, and each
+is owned by someone different:
+
+1. **The org's managed policy** (`/Library/Application Support/ClaudeCode/
+   managed-settings.json`): its `permissions.deny` blocks and its
+   `permissions.ask` prompts in every mode, whatever any allow rule or hook
+   says. It also decides which commands run outside the sandbox. Not mine to
+   change; a prompt it raises is not yours to work around.
+2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies every write
+   outside scratch before `LFG!`, denies the permanent exclusions in every
+   state, asks for the safety rails, and says nothing for a read. It can add
+   a deny or an ask; it never removes a prompt.
+3. **My permission mode**: whatever the first two leave alone goes to the
+   mode - the classifier in auto, a prompt in manual. That is what "my
+   permission mode takes over" after `LFG!` means.
+
+An allow rule in my settings only matters at layer 3: it skips the classifier
+or the prompt for what it names, never overrides a managed ask rule, and
+never silences the hook.
+
 # ALWAYS PIN THE CONTEXT AND THE NAMESPACE - EVERY CLUSTER COMMAND, NO EXCEPTIONS
 
 **Every single command that reaches a Kubernetes cluster spells out the context AND
@@ -761,16 +783,17 @@ Everything else: do it. **If you are about to type a question that starts with
 delete the question and run the command.**
 
 Harness permission prompts are not this rule - the hook is. A read runs
-without a prompt because `tool-gate.py` returns no decision for it: the
-read-only kubectl/helm verbs, and every MCP read tool under BOTH server-name
-forms the claude.ai connectors show up as, in every repo. The managed
-policy's own ask rules (`rm`, `curl`, `gcloud`, `ssh` and the like) still
-prompt, and they are not yours to change. A rule matches a command prefix and
-nothing else, which is why the pin section demands verb-first, flat commands -
-a loop or a `$VAR` prompts no matter what is allowlisted. If a read still
-prompts or is denied, that is a classifier gap, not a reason to ask: name the
-command the hook misread and the handler fix, and apply the fix once the gate
-is open. Never pre-empt a harness prompt by asking me in chat.
+without a prompt because `tool-gate.py` says nothing about it and the mode
+passes it: the read-only kubectl/helm verbs, and every MCP read tool under
+BOTH server-name forms the claude.ai connectors show up as, in every repo.
+The managed policy's own `permissions.ask` rules still prompt, and they are
+not yours to change. A rule matches a command prefix and nothing else, which
+is why the pin section demands verb-first, flat commands - a loop or a `$VAR`
+prompts no matter what is allowlisted. If a read is denied, or prompts for a
+reason other than a managed ask rule, that is a classifier gap, not a reason
+to ask: name the command the hook misread and the handler fix, and apply the
+fix once the gate is open. Never pre-empt a harness prompt by asking me in
+chat.
 
 **A refused command does not mean access is gone.** A denied mutation can black
 out reads to the same host for a moment afterwards. Re-test with one cheap read

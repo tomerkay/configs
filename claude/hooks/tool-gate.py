@@ -63,7 +63,8 @@ READ_PROGRAMS = {
     "hexdump", "realpath", "dirname", "basename", "readlink", "seq", "nl", "rev", "paste",
     "fold", "expand", "bc", "dc", "sleep", "cal", "uptime", "ps", "pgrep", "lsof", "netstat",
     "ss", "lsblk", "free", "vmstat", "iostat", "sw_vers", "getconf", "locale", "tty", "history",
-    "jobs", "alias", "declare", "typeset", "export", "set", "unset", "cd", "pushd", "popd",
+    "jobs", "alias", "declare", "typeset", "export", "set", "unset", "setopt", "unsetopt",
+    "bindkey", "zstyle", "cd", "pushd", "popd",
     "dirs", "local", "readonly", "shift", "wait", "hash", "umask", "read", "zcat", "gzcat",
     "bzcat", "xzcat", "dig", "nslookup", "host", "ping", "traceroute", "mtr", "whois",
     "journalctl", "kustomize", "pytest", "mypy", "pyright", "flake8", "pylint", "shellcheck",
@@ -457,6 +458,9 @@ def classify_awk(args):
 def classify_python(args):
     if not args or args in (["--version"], ["-V"]):
         return READ
+    # GOTCHA: this script's own CLI only classifies text, and CLAUDE.md tells the model to run it.
+    if os.path.realpath(os.path.expanduser(args[0])) == os.path.realpath(__file__):
+        return READ
     if args[0] == "-m" and len(args) > 1:
         if args[1] in ("pytest", "json.tool", "unittest", "mypy", "pyright", "ruff", "black",
                        "isort", "flake8", "pylint", "tomllib"):
@@ -679,7 +683,7 @@ def shell_body(args):
     if has_flag(args, "--version", "-n"):
         return None
     for i, a in enumerate(args):
-        if a == "-c" and i + 1 < len(args):
+        if (a == "-c" or re.match(r"^-[a-zA-Z]*c[a-zA-Z]*$", a)) and i + 1 < len(args):
             return args[i + 1]
     return None
 
@@ -1034,8 +1038,6 @@ def bash_scratch_exempt(command):
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
                 if paths and all(inside_gate_scratch(p) for p in paths):
                     continue
-            elif prog in ("python3", "python") and args and inside_gate_scratch(args[0]):
-                continue
             return False
     return True
 
@@ -1300,6 +1302,12 @@ def selftest():
         (False, "Bash", "stern x", DENY),
         (False, "Bash", "kubectl --help", None),
         (False, "Bash", "python3 -m pytest tests/", None),
+        (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
+        (False, "Bash", "bash -lc 'touch /etc/x'", DENY),
+        (False, "Bash", f"bash {scratch}check.sh", DENY),
+        (False, "Bash", f"python3 {scratch}check.py", DENY),
+        (True, "Bash", f"python3 {scratch}check.py", None),
+        (False, "Bash", f"python3 {os.path.realpath(__file__)} --selftest", None),
         (False, "Write", {"file_path": f"{scratch}a.md"}, None),
         (False, "Write", {"file_path": "/tmp/a.md"}, DENY),
         (False, "Write", {"file_path": f"{home}/.claude/lfg-state/x"}, DENY),
