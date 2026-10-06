@@ -51,6 +51,28 @@ like one that is not. "It's already pushed" is never a reason to make a new comm
 instead of amending, and it is never a reason to leave a bad message standing.
 Other reasons to prefer a new commit still hold; that one does not exist.
 
+## Branch Names
+
+**Before naming a new branch, read the convention of the repo it lives in and
+follow it.** The remote branches show it - `git for-each-ref
+--sort=-committerdate --count=30 --format='%(refname:short)' refs/remotes` -
+whether names carry a person, a type (`feat/`, `fix/`), a ticket key, and which
+separator. Check the repo's `CONTRIBUTING.md`, `CLAUDE.md` and README too, and
+any CI rule that matches on the branch name: a name that misses such a rule
+runs a different pipeline without saying so.
+
+**When the convention puts a person in the name, that person is `tkay`** -
+never `tomerk`, `tomerkay`, `tomer` or any other spelling, even where older
+branches of mine use one. When the convention carries no person, do not add
+one.
+
+**The rest of the name is the change, in kebab case** - what the branch does,
+never who asked for it or what wrote it (`fix-by-claude` says nothing). A
+ticket key goes in when the convention has one and the task has one.
+
+When you create the branch, tell me the name and the convention it follows in
+one line.
+
 ## Documentation Sync on Every Commit
 
 **Before creating ANY commit, check whether the change makes the repo
