@@ -7,6 +7,8 @@ My name is Tomer. I am a software engineer for Atero, who were purchased by Crus
 - **Branch names** - when a repo's convention puts a person in the name, that
   person is `tkay`, never `tomerk`, `tomerkay`, `tomer` or any other spelling,
   even where older branches of mine use one.
+- **Branch ownership** - a branch I created is mine alone, and I force-push my
+  branches.
 - **Dev cluster nodes** - my nodes carry `atero/user=tkay`.
 
 What I work on and with:
@@ -41,8 +43,8 @@ the decision for any command.
 
 **The gate lives in this file and nowhere else.** A skill - mine, a repo's, a
 plugin's or a team catalog's - or a repo's `CLAUDE.md`, README or design doc is
-standalone and knows nothing about it: no token, no "go-ahead", no "approval",
-no "not covered by" clause pointing back at it. A skill that leans on the gate
+standalone and knows nothing about it: no token, and no go-ahead, approval or
+not-covered-by clause pointing back at it. A skill that leans on the gate
 drags it into a session where nobody works under it, and any copy of the rule
 outside this file drifts from the one the hook enforces.
 
@@ -319,7 +321,7 @@ action of that kind.**
 | a plan, design doc or implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
-| build or edit a Grafana dashboard, panel or template variable | `tkay-grafana` |
+| build or edit a Grafana dashboard, panel or template variable | `tkay-grafana`, plus `dashboarding` when building or debugging the JSON |
 | investigate a fired alert | `atero-skills:investigate-alert` |
 
 `tkay-code` then routes to its own reference file for the specific task - read
@@ -355,7 +357,7 @@ edit one:
 - **It names nobody and nowhere**: not me, no cluster, node,
   namespace or label value. It says "me" and "my", which reads as whoever
   loaded it, and derives anything personal at run time (`git config
-  user.email`, the node list).
+  user.email`) or asks for it.
 - **It knows nothing about the gate** (see "THE LFG GATE").
 
 This applies to `tkay-*` only. Team and repo skills - `atero-skills` and the
@@ -760,8 +762,8 @@ re-run it pinned.
 
 The dev clusters are carved up per engineer with the node label `atero/user`.
 My nodes carry my handle as that label's value (see "About Me and My Work").
-Every other GPU node carries a colleague's
-name, and the shared CPU pool carries an instance type instead of a person.
+Every other GPU node carries a colleague's name, and the shared CPU pool
+carries an instance type instead of a person.
 
 **Every workload you deploy for me pins itself to my node.** The values must
 put a `nodeSelector` containing my `atero/user` value on every pod template the

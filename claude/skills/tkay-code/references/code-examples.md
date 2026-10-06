@@ -172,10 +172,8 @@ every copy.
   startup LOUDLY, reporting EVERY missing key at once, not one per redeploy. An
   empty environment variable reads as unset; an empty-string default is still a
   default.
-- **values.yaml holds ONLY what is meant to be changed.** A constant whose only
-  correct value is the current one is a named constant in code and appears
-  nowhere in the chart. A knob nobody should ever turn is a knob someone WILL
-  turn at 3am.
+- **values.yaml holds ONLY what is meant to be changed.** A knob nobody should
+  ever turn is a knob someone WILL turn at 3am.
 - **Fixing drift means deleting the copy, not updating it.** When a change
   makes you edit the same value in a second file, STOP - the second copy is the
   bug. Replace it with a pointer to the source in that same commit.

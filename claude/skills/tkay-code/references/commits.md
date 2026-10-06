@@ -72,9 +72,9 @@ separator. Check the repo's `CONTRIBUTING.md`, `CLAUDE.md` and README too, and
 any CI rule that matches on the branch name: a name that misses such a rule
 runs a different pipeline without saying so.
 
-**When the convention puts a person in the name, that person is me, spelled as
-the local part of `git config user.email`** - never another spelling, even
-where older branches of mine use one. When the convention carries no person,
+**When the convention puts a person in the name, that person is me**, spelled
+the way my own recent branches in this repo spell it; with none to go by, the
+local part of `git config user.email`. When the convention carries no person,
 do not add one.
 
 **The rest of the name is the change, in kebab case** - what the branch does,

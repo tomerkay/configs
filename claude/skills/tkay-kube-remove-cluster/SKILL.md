@@ -9,7 +9,7 @@ Remove all traces of a cluster from `~/.kube/config`: its `context` entry, its `
 
 **NEVER Read or Edit ~/.kube/config directly.** The file is full of multi-KB base64 cert blobs — reading it wastes context, and exact-match edits break the moment kubectl rewrites the file (any `kubectl config use-context` reorders it). Always use `kubectl config` subcommands; they handle the YAML atomically in one shot.
 
-The commands that modify the file need write access to `~/.kube/config`. If a sandbox blocks the write, say so and let the user approve the bypass or run the command themselves — never route around it. Use the exact command forms below, literal `~/.kube/config` paths included, so a permission rule the user has for them can match.
+The commands that modify the file need write access to `~/.kube/config`. If a sandbox blocks the write, rerun the command with the sandbox bypass so the user approves it at the permission prompt, or hand them the command to run — never route around it any other way. Use the exact command forms below, literal `~/.kube/config` paths included, so a permission rule the user has for them can match.
 
 ## Steps
 

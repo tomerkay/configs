@@ -6,10 +6,11 @@ description: Procedures for helm upgrades against a live release, for tearing th
 # Cluster operations
 
 This skill is the *how* for the operations that have real procedure behind
-them. Two rules hold for every command in it.
+them. Two rules hold throughout.
 
 **Every command that reaches a cluster names its target**: `kubectl <verb> ...
---context <ctx> -n <ns>`, `helm <verb> ... --kube-context <ctx> -n <ns>`. Never
+--context <ctx>` plus `-n <ns>` for anything namespaced, `helm <verb> ...
+--kube-context <ctx> -n <ns>`. Never
 rely on the current context and never switch it with `kubectl config
 use-context` - I switch contexts constantly, so the current one is whatever I
 last pointed at elsewhere. If I did not name the cluster and namespace, ask.
@@ -18,9 +19,10 @@ last pointed at elsewhere. If I did not name the cluster and namespace, ask.
 per engineer with the node label `atero/user`. Before any install or upgrade,
 check the rendered manifest: every pod template carries a `nodeSelector` with
 my `atero/user` value, and that value exists on a node
-(`kubectl get nodes --context <ctx> -L atero/user`). An unpinned workload can
-land on a colleague's GPU node; a selector no node carries schedules nothing
-while looking deployed. If either shows up, stop and ask before installing.
+(`kubectl get nodes --context <ctx> -L atero/user`). If you do not know my
+value, ask - never infer it from the namespace or another workload's selector.
+An unpinned workload can land on a colleague's GPU node; a selector no node
+carries schedules nothing while looking deployed. If either shows up, stop and ask before installing.
 
 ## Upgrading a Live Release: Get the Chart the Release Actually Used
 
@@ -41,14 +43,14 @@ Ways to get the real chart:
 
 Before every upgrade:
 
-- `helm get values <release> --kube-context <ctx> -n <ns>` first, then **ASK me whether `--reuse-values` is
-  wanted — do not decide it yourself.** It replays my previous user values on
+- `helm get values <release> --kube-context <ctx> -n <ns>` first, then **ASK
+  me whether `--reuse-values` is wanted — do not decide it yourself.** It replays my previous user values on
   top of the *new* chart's defaults: a no-op when the release has none, and a
   silent carry-forward of stale values when it does.
 - Render with the identical flags (`helm template`, or `helm upgrade --dry-run`
   when `--reuse-values` is in play) and diff it against
-  `helm get manifest <release> --kube-context <ctx> -n <ns>`, so you can tell me every field that changes —
-  not just the one I asked for.
+  `helm get manifest <release> --kube-context <ctx> -n <ns>`, so you can tell
+  me every field that changes — not just the one I asked for.
 
 ### Field-Manager Conflicts — `--force-conflicts` Is MY Call
 
@@ -127,8 +129,9 @@ kubectl get nodes --context <ctx> -L atero/user,crusoe-ai.managed-ai.inference.n
 
 **My namespace and my node-label value are NOT the same string** and never
 assume one from the other - I have run a namespace named for one and nodes
-labelled with the other in the same cluster. Read both off the cluster: the
-namespace from what I told you, the label value from the node list above.
+labelled with the other in the same cluster. The namespace is the one I told
+you; the label value is mine to give - ask if you do not know it, then confirm
+it on the node list above.
 
 A selector pointing at a label no node carries is the trap that follows: the
 workload looks deployed while scheduling nowhere.
