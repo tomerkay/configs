@@ -21,7 +21,8 @@ Structure:
 2. One section per problem, with the evidence for it
 3. The fix
 4. The commits
-5. **A divider, then reference material** - how to reproduce the numbers, decisions
+5. **Questions and answers** - see below
+6. **A divider, then reference material** - how to reproduce the numbers, decisions
    already settled, branch state, things found but not chased
 
 Anything I would read once goes below the divider. Say at the top which sections are the
@@ -35,6 +36,19 @@ the subject line, the files, the tests, and **what the commit body has to say**.
 
 Call out whatever a commit touches that is easy to miss: a doc whose wording it
 invalidates, a rule it deliberately reverses, a config list it has to join.
+
+## End the plan with questions and answers
+
+A design plan gets read by people who were not in the review: the component's owner,
+the reviewer, the next engineer. Before the divider, add a "Questions and answers"
+section with the questions the review raised and the ones those readers will ask -
+why not the obvious alternative, what happens in a race, what breaks in the next
+planned feature. Group them by topic. Answer each in a few sentences with a concrete
+example where one helps, and point to the section that holds the detail.
+
+Add every question I ask during the review once it is answered, so the section grows
+with the review. Answer with the current plan, never with how we got there: a question
+whose answer changed the plan is answered as the plan now stands.
 
 ## Rules that keep a plan usable
 
