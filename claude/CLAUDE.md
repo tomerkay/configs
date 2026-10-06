@@ -293,6 +293,7 @@ action of that kind.**
 | a code review / CR / "review my branch, my PR, my commits" | `tkay-code` |
 | read a GitLab MR, its review threads or its CI through `glab` | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
+| create or name a git branch | `tkay-code` |
 | create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan, design doc or implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |

@@ -23,14 +23,21 @@ on Every Commit" below. A standalone `docs:` commit for it is the very drift tha
 rule exists to prevent.
 
 **Never choose "new commit" because rewriting history is inconvenient for you.**
-That is my history, not your convenience. When a squash needs a rewrite: branch a
-backup first, do it, then prove it with `git diff <backup> HEAD` returning empty.
-An empty diff means the rewrite is proven: **delete the backup branch straight
-away, WITHOUT asking permission** - no question in chat, no offer, no backup left
-behind for me to clean up - with `git branch -D` (squashed commits never count as
-merged, so `-d` refuses), and report the `Deleted branch ... (was <sha>)` line.
-A non-empty diff means the rewrite changed content: stop, keep the backup, and
-show me the diff.
+That is my history, not your convenience. When a squash or an amend needs a
+rewrite: branch a backup first, do it, then check `git diff <backup> HEAD`. It
+must show exactly the change you meant to make - nothing for a squash or a
+reword, only the intended edits for an amend that changes content. When it
+does, the rewrite is proven: **delete the backup branch straight away, WITHOUT
+asking permission** - no question in chat, no offer, no backup left behind for
+me to clean up - with `git branch -D` (rewritten commits never count as merged,
+so `-d` refuses), and report the `Deleted branch ... (was <sha>)` line. Only a
+diff carrying something you did not intend keeps the backup: stop and show me
+that diff.
+
+**A branch you created for your own work is yours to delete, never mine.** A
+backup, a scratch branch, a throwaway for an experiment: once it has done its
+job, delete it in the same session without asking, and never leave it for me
+to find later. Ask only before deleting a branch you did not create.
 
 **The rewrite itself is scripted, because no interactive editor exists in this
 harness.** `git rebase -S -i <base>` works once `GIT_SEQUENCE_EDITOR` names a
@@ -84,7 +91,19 @@ briefly and move on - don't update docs just to touch them.
 
 This applies to every commit, not just when I explicitly ask for documentation updates.
 
-## Git Commit Message Standards (Conventional Commits 1.0.0)
+## A Version Bump Is Its Own Commit, at the Top of the Branch
+
+**When a repo requires a version bump for a change - a plugin manifest, a
+chart version, a package version - the bump is a dedicated `chore` commit,
+the last one on the branch, and never folded into the commit that made the
+change.** One bump at the top says it releases every commit under it, so a
+reader sees at a glance which commits ship together; a bump inside the first
+change says nothing about the commits that came after it, and a bump inside
+the last one hides which earlier commits it covers. Its body names the
+commits it releases as "the commits below this one", not by hash.
+
+A prefix of the branch without the bump then fails a CI version guard on
+purpose: that prefix is not a release, and the guard saying so is correct.
 
 **Structure:**
 ```
