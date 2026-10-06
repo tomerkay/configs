@@ -27,6 +27,7 @@ Cron runs it at 12:00 and 18:00:
 else: the prefix marks a skill as hand-written, so anything installed from a
 public repo or synced from the claude.ai account stays out. The directory is
 rebuilt on every run, so a skill deleted or renamed at home disappears here too.
+`claude/hooks/` is rebuilt the same way from all of `~/.claude/hooks`.
 
 ## Secrets
 

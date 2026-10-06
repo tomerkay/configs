@@ -28,6 +28,7 @@ HOME_FILES=(
 CLAUDE_FILES=(
     CLAUDE.md
     settings.json
+    settings.local.json
 )
 
 TOKENS_OPEN='# >>> TOKENS >>>'
@@ -64,6 +65,9 @@ done
 rm -rf "$REPO/claude/skills"
 mkdir -p "$REPO/claude/skills"
 cp -R "$HOME"/.claude/skills/tkay-* "$REPO/claude/skills/"
+
+rm -rf "$REPO/claude/hooks"
+cp -R "$HOME/.claude/hooks" "$REPO/claude/hooks"
 
 # A renamed or hand-deleted marker turns the strip below into a silent no-op and
 # publishes every token in the file, so refuse to continue without both.
