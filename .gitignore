@@ -1,3 +1,7 @@
 # ~/.gitignore is this machine's core.excludesfile and ignores bin/, which
 # silently dropped the sync script from every commit until this negation.
 !bin/
+# The same file ignores settings.local.json everywhere, which is right for a
+# project checkout and wrong for the user-level copy this repo keeps.
+!claude/settings.local.json
+sync-configs.log
