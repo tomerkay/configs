@@ -151,10 +151,11 @@ HELM_GLOBAL_VALUE_FLAGS = {
 }
 
 # The TL;DR into a fired alert's thread and the reaction marking the alert as under investigation
-# are ungated; these are the alert channels. A copy of what the alertmanager config owns: a
-# channel added there and not here asks instead.
-ALERT_CHANNEL_IDS = {"***REMOVED***", "***REMOVED***", "***REMOVED***", "***REMOVED***", "***REMOVED***",
-                     "***REMOVED***", "***REMOVED***"}
+# are ungated; these are the alert channels, comma-separated in TOOL_GATE_ALERT_CHANNEL_IDS, which
+# the shell rc exports from its private block so the IDs stay out of this file's public copy. A
+# copy of what the alertmanager config owns: a channel added there and not here asks instead, and
+# with the variable unset every alert-thread post asks.
+ALERT_CHANNEL_IDS = set(filter(None, os.environ.get("TOOL_GATE_ALERT_CHANNEL_IDS", "").split(",")))
 
 # MCP tools match on the name after the last `__`: connectors show up under two server-name
 # forms. Anything in neither set asks while the gate is closed.
@@ -1469,7 +1470,8 @@ def describe(tool_name, tool_input, gate_open):
 def selftest():
     home = os.path.expanduser("~")
     scratch = GATE_SCRATCH_ROOTS[0]
-    alert = next(iter(ALERT_CHANNEL_IDS))
+    alert = "C0ALERT"
+    ALERT_CHANNEL_IDS.add(alert)
     cases = [
         # (gate_open, tool_name, tool_input, expected decision)
         (False, "Bash", "kubectl get pods --context X -n Y", None),
