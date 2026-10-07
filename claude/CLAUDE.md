@@ -588,6 +588,30 @@ memory for the project, not in git.
 A commit body that records where a change was verified is the one exception,
 for the same reason stale values are allowed there: it describes a frozen fact.
 
+## My home files are published - private values go in the PRIVATE block
+
+**My dotfiles, this file, my Claude settings, my hooks and my `tkay-*` skills
+are copied into a public GitHub repo twice a day** by
+`~/repos/configs/bin/sync-configs.sh`, which holds the list of what it copies.
+Treat every one of those files as public the moment you write to it.
+
+**For this purpose an internal identifier IS a credential.** A Slack channel
+ID, a Tailscale or internal hostname, a cluster, context, node or namespace
+name, a firewall rule or cloud project name, a personal e-mail address: none of
+it may sit in a published file in the clear, any more than a token may.
+
+**In a shell rc, such a value goes ONLY between the markers the sync script
+defines as `PRIVATE_OPEN` and `PRIVATE_CLOSE`**, exported as a variable; the
+sync deletes those blocks before it commits. A function or alias outside the
+block reads the variable, never the literal. **A hook or a skill has no block**,
+so it carries no such value at all: it reads a variable the block exports, and
+treats the variable being unset as the feature being off - a missing export
+must never fall back to a built-in default that would then be published.
+
+The sync has Claude read every added line and refuses the commit on a finding,
+so a slip stalls the sync rather than leaking - but it is the last line, not
+the rule. When you put a value in the block, say so in one line.
+
 ## Values for a chart live with the chart
 
 **A repo never carries a values file for a chart it does not own.** Helm
