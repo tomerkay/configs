@@ -392,6 +392,11 @@ in the plugin cache.
    Nothing I say is a signal to file one - the ONLY exception is me asking for it
    in those words. I do not want to see that card again.
 
+7) **Do not write, draft or offer an MR or PR description unless I ask for one.**
+   Not as a "next step", not as a missing item before a review, not as part of
+   finishing a branch. When something only a description would carry matters
+   (a metric whose meaning changed, a rule a change retires), tell me in chat.
+
 # BRACKET EVERYTHING I AM MEANT TO COPY
 
 **Anything you hand me to copy-paste is SANDWICHED between two marker lines: a

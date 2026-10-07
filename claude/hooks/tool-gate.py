@@ -150,8 +150,9 @@ HELM_GLOBAL_VALUE_FLAGS = {
     "--repository-cache", "--repository-config", "--burst-limit", "--qps",
 }
 
-# The TL;DR into a fired alert's thread is ungated; these are the alert channels. A copy of
-# what the alertmanager config owns: a channel added there and not here asks instead.
+# The TL;DR into a fired alert's thread and the reaction marking the alert as under investigation
+# are ungated; these are the alert channels. A copy of what the alertmanager config owns: a
+# channel added there and not here asks instead.
 ALERT_CHANNEL_IDS = {"***REMOVED***", "***REMOVED***", "***REMOVED***", "***REMOVED***", "***REMOVED***",
                      "***REMOVED***", "***REMOVED***"}
 
@@ -176,6 +177,8 @@ MCP_WRITE_PREFIXES = (
     "agent_browser_check", "agent_browser_uncheck", "agent_browser_eval",
 )
 SLACK_SEND = "slack_send_message"
+SLACK_REACT = "slack_add_reaction"
+ALERT_REACTION = "claude"
 
 DENY, ASK = "deny", "ask"
 DECISION_RANK = {None: 0, ASK: 1, DENY: 2}
@@ -1377,6 +1380,9 @@ def decide_mcp(tool_name, tool_input, gate_open):
         if tool_input.get("thread_ts") and tool_input.get("channel_id") in ALERT_CHANNEL_IDS:
             return []
         return [(ASK, "a Slack message outside the linked alert thread: show the text and ask")]
+    if (tool == SLACK_REACT and tool_input.get("channel_id") in ALERT_CHANNEL_IDS
+            and tool_input.get("emoji") == ALERT_REACTION):
+        return []
     if gate_open:
         return []
     kind = mcp_kind(tool_name)
@@ -1589,6 +1595,14 @@ def selftest():
          {"channel_id": "C0OTHER", "thread_ts": "1.2", "message": "x"}, ASK),
         (True, "mcp__claude_ai_Slack__slack_send_message",
          {"channel_id": alert, "message": "no thread"}, ASK),
+        (False, "mcp__claude_ai_Slack__slack_add_reaction",
+         {"channel_id": alert, "message_ts": "1.2", "emoji": "claude"}, None),
+        (False, "mcp__claude_ai_Slack__slack_add_reaction",
+         {"channel_id": alert, "message_ts": "1.2", "emoji": "eyes"}, DENY),
+        (False, "mcp__claude_ai_Slack__slack_add_reaction",
+         {"channel_id": "C0OTHER", "message_ts": "1.2", "emoji": "claude"}, DENY),
+        (True, "mcp__claude_ai_Slack__slack_add_reaction",
+         {"channel_id": "C0OTHER", "message_ts": "1.2", "emoji": "eyes"}, None),
         (False, "mcp__claude_ai_Slack__slack_read_thread", {"channel_id": alert}, None),
         (False, "mcp__Slack__slack_read_thread", {"channel_id": alert}, None),
         (False, "mcp__claude_ai_Atlassian_Rovo__getConfluencePage", {"pageId": "1"}, None),
