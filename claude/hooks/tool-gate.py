@@ -151,11 +151,23 @@ HELM_GLOBAL_VALUE_FLAGS = {
 }
 
 # The TL;DR into a fired alert's thread and the reaction marking the alert as under investigation
-# are ungated; these are the alert channels, comma-separated in TOOL_GATE_ALERT_CHANNEL_IDS, which
-# the shell rc exports from its private block so the IDs stay out of this file's public copy. A
-# copy of what the alertmanager config owns: a channel added there and not here asks instead, and
-# with the variable unset every alert-thread post asks.
-ALERT_CHANNEL_IDS = set(filter(None, os.environ.get("TOOL_GATE_ALERT_CHANNEL_IDS", "").split(",")))
+# are ungated; these are the alert channels, one ID per line in ALERT_CHANNELS_FILE. A file and
+# not an environment variable because a desktop-launched session sources no shell rc, and a path
+# outside ~/.claude because this directory is published. The file is a copy of what the On-Call
+# SLA page owns: a channel added there and not here asks instead, and with the file missing every
+# alert-thread post asks.
+ALERT_CHANNELS_FILE = os.path.expanduser("~/.config/tool-gate/alert-channels")
+
+
+def read_alert_channels():
+    try:
+        with open(ALERT_CHANNELS_FILE) as f:
+            return {line.strip() for line in f if line.strip() and not line.startswith("#")}
+    except FileNotFoundError:
+        return set()
+
+
+ALERT_CHANNEL_IDS = read_alert_channels()
 
 # MCP tools match on the name after the last `__`: connectors show up under two server-name
 # forms. Anything in neither set asks while the gate is closed.

@@ -613,9 +613,11 @@ alone.
 defines as `PRIVATE_OPEN` and `PRIVATE_CLOSE`**, exported as a variable; the
 sync deletes those blocks before it commits. A function or alias outside the
 block reads the variable, never the literal. **A hook or a skill has no block**,
-so it carries no such value at all: it reads a variable the block exports, and
-treats the variable being unset as the feature being off - a missing export
-must never fall back to a built-in default that would then be published.
+so it carries no such value at all: it reads it from a file under `~/.config`
+that nothing syncs - not from a shell variable, which a desktop-launched
+session never sees - and treats a missing file as the feature being off. A
+missing file must never fall back to a built-in default that would then be
+published.
 
 The sync has Claude read every added line and refuses the commit on a finding,
 so a slip stalls the sync rather than leaking - but it is the last line, not
