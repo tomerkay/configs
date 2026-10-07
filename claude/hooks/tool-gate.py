@@ -80,7 +80,7 @@ READ_PROGRAMS = {
 WRITE_PROGRAMS = {
     "cp", "mv", "mkdir", "touch", "ln", "install", "patch", "tee", "truncate", "chmod", "chown",
     "chgrp", "zip", "gzip", "gunzip", "bzip2", "xz", "open", "osascript", "code", "vim", "nvim",
-    "vi", "nano", "emacs", "ssh", "scp", "sftp", "source", ".", "eval", "claude", "uvx", "pipx",
+    "vi", "nano", "emacs", "ssh", "scp", "sftp", "source", ".", "eval", "uvx", "pipx",
     "psql", "mysql", "sqlite3", "redis-cli", "mongosh", "perl", "ruby", "node", "deno", "bun",
     "pre-commit", "kubectx", "kubens", "k9s", "git-lfs", "pbcopy", "say", "afplay", "xattr",
     "defaults", "crontab", "ollama",
@@ -469,6 +469,23 @@ def classify_gh(args):
     return WRITE
 
 
+def classify_claude(args):
+    # A print-mode call is a model call that writes nothing only once both tool surfaces are
+    # off: `--tools ""` removes the built-in tools and leaves the connectors, which the
+    # disallow pattern removes. Anything else can edit files or post somewhere.
+    pos = positionals(args)
+    if pos[:2] == ["auth", "status"]:
+        return READ
+    if has_flag(args, "-p", "--print"):
+        no_builtin = any(a == "--tools=" or (a == "--tools" and args[i + 1:i + 2] == [""])
+                         for i, a in enumerate(args))
+        no_mcp = any(a in ("--disallowedTools", "--disallowed-tools") and args[i + 1:i + 2] == ["mcp__*"]
+                     for i, a in enumerate(args))
+        if no_builtin and no_mcp:
+            return READ
+    return WRITE
+
+
 def classify_docker(args):
     pos = positionals(args)
     if not pos:
@@ -839,6 +856,7 @@ HANDLERS = {
     "curl": classify_curl, "http": classify_xh, "https": classify_xh, "xh": classify_xh,
     "wget": classify_wget,
     "gh": classify_gh, "glab": classify_gh,
+    "claude": classify_claude,
     "docker": classify_docker, "podman": classify_docker, "nerdctl": classify_docker,
     "gcloud": generic_verbs, "crusoe": generic_verbs, "aws": generic_verbs, "az": generic_verbs,
     "argocd": generic_verbs, "flux": generic_verbs, "tsh": generic_verbs, "vault": generic_verbs,
@@ -1563,6 +1581,11 @@ def selftest():
         (False, "Bash", "python3 -m pytest tests/", None),
         (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
         (False, "Bash", 'which claude; stat -f "%Sm %N" "$(readlink -f "$(which claude)")" 2>&1', None),
+        (False, "Bash", "claude auth status", None),
+        (False, "Bash", "claude -p 'Review' --tools \"\" --disallowedTools 'mcp__*'", None),
+        (False, "Bash", "claude -p 'Review' --tools \"\"", DENY),
+        (False, "Bash", "claude -p 'Review'", DENY),
+        (False, "Bash", "claude", DENY),
         (False, "Bash", "xh :8081/api/clusters", None),
         (False, "Bash", "xh GET localhost:8081/api/clusters Authorization:x | jq .", None),
         (False, "Bash", "xh POST localhost:8081/api/clusters name=x", DENY),

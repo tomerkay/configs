@@ -188,12 +188,6 @@ export NVM_DIR="$HOME/.nvm"
 export NVM_DIR="$HOME/.nvm"
 source "$NVM_DIR/nvm.sh"
 
-export GITHUB_EMAIL=***REMOVED***
-export GITHUB_USER=***REMOVED***
-#export GITLAB_EMAIL=***REMOVED***
-export GITLAB_EMAIL=***REMOVED***
-export GITLAB_USER=***REMOVED***
-
 
 function knodes() {
     local nodes pools body uptime

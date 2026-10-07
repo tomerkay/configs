@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(system_profiler -json SPDisplaysDataType)",
+      "Bash(defaults read *)"
+    ]
+  }
+}

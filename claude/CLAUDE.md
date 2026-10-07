@@ -595,10 +595,19 @@ are copied into a public GitHub repo twice a day** by
 `~/repos/configs/bin/sync-configs.sh`, which holds the list of what it copies.
 Treat every one of those files as public the moment you write to it.
 
-**For this purpose an internal identifier IS a credential.** A Slack channel
-ID, a Tailscale or internal hostname, a cluster, context, node or namespace
-name, a firewall rule or cloud project name, a personal e-mail address: none of
-it may sit in a published file in the clear, any more than a token may.
+**For this purpose an internal identifier IS a credential, and so is an
+account identity.** A Slack channel ID, a Tailscale or internal hostname, a
+cluster, context, node or namespace name, a firewall rule or cloud project
+name, an internal repository URL; and on the personal side any e-mail address
+other than my work one, and my username on any service - GitHub, GitLab or
+anything else. None of it may sit in a published file in the clear, any more
+than a token may. What stays public is only what my commits already carry:
+my handle, my work e-mail, my employer and my GPG fingerprint.
+
+**A published file with no block cannot hold such a value at all.** The Claude
+settings file is one: a URL or name that has to live there is either accepted
+as public or the file leaves the sync list - say which it is, do not decide
+alone.
 
 **In a shell rc, such a value goes ONLY between the markers the sync script
 defines as `PRIVATE_OPEN` and `PRIVATE_CLOSE`**, exported as a variable; the
