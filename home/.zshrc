@@ -188,7 +188,6 @@ export NVM_DIR="$HOME/.nvm"
 export NVM_DIR="$HOME/.nvm"
 source "$NVM_DIR/nvm.sh"
 
-export NAMESPACE=***REMOVED***
 export GITHUB_EMAIL=***REMOVED***
 export GITHUB_USER=***REMOVED***
 #export GITLAB_EMAIL=***REMOVED***
@@ -202,7 +201,7 @@ function knodes() {
     pools=$(print -r -- "$nodes" | jq -r '[.items[].metadata.labels["crusoe.ai/nodepool.id"]] | unique | join("|")')
     body=$(jq -nc --arg q "(time() - max by (vm_id) (crusoe_vm_boot_time{nodepool=~\"$pools\"})) / 86400" \
         '{jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"live_promql_query",arguments:{query:$q,series_limit:500}}}')
-    uptime=$(curl -sS -m 20 -X POST ***REMOVED*** \
+    uptime=$(curl -sS -m 20 -X POST "$DATA_MCP_URL" \
         -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d "$body" \
         | jq -r '.result.content[0].text' \
         | sed -nE 's/.*vm_id="([^"]+)".*= ([0-9.]+).*/\1 \2/p')

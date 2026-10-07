@@ -96,7 +96,10 @@ Then exactly two sections, in this order, with the divider. **The buckets split 
 ### The closing table — the last thing in every CR
 
 After the last commit's review, end the CR with one table: one row per commit,
-in branch order, three columns.
+in branch order, three columns, under its own heading so it never reads as part
+of the last commit's review.
+
+## Commits
 
 | What the commit does | Score | Verdict |
 |---|---|---|
@@ -126,7 +129,9 @@ allowed in a CR.
 The closing table judges the commits. The leftovers table holds what the review
 turned up on the way that is NOT a finding against a commit: a pre-existing bug
 in a file the branch touched, a stale or false doc next to the change, a trap
-the diff happened to expose. Three columns:
+the diff happened to expose. Three columns, under its own heading:
+
+## Issues found on the way
 
 | Issue and how bad | Introduced by this branch? | Verdict |
 |---|---|---|
@@ -142,8 +147,9 @@ the diff happened to expose. Three columns:
   introduced it) or ⏸ LEAVE FOR NOW with the reason in a few words - out of the
   branch's scope, another owner's file, not worth the review cost today.
 
-When nothing came up, the table is one line instead: "Leftovers: none found on
-the way." Never skip it silently - an absent table reads as "did not look".
+When nothing came up, the heading stays and the table is one line instead:
+"None found on the way." Never skip it silently - an absent section reads as
+"did not look".
 
 ### Rules that keep the tags honest
 

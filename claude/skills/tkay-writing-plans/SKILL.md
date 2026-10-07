@@ -18,15 +18,30 @@ failed no matter how correct it is.
 Structure:
 
 1. What the thing does and what is broken - a few lines
-2. One section per problem, with the evidence for it
-3. The fix
-4. The commits
-5. **Questions and answers** - see below
-6. **A divider, then reference material** - how to reproduce the numbers, decisions
+2. **Glossary** - every term the plan gives a specific meaning, one line each, so a
+   word means one thing from the first section to the last. Terms that a reader of the
+   code would mix up go here first: two layers with similar names, a count that has
+   two sources, a word the codebase uses loosely.
+3. One section per problem, with the evidence for it
+4. The fix
+5. The commits
+6. **Questions and answers** - see below
+7. **TBD** - see below
+8. **A divider, then reference material** - how to reproduce the numbers, decisions
    already settled, branch state, things found but not chased
 
 Anything I would read once goes below the divider. Say at the top which sections are the
 plan and which are reference, so I know where to stop.
+
+## TBD holds only what we agreed to defer
+
+The TBD section lists work I agreed, with you, to leave out of this plan: a follow-up,
+a cleanup after it ships, a decision we postponed on purpose. Each entry says what and
+when or why later.
+
+**Never add a TBD entry on your own.** Something you find that this plan does not do is
+a finding: it goes below the divider, and you raise it with me. It moves to TBD only
+after I agree to defer it. A TBD you invented reads as a commitment I never made.
 
 ## Divide it into commits
 
@@ -78,8 +93,13 @@ components interact, adds state or a read, or reverses a decision the plan settl
 A bug you can fix inside the agreed design - a wrong comparator, a missed condition, an
 off-by-one - is not a stop: fix it and name it in your next message.
 
-Once we agree on the answer, update the plan in the same pass: the design section it
-changes, and a question and answer for the hole.
+**Every decision made while executing updates the plan, without being asked.** A hole
+we settled, an option I picked, a commit dropped, merged or split, a scope change, a
+fix that turned out to change behavior the plan describes: the plan is edited in the
+same pass as the decision, before the next piece of code. Change the sections it
+touches - design, commits, risks, decisions - and add a question and answer when the
+reader will ask why. The plan must describe the branch as it stands, so the reviewer
+never meets a plan the code already contradicts.
 
 ## Keeping it alive
 

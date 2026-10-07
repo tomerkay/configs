@@ -1,5 +1,8 @@
 # Commit Standards
 
+**A repo that documents its own commit or branch convention overrides this
+file.** See "The repo's conventions win" in `SKILL.md`.
+
 **Every commit is signed.** Never `--no-gpg-sign`, and a rebase or
 cherry-pick re-signs with `-S`. If signing fails inside a sandbox, the gpg
 agent is unreachable from it: rerun the commit outside the sandbox, never

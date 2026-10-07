@@ -33,3 +33,20 @@ the same failure as not having them.
 A CR and a commit almost always travel together — a review whose first
 checklist item is the commit message needs `references/commits.md` too. Read
 both rather than guessing which half applies.
+
+## The repo's conventions win
+
+**Where the repo you are working in documents a convention, follow the repo,
+not these references.** Commit message format, branch names, MR description
+sections, test style, comment style: check its `CLAUDE.md` files, its
+`CONTRIBUTING.md`, its README and any style guide they point to before the
+first commit, branch or MR of the session.
+
+These references fill only what the repo leaves unsaid, topic by topic. A
+repo that fixes the commit message format but says nothing about the MR
+description gets its own commit format and my description standard. Mixing
+the two is the point: do not drop a reference wholesale because the repo
+covers part of it.
+
+When the repo and a reference disagree, follow the repo and tell me in one
+line which rule of mine it overrode.

@@ -52,20 +52,14 @@
       "Bash(tar -tzf charts/model/il-model/charts/atero-model-common-0.1.0.tgz)",
       "Bash(mkdir -p /tmp/claude/common-extract)",
       "Bash(tar -xzf charts/model/il-model/charts/common-0.1.0.tgz -C /tmp/claude/common-extract/)",
-      "Bash(helm dependency *)",
-      "Bash(rm /tmp/claude/*)",
-      "Bash(rm -f /tmp/claude/*)",
-      "Bash(rm -rf /tmp/claude/*)",
-      "Bash(rm /private/tmp/claude/*)",
-      "Bash(rm -f /private/tmp/claude/*)",
-      "Bash(rm -rf /private/tmp/claude/*)"
+      "Bash(helm dependency *)"
     ],
     "additionalDirectories": [
       "/tmp",
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "opus",
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {

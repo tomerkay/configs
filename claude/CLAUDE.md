@@ -619,9 +619,20 @@ Every scratch file you create for your own work lives under `/private/tmp/claude
 (the session scratchpad, or `$TMPDIR`, both resolve there), never as a bare
 `/tmp/<file>`. `/tmp` is a symlink to `/private/tmp` on macOS and the sandbox
 checks the resolved path, so a file at the top of `/tmp` is one you can create
-through a hook or a tool but never delete. Create the directory if it is missing,
-and clean up what you made without asking me - the `rm` rules for that path are
-in `permissions.allow`.
+through a hook or a tool but never delete. Create the directory if it is missing.
+
+**Never put `rm` in a command that does real work.** The org's policy prompts
+on every `rm`, scratch included, and an allow rule cannot override an ask
+rule, so an `rm` bundled into a chain prompts the whole chain. Scratch is per
+session; leave it. The gate hook drops an `rm` whose every path is a literal
+under `/private/tmp/claude` before the policy sees it, and says so in the
+description; every other `rm` prompts.
+
+**Never redirect into `$TMPDIR`.** The harness cannot resolve the variable, so
+`> $TMPDIR/x` prompts however harmless the command. A temp file is written to
+the literal scratchpad path, which is a working directory and passes, or
+better not written at all: pipe into the next command. `$TMPDIR` as an
+argument to a tool is fine; as a redirect target it is not.
 
 # Screenshots
 
