@@ -604,7 +604,8 @@ sit in a published file in the clear, any more than a token may.
 
 **Decided public, do not raise again:** my handle, my work e-mail, my employer
 and my GPG fingerprint; the names and URLs of our GitLab repositories and
-chart registry; the product-level names my skills use - a monitor, a CRD
+chart registry; Slack channel names (IDs stay private); the Crusoe CLI
+profile name; the product-level names my skills use - a monitor, a CRD
 group, a chart; and Crusoe's own default firewall rule and network names,
 which every customer has. A sweep that finds only these is clean.
 
