@@ -59,7 +59,7 @@
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "opus",
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
