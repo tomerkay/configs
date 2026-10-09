@@ -24,14 +24,41 @@ Structure:
    two sources, a word the codebase uses loosely.
 3. One section per problem, with the evidence for it
 4. The fix
-5. The commits
-6. **Questions and answers** - see below
-7. **TBD** - see below
-8. **A divider, then reference material** - how to reproduce the numbers, decisions
+5. **Known incidents** - see below
+6. The commits
+7. **Questions and answers** - see below
+8. **TBD** - see below
+9. **A divider, then reference material** - how to reproduce the numbers, decisions
    already settled, branch state, things found but not chased
 
 Anything I would read once goes below the divider. Say at the top which sections are the
 plan and which are reference, so I know where to stop.
+
+## Known incidents, each with a verdict
+
+When the plan replaces, rewrites or fixes something that has failed before, it lists
+every incident it knows about - from the code's comments and tests, the rules a team
+wrote after an outage, commit bodies, postmortems, tickets - and says what the change
+does to each. The section is there whether the change is a redesign, a feature or a
+bug fix; an incident the plan never names is one the reader assumes it handles.
+
+Per incident:
+
+- **What happened**: the symptom, with the numbers, the date and the system when the
+  source has them. A detail the source does not state is written as not stated, never
+  filled in.
+- **The cause**, in the old code.
+- **The verdict**, one word: **solved** (the cause cannot occur by construction),
+  **mitigated** (it can still occur and is handled another way), **not solved** (it
+  can still occur and nothing new handles it), or **gone** (the mechanism that failed
+  no longer exists). Then the mechanism or the reason, naming the function, the rule
+  or the section that carries it.
+- **The source**: the file and the function or test, or the commit subject.
+
+**A verdict is a claim about the new code, so it is checked against the new code, not
+taken from the plan's own prose.** Solved without a named mechanism is not a verdict.
+A not solved is written as plainly as a solved: it is the entry the reviewer most needs,
+and it pairs with the risks section or a TBD entry that I agreed to.
 
 ## TBD holds only what we agreed to defer
 
