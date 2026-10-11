@@ -321,7 +321,7 @@ action of that kind.**
 | a plan, design doc or implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
-| build or edit a Grafana dashboard, panel or template variable | `tkay-grafana`, plus `dashboarding` when building or debugging the JSON |
+| build, edit, fetch or publish a Grafana dashboard, panel or template variable | `atero-skills:grafana-dashboards`, plus `dashboarding` when building or debugging the JSON |
 | investigate a fired alert | `atero-skills:investigate-alert` |
 
 `tkay-code` then routes to its own reference file for the specific task - read
