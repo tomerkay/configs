@@ -137,7 +137,9 @@ HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "
 HELM_EXCLUDED = {"uninstall", "delete", "del", "rollback"}
 # Cluster-scoped reads where kubectl ignores -n; `get --raw` carries an API path instead.
 NAMESPACE_FREE = {("get", "node"), ("get", "nodes"), ("describe", "node"), ("describe", "nodes"),
-                  ("top", "node"), ("top", "nodes")}
+                  ("top", "node"), ("top", "nodes"), ("get", "crd"), ("get", "crds"),
+                  ("get", "customresourcedefinitions"), ("get", "ns"), ("get", "namespace"),
+                  ("get", "namespaces")}
 KUBECTL_GLOBAL_VALUE_FLAGS = {
     "--context", "--kubeconfig", "-n", "--namespace", "--cluster", "--user", "-s", "--server",
     "--token", "--as", "--as-group", "--request-timeout", "--certificate-authority",
@@ -253,11 +255,20 @@ def generic_verbs(args):
     return WRITE
 
 
-def classify_git(args):
+def git_subcommand_args(args):
+    """The git subcommand and its arguments, with the global options ahead of it removed."""
     rest = list(args)
     while rest and rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P"):
         rest = rest[2:] if rest[0] in ("-C", "-c", "--git-dir", "--work-tree") else rest[1:]
-    rest = [a for a in rest if not a.startswith("--git-dir=") and not a.startswith("--work-tree=")]
+    return [a for a in rest if not a.startswith("--git-dir=") and not a.startswith("--work-tree=")]
+
+
+def classify_git(args):
+    rest = git_subcommand_args(args)
+    # GOTCHA: a config key can name a program git runs (core.fsmonitor, diff.external,
+    # core.sshCommand, a `!` alias), so a `-c` ahead of the subcommand makes it a write.
+    if "-c" in args[:len(args) - len(rest)]:
+        return WRITE
     if not rest:
         return READ
     sub, rest = rest[0], rest[1:]
@@ -275,6 +286,9 @@ def classify_git(args):
     if sub == "reflog":
         return READ if not pos or pos[0] == "show" else DANGER
     if sub == "branch":
+        if has_flag(rest, "-l", "--list", "--contains", "--no-contains", "--merged",
+                    "--no-merged", "--points-at", "--show-current"):
+            return READ
         if has_flag(rest, "-D", "--delete", "-d", "-M", "-m", "-C", "-c", "-u",
                     "--set-upstream-to", "--unset-upstream", "--edit-description", "--move",
                     "--copy") or force:
@@ -301,7 +315,10 @@ def classify_git(args):
     if sub == "push":
         return DANGER
     if sub == "fetch":
-        return DANGER if force else READ
+        if force:
+            return DANGER
+        # A refspec with a local destination moves that local branch.
+        return WRITE if any(":" in p for p in pos[1:]) else READ
     if sub == "reset":
         return DANGER if has_flag(rest, "--hard", "--merge") else WRITE
     if sub == "clean":
@@ -463,6 +480,8 @@ def classify_gh(args):
     group = pos[0]
     sub = pos[1] if len(pos) > 1 else ""
     if group == "api":
+        if sub == "graphql" and not any("mutation" in a for a in args):
+            return READ
         method = http_method(args, "-X", "--method")
         if method == "DELETE":
             return DANGER
@@ -519,10 +538,13 @@ def classify_docker(args):
     return WRITE
 
 
+SED_WRITE_RE = re.compile(r"(^|[;{}\s\d$/])w\s|/w\s")
+
+
 def classify_sed(args):
     if any(re.match(r"^-[a-zA-Z]*i", a) or a.startswith("--in-place") for a in args):
         return WRITE
-    return READ
+    return WRITE if any(SED_WRITE_RE.search(a) for a in args if not a.startswith("-")) else READ
 
 
 def classify_awk(args):
@@ -541,8 +563,9 @@ def classify_python(args):
     if os.path.realpath(os.path.expanduser(args[0])) == os.path.realpath(__file__):
         return READ
     if args[0] == "-m" and len(args) > 1:
-        if args[1] in ("pytest", "json.tool", "unittest", "mypy", "pyright", "ruff", "black",
-                       "isort", "flake8", "pylint", "tomllib"):
+        if args[1] in ("json.tool", "unittest", "tomllib"):
+            return READ
+        if args[1] in ("pytest", "mypy", "pyright", "ruff", "black", "isort", "flake8", "pylint"):
             return classify_program(args[1], args[2:])
         if args[1] == "pip":
             return classify_pip(args[2:])
@@ -927,8 +950,19 @@ def unknown_programs_as(level):
         _unknown_level = previous
 
 
+# Programs that hand their arguments to another command, so a trailing `--help` is that
+# command's argument and asks for no help at all.
+RUNNERS = {"bash", "sh", "zsh", "dash", "python", "python3", "node", "perl", "ruby", "deno",
+           "bun", "uv", "uvx", "npx", "bunx", "xargs", "find", "env", "make", "gmake"}
+
+
+def help_only(prog, args):
+    return (args in (["-h"], ["--help"], ["--version"], ["-V"])
+            or (args[-1:] == ["--help"] and "--" not in args and prog not in RUNNERS))
+
+
 def classify_program(prog, args):
-    if "--help" in args or args in (["-h"], ["--version"], ["-V"], ["version"], ["help"]):
+    if help_only(prog, args) or args in (["version"], ["help"]):
         return READ
     if prog in DANGER_PROGRAMS:
         return DANGER
@@ -1328,10 +1362,10 @@ def only_unknown_writes(command):
 def pin_decisions(prog, args):
     """The rows that apply in every gate state, for one program invocation."""
     out = []
-    if "--help" in args or args in (["-h"], ["--version"], ["-V"]):
+    if help_only(prog, args):
         return out
     if prog == "git":
-        rest = [a for a in args if not a.startswith("-")]
+        rest = git_subcommand_args(args)
         if rest and rest[0] == "push":
             out.append((DENY, "git push is never run by the model: say the branch is ready "
                               "and print the command"))
@@ -1553,6 +1587,8 @@ def selftest():
         (False, "Bash", "make build", DENY),
         (False, "Bash", "git fetch", None),
         (False, "Bash", "git fetch --force", DENY),
+        (False, "Bash", "git fetch origin main:main", DENY),
+        (False, "Bash", "git fetch origin main", None),
         (False, "Bash", "uv sync", DENY),
         (False, "Bash", f"touch {scratch}x", None),
         (False, "Bash", f"rm {scratch}x", None),
@@ -1574,6 +1610,35 @@ def selftest():
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --dry-run", None),
         (True, "Bash", "git push origin main", DENY),
         (True, "Bash", "git push --dry-run", DENY),
+        (True, "Bash", "git -C /x push origin main", DENY),
+        (True, "Bash", "git -c user.name=x --no-pager push", DENY),
+        (True, "Bash", "git --git-dir=/x/.git push", DENY),
+        (False, "Bash", "kubectl exec p -- sh -c 'rm -rf /data' --help", DENY),
+        (False, "Bash", "python3 /x/deploy.py --help", DENY),
+        (False, "Bash", "bash -c 'rm -rf /x' --help", DENY),
+        (False, "Bash", "kubectl get pods --help", None),
+        (False, "Bash", "helm upgrade --help", None),
+        (False, "Bash", "python3 --help", None),
+        (False, "Bash", "kubectl version", DENY),
+        (False, "Bash", "git -c core.fsmonitor=/x.sh status", DENY),
+        (False, "Bash", "git -C /x -c diff.external=/x.sh diff", DENY),
+        (False, "Bash", "git --config-env=core.pager=X log", DENY),
+        (False, "Bash", "git grep -c foo", None),
+        (False, "Bash", "git log -c -1", None),
+        (False, "Bash", "sed -n 'w /x/out' f", DENY),
+        (False, "Bash", "sed 's/a/b/w /x/out' f", DENY),
+        (False, "Bash", "sed -n '1,5p' f", None),
+        (False, "Bash", "sed 's/new world/x/' f", None),
+        (False, "Bash", "git branch -a --contains abc", None),
+        (False, "Bash", "git branch --list 'x/*'", None),
+        (False, "Bash", "git branch new-branch", DENY),
+        (False, "Bash", "kubectl get crd --context X", None),
+        (False, "Bash", "kubectl get namespaces --context X", None),
+        (False, "Bash", "kubectl get pods --context X", DENY),
+        (False, "Bash", "python3 -m json.tool", None),
+        (False, "Bash", "python3 -m unittest", None),
+        (False, "Bash", "gh api graphql -f query='{viewer{login}}'", None),
+        (False, "Bash", "gh api graphql -f query='mutation{x}'", DENY),
         (True, "Bash", "kubectl config use-context x", DENY),
         (True, "Bash", "kubectx x", DENY),
         (True, "Bash", "kubens x", DENY),

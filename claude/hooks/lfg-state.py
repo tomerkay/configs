@@ -19,7 +19,7 @@ OPEN, ONE_TURN = "open", "one-turn"
 # pasted_content, and the harness wraps scheduled prompts, subagent reports and messages
 # from other sessions the same way. Nothing inside one opens, closes or spends the gate.
 TAG_BLOCK_RE = re.compile(r"<([A-Za-z_][\w.-]*)\b[^>]*>.*?</\1\b[^>]*>", re.S)
-QUOTED_RE = re.compile(r"`[^`]*`|\"[^\"]*\"|'[^']*'")
+QUOTED_RE = re.compile(r"`[^`]*`|\"[^\"]*\"|(?<!\w)'[^']*'(?!\w)")
 TOKEN_RE = re.compile(r"\bLFG!")
 SCOPED_PHRASES = ("for this one only", "one-shot", "just this")
 SPENT_PHRASES = ("lfg is spent", "lfg! is spent", "lfg was spent", "lfg! was spent",
@@ -92,7 +92,6 @@ def main():
     prompt = payload.get("prompt")
     if not isinstance(prompt, str):
         return
-    print(f"lfg-state: {payload['session_id']} prompt={prompt[:300]!r}", file=sys.stderr)
     on_prompt(path, prompt)
 
 

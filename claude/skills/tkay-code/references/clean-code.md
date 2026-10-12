@@ -1,8 +1,9 @@
-# Code rules and the worked examples behind them
+# Clean code: the rules and the worked examples behind them
 
 These rules apply to every line of code, chart, dashboard or config written for
-me. Read this file before writing code, and again whenever you are unsure
-whether a specific comment, mechanism, default or config key is acceptable.
+me. Read this file before writing code, before the first finding of a code
+review, and again whenever you are unsure whether a specific comment,
+mechanism, default or config key is acceptable.
 
 ---
 
@@ -60,6 +61,10 @@ Examples of BANNED comments:
 
 # OVER-ENGINEERING
 
+**The smallest change that fixes the actual problem is ALWAYS the right one**
+until I say otherwise. Every line nothing asked for is a line I read, maintain
+and debug forever.
+
 ## Before adding ANY mechanism, answer these
 
 1. **What breaks in production TODAY without it?** Name the concrete scenario -
@@ -75,7 +80,10 @@ sentence that you considered it and moved on. I decide, not you.
 
 - **Rate limiting / throttling / backpressure** - is it REALLY fucking needed?
   What's the actual request rate? If you can't tell me the number, you can't
-  justify the mechanism
+  justify the mechanism. **One case you raise instead of staying silent:** a
+  log line that can fire per request or per failure on a hot path, where a
+  failure storm becomes a log storm. Tell me in one sentence - the path and
+  the rate it could reach - and build nothing until I decide
 - **Retries, backoff, jitter, circuit breakers** - a failed call is allowed to
   just fail and be logged
 - **Caching / memoisation / pooling** - measure first. No numbers, no cache
@@ -162,7 +170,7 @@ When reviewing code, flag ANY logic that handles scenarios impossible under curr
 
 ---
 
-# ONE SOURCE OF TRUTH - CONFIG, DEFAULTS, AND EVERYTHING ELSE
+# ONE SOURCE OF TRUTH - CONFIG, DEFAULTS, LOGIC AND EVERYTHING ELSE
 
 A value that lives in two places WILL drift, and then one change means hunting
 every copy.
@@ -180,6 +188,14 @@ every copy.
 - **Flag both directions**: a default hiding in code for a value the chart also
   sets, and a never-change constant sitting in values.yaml. The same instinct
   applies to dashboards, constants, contracts and docs.
+- **The same logic in two places is the same bug as the same value in two
+  places.** When two blocks must change together - one rule, one formula, one
+  parse of one format - one is the owner and the other calls it.
+- **Code that only looks alike is not duplication.** Two blocks that change for
+  different reasons stay apart. Extract when a second real caller exists and
+  both must change together, never for a caller that might come - see
+  "OVER-ENGINEERING". A wrong shared helper costs more than the copy it
+  replaced.
 
 What that looks like in practice:
 
@@ -193,10 +209,79 @@ What that looks like in practice:
   selectors, replica counts, image tags - anything some deployment
   legitimately sets differently. **What never does:** a protocol magic number,
   a wire-format field name, a hash salt, a parameter the algorithm's
-  correctness rests on.
+  correctness rests on. Each of those is a named constant in code and appears
+  nowhere in the chart.
 
 Docs fall under the same rule: a README or `CLAUDE.md` names the key and the
 file that owns it, and never restates the value.
+
+---
+
+# ONE REASON TO CHANGE
+
+The mirror of "ONE SOURCE OF TRUTH": what changes together lives in one place,
+and what changes for different reasons lives apart.
+
+- **One reason to change per function, class or module.** Code that changes for
+  different reasons - the wire format and the retry policy, the parse and the
+  business rule - lives apart. A boolean parameter that switches what a
+  function does is two functions.
+- **Not "make it small".** Splitting a function that changes for one reason
+  into five that always change together adds indirection and nothing else.
+- **Related code is grouped together.** Whatever changes for the same reason
+  sits side by side, in the order a reader needs it.
+
+---
+
+# FAILURES ARE COUNTED, THEN LOGGED
+
+A failure I cannot alert on is a failure I find out about from a customer.
+
+- **Every failure is counted, then logged.** Each failure path - raised,
+  returned, or caught and swallowed - increments a counter, then logs one line
+  with the context needed to debug it (pod name, pod IP, model name, whatever
+  identifies the thing that failed). Metric first, so the count survives a
+  logging failure. A failure with no metric is invisible to an alert; one with
+  no log is undebuggable when the alert fires.
+- **A counter, labelled by a reason enum.** Alerts are `rate()` or
+  `increase()` over a counter. The reason label comes from an enum, so its
+  cardinality is bounded - never an error string, an ID or a pod name.
+- **Every reason starts at zero.** Pre-initialise each label combination at
+  startup. A series that first appears at 1 makes `increase()` miss that first
+  failure, and the alert stays silent.
+- **Every code path, not just the happy one.** A metric called on some failure
+  paths and not others reads as zero during the outage it should have shown.
+- **The right type.** A counter for events, a histogram for durations, a gauge
+  only for a level that goes up and down.
+- **A per-request failure log can flood.** See the rate-limiting bullet in
+  "OVER-ENGINEERING": raise it with me, build nothing.
+
+---
+
+# PARSE AT THE BOUNDARY
+
+Raw input - a request body, a config file, an API response, an environment
+variable - is turned into a typed struct or an enum once, where it enters.
+Everything past that point takes the typed value and never re-checks it.
+
+- **A validated value has a type that says so.** A function that checks a
+  string and passes the same string on leaves every caller to wonder whether it
+  was checked. A function that returns a parsed type answers that for good.
+- **This is where defensive code belongs** (see "When defensive code IS
+  appropriate" under YAGNI), and the reason the code inside needs none.
+
+---
+
+# ASYNCIO
+
+- **Every task has an owner.** The result of `asyncio.create_task` is kept and
+  awaited, or held by a `TaskGroup` or a set the owner drains. The event loop
+  keeps only a weak reference, so an unreferenced task can be garbage-collected
+  mid-execution, and an exception it raised surfaces only as a stray
+  "never retrieved" log line, if at all.
+- **Nothing blocks the event loop.** A blocking call - sync I/O, a sync HTTP
+  client, `time.sleep`, heavy CPU work - stalls every coroutine on the loop.
+  Use the async equivalent, or `asyncio.to_thread` for what has none.
 
 ---
 

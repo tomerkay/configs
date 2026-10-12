@@ -397,6 +397,13 @@ in the plugin cache.
    finishing a branch. When something only a description would carry matters
    (a metric whose meaning changed, a rule a change retires), tell me in chat.
 
+8) **A memory note found wrong is corrected the moment you find it - no
+   asking.** Memory is yours, not mine: when a session shows a note is stale
+   or false, rewrite or delete it and its `MEMORY.md` line in that same turn,
+   and say so in one line. A wrong note left standing gets read as fact by
+   the next session and copied into a skill, a doc or a commit, which is how
+   my skills end up carrying wrong stuff.
+
 # BRACKET EVERYTHING I AM MEANT TO COPY
 
 **Anything you hand me to copy-paste is SANDWICHED between two marker lines: a
@@ -435,85 +442,13 @@ two bracketed blocks, never one bracket around both.
 
 These apply to every line you write for me - code, chart, dashboard or doc - in
 every session, whether or not any skill is loaded, because "write some code" has
-no trigger phrase to catch. **The worked examples and full banned lists behind
-every rule here are in the `tkay-code` skill, `references/code-examples.md`** -
-read it whenever you are unsure whether a specific comment, mechanism, default
-or config key is acceptable. The docs half of the one-source-of-truth rule lives
-in the `tkay-writing-mds` skill.
+no trigger phrase to catch. The clean code rules are imported here from the
+`tkay-code` skill, which owns them:
 
-## Comments
+@~/.claude/skills/tkay-code/references/clean-code.md
 
-**DO NOT ADD COMMENTS THAT STATE THE OBVIOUS OR REPEAT WHAT THE CODE OR LOG
-ALREADY SAYS.** No comment describing WHAT the next line does, none duplicating
-an error message, log line or function name, no `# Step 1:` section headers.
-
-The only three acceptable kinds: **WHY** (non-obvious reasoning, design decision
-or business logic), **GOTCHA** (a subtle bug, edge case or ordering requirement
-that will bite the reader), and **TODO/FIXME with a ticket reference**.
-
-**Never leave conversation artifacts in the code.** A comment must make sense to
-someone who reads the file cold, having never seen our discussion. Anything that
-defends a choice, argues against a rejected alternative, or narrates a bug I
-just fixed belongs in the commit body or in chat - never the source. The tells
-are "rather than", "instead of", "we could have", "previously", "this used to",
-"deliberately not".
-
-**When in doubt, DELETE THE COMMENT.** If the code is unclear, improve the code -
-better naming, better structure - don't paper over it.
-
-## Over-engineering - the thing I hate most
-
-**The smallest change that fixes the actual problem is ALWAYS the right one**
-until I say otherwise. Every line nothing asked for is a line I read, maintain
-and debug forever.
-
-Before adding ANY mechanism: **what breaks in production TODAY without it?** Name
-the concrete scenario - input, state, resulting failure. "It'd be safer" / "it's
-good practice" / "for robustness" are NOT answers. If you cannot name it, DO NOT
-ADD IT; tell me in one sentence that you considered it and moved on.
-
-**Never add unprompted:** rate limiting or backpressure, retries/backoff/circuit
-breakers, caching or pooling, new config knobs, interfaces or factories with one
-implementation, "future-proof" helpers for a caller that doesn't exist, feature
-flags nobody asked for, metrics for states that cannot occur, or defensive
-validation of what the system already guarantees.
-
-**YAGNI:** never write defensive code for scenarios that cannot happen. Trace the
-execution path - if it requires conditions that never occur (hot reload where
-there is no hot reload), delete it. Fail loudly instead.
-
-**Effort must be proportional to the change.** A five-line fix does not get an
-hour of investigation, a source-dive into a library's internals, or an
-essay-length commit body. Verify the ONE thing the change depends on, then ship.
-This applies to the explanation too - a wall of analysis in chat when one
-sentence would do is the same disease.
-
-**When you genuinely believe something is needed:** say it in ONE sentence with
-the concrete failure it prevents, and let me decide. Do NOT build it and then
-tell me.
-
-## One source of truth
-
-A value that lives in two places WILL drift, and then one change means hunting
-every copy. **Binaries and services carry NO config defaults** - every setting
-comes from the chart, written down exactly once, and a missing or unparseable
-setting fails startup LOUDLY reporting EVERY missing key at once, not one per
-redeploy. An empty environment variable reads as unset; an empty-string default
-is still a default.
-
-**values.yaml holds ONLY what is meant to be changed.** A constant whose only
-correct value is the current one - a protocol magic number, a hash salt, a
-parameter the algorithm's correctness rests on - is a named constant in code and
-appears NOWHERE in the chart. A knob nobody should ever turn is a knob someone
-WILL turn at 3am.
-
-**Fixing drift means deleting the copy, not updating it.** When a change makes
-you edit the same value in a second file, STOP - the second copy is the bug.
-Replace it with a pointer to the source in that same commit.
-
-Flag both directions when you spot them: a default hiding in code for a value the
-chart also sets, and a never-change constant sitting in values.yaml. The same
-instinct applies beyond config - dashboards, constants, contracts, docs.
+The docs half of the one-source-of-truth rule lives in the `tkay-writing-mds`
+skill.
 
 ## Nothing that goes stale silently
 
@@ -521,8 +456,9 @@ instinct applies beyond config - dashboards, constants, contracts, docs.
 is written** - a `tkay-*` or project skill, a README, a `CLAUDE.md`, a design
 doc, a code comment. It goes on reading as authoritative and nothing ever tells
 the reader it stopped being true. A line number is the obvious case and far
-from the only one. This is the volatility half of "One source of truth" above:
-that rule bans the second copy, this one bans the copy that rots.
+from the only one. This is the volatility half of "One source of truth" in the
+clean code rules: that rule bans the second copy, this one bans the copy that
+rots.
 
 **A commit body is the exception**, because it describes a diff that is frozen.
 An exact count, an old value or a measurement there stays accurate forever, and
@@ -591,9 +527,12 @@ for the same reason stale values are allowed there: it describes a frozen fact.
 ## My home files are published - private values go in the PRIVATE block
 
 **My dotfiles, this file, my Claude settings, my hooks and my `tkay-*` skills
-are copied into a public GitHub repo twice a day** by
-`~/repos/configs/bin/sync-configs.sh`, which holds the list of what it copies.
-Treat every one of those files as public the moment you write to it.
+are copied into a public GitHub repo on a schedule** by
+`~/repos/configs/bin/sync-configs.sh`. It holds the list of home files it
+copies; the Claude files it copies are whatever the `~/.claude` repo tracks
+(see below). It copies the working tree, not the last commit, and that is on
+purpose - do not raise it as a bug. Treat every one of those files as public
+the moment you write to it.
 
 **For this purpose an internal identifier IS a credential, and so is an
 account identity.** A Slack channel ID, a Tailscale or internal hostname, a
@@ -611,8 +550,8 @@ which every customer has. A sweep that finds only these is clean.
 
 **A published file with no block cannot hold a value from the first list at
 all.** The Claude settings file is one: a value that has to live there is
-either accepted as public, which widens the list above, or the file leaves the
-sync list - ask which, do not decide alone.
+either accepted as public, which widens the list above, or the file stops
+being published - ask which, do not decide alone.
 
 **In a shell rc, such a value goes ONLY between the markers the sync script
 defines as `PRIVATE_OPEN` and `PRIVATE_CLOSE`**, exported as a variable; the
@@ -627,6 +566,87 @@ published.
 The sync has Claude read every added line and refuses the commit on a finding,
 so a slip stalls the sync rather than leaking - but it is the last line, not
 the rule. When you put a value in the block, say so in one line.
+
+## My Claude config is a git repo - every change is reviewed and committed
+
+**`~/.claude` is a local git repo.** Its `.gitignore` ignores everything and
+then allows back only the files I hand-write; `git -C ~/.claude ls-files`
+lists them. Everything else in `~/.claude` - sessions, memory, caches,
+installed skills - stays untracked.
+
+**NO CHANGE TO A TRACKED FILE IS EVER LEFT UNCOMMITTED.** Every edit,
+deletion, rename and move is reviewed and committed in the same turn as the
+change, whatever task it came up in. A deletion is the dangerous one: git
+lists a file until a commit records that it is gone, and the sync stops on a
+tracked file that is missing at home and publishes nothing, dotfiles
+included.
+
+- **Review the diff with the `tkay-code` review standard** before committing,
+  and show me the verdict. A MUST HAVE finding is fixed before the commit,
+  not after it.
+- **Commit with the `tkay-code` commit standard**, signed, deciding squash or
+  new commit like anywhere else.
+- **If the commit is refused**, print the exact command as a `! <command>`
+  suggestion and do not work around the refusal.
+- **A turn that changed anything in `~/.claude` ends with
+  `git -C ~/.claude status --short` printing nothing.** Run it before the last message. Anything it
+  lists is reviewed and committed before you reply, including a change you
+  did not make.
+
+**A new file joins the allowlist only after I agree.** Tracking a file
+publishes it: the sync copies whatever this repo tracks into the public repo.
+
+## A hook is live the moment it is saved
+
+**A file under `~/.claude/hooks` is NEVER edited in place.** Every session on
+this machine runs it the moment it is saved, so a half-applied edit is not a
+draft there. `tool-gate.py` fails closed: if it raises, it denies every
+command it touches, in every session, including the commands that would undo
+the edit. A permission layer can refuse one edit of a change and allow the
+next, which is exactly how that state arises.
+
+1. **Stage it.** Copy the hook into `~/.cache/claude-handoff` and make every
+   edit to the copy.
+2. **Test the staged copy.** Run its `--selftest` where it has one, and
+   put every case the change is about through the copy before the live file
+   is touched.
+3. **Install it in one step.** One `cp` of the tested copy over the live file,
+   then the same tests against the live file. A failure there is undone with
+   `git -C ~/.claude restore <file>` before anything else; when the broken
+   hook denies that, print it for me as a `! <command>` and stop.
+4. **If the install is refused**, confirm the staged copy still exists, print
+   the `cp` for me as a `! <command>` and stop. Never retry the install by
+   another route.
+
+**If a hook is already broken**, the first line of your reply says so, names
+what it now denies, and gives the `! git -C ~/.claude restore <file>` that
+undoes it.
+
+## Know what only I can run, before you start
+
+**Never discover a protection by failing at it.** Before the first change of a
+task, work out which of its steps this session cannot do itself:
+
+- a write the sandbox denies - its config, shown at session start, lists the
+  protected paths, `~/.claude/hooks` and the settings among them;
+- an edit auto mode refuses as self-modification - a hook, the settings, the
+  permission rules;
+- a history rewrite auto mode refuses as destructive - an interactive rebase
+  that rewords or squashes a commit below HEAD. Order the work so it never
+  arises: fix a commit's message or content while it is still HEAD, where an
+  amend does it, before stacking anything on top.
+
+Then say up front which steps are mine, do everything else first, and hand me
+the rest once, at the end, in the order it must run - one bracketed block per
+command. What I am to apply is staged under `~/.cache/claude-handoff`, not
+`/private/tmp/claude`, which can vanish mid-session; check it exists right
+before the handoff and delete it once applied.
+
+## Blocked on me under a `/goal`
+
+When a goal cannot move until I act, say so once, with the command that
+unblocks it and `/goal clear`. Every time the Stop hook fires again after
+that, answer in one line; the full status never repeats.
 
 ## Values for a chart live with the chart
 
@@ -651,12 +671,17 @@ A `values.schema.json` with `additionalProperties: false` in the chart makes
 Helm refuse the unknown key for every installer, the ones that paste values
 into a UI included; propose it to the chart's repo when the chance comes.
 
-## Enums over strings
+## A path must hold wherever it is followed
 
-**ALWAYS use an enum instead of string literals for a fixed set of values** -
-status codes, result types, fixed categories, bounded config options. Typos get
-caught at development time, all possible values live in one place, and renames
-are safe. Never list an enum's values in a docstring; reference the enum class.
+**Before writing a path into anything - a skill, a doc, a script, a comment -
+ask where the reader will be standing when they follow it, and whether that
+is true every time.** Is this file only ever used from inside its own repo,
+or is it installed and run from anywhere? A path relative to the current
+directory is right only in the first case. A skill is the second: it runs
+from whatever repo the session opened and is installed into a cache, so its
+own files are `${CLAUDE_SKILL_DIR}/...`, never `.claude/skills/...` or
+`~/.claude/skills/...`. A path into a different repo names that repo and
+says a checkout of it is needed.
 
 # TEMP FILES GO UNDER /private/tmp/claude
 
@@ -665,6 +690,17 @@ Every scratch file you create for your own work lives under `/private/tmp/claude
 `/tmp/<file>`. `/tmp` is a symlink to `/private/tmp` on macOS and the sandbox
 checks the resolved path, so a file at the top of `/tmp` is one you can create
 through a hook or a tool but never delete. Create the directory if it is missing.
+
+**Anything you create outside `/private/tmp/claude` is yours to delete, and
+you delete it without asking or reporting it** - the same rule as a backup
+branch. A commit-message file in `.git`, a helper script, a probe's state
+file, a scratch copy written where a tool outside the sandbox could read it:
+the moment it has done its job, remove it in its own `rm`. Never leave my
+Mac carrying files I did not ask for and do not know exist. Put scratch
+under `/private/tmp/claude` whenever the tool that reads it can reach that
+path, so a session I quit before you clean up leaves nothing a restart does
+not clear; write outside it only when nothing else works, and then the
+delete is owed before the turn ends.
 
 **Never put `rm` in a command that does real work.** The org's policy prompts
 on every `rm`, scratch included, and an allow rule cannot override an ask
