@@ -38,12 +38,6 @@ PRIVATE_FILES=(
     .zshrc
 )
 
-CLAUDE_FILES=(
-    CLAUDE.md
-    settings.json
-    settings.local.json
-)
-
 PRIVATE_OPEN='# >>> PRIVATE >>>'
 PRIVATE_CLOSE='# <<< PRIVATE <<<'
 
@@ -140,19 +134,17 @@ for f in "${HOME_FILES[@]}"; do
     install_home_file "$f"
 done
 
-for f in "${CLAUDE_FILES[@]}"; do
+# ~/.claude is a git repo whose .gitignore allows back only the hand-written
+# files, so what it tracks is what gets published. Rebuilt from scratch so a
+# file deleted there disappears here too. Its .gitignore stays home: copied
+# here, it would ignore everything under claude/.
+claude_files="$(git -C "$HOME/.claude" ls-files)" \
+    || die "cannot list the files tracked in ~/.claude"
+rm -rf "$REPO/claude"
+while IFS= read -r f; do
+    [ "$f" = .gitignore ] && continue
     install_file "$HOME/.claude/$f" "claude/$f"
-done
-
-# The tkay- prefix is what marks a hand-written skill; everything else under
-# ~/.claude/skills is installed from a public repo or synced from claude.ai.
-# Rebuilt from scratch so a skill deleted at home disappears here too.
-rm -rf "$REPO/claude/skills"
-mkdir -p "$REPO/claude/skills"
-cp -R "$HOME"/.claude/skills/tkay-* "$REPO/claude/skills/"
-
-rm -rf "$REPO/claude/hooks"
-cp -R "$HOME/.claude/hooks" "$REPO/claude/hooks"
+done <<<"$claude_files"
 
 # This file is excluded because SECRET_PATTERN would match its own source.
 found="$(grep -rInE "$SECRET_PATTERN" "$REPO" \
