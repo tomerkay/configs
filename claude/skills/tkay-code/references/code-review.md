@@ -52,7 +52,7 @@ Severity says **how broken** it is. Policy says **whether I have to act before m
 - `🟡 QUALITY · MUST HAVE [violates an explicit rule in the repo's CLAUDE.md - name the rule]`
 
 **Legitimate reasons to promote 🟡/⚪ → MUST HAVE:** false or misleading commit message (git history is permanent), a violation of a rule stated explicitly in the repo's `CLAUDE.md`, or docs that now actively lie about behavior. A departure from `references/clean-code.md` keeps the severity and policy the checklist below gives it; being written down there is not on its own a reason to promote.
-**Legitimate reasons to demote 🟠 → NICE TO HAVE:** pre-existing condition this commit didn't introduce, or a trigger threshold we are provably nowhere near. Say which.
+**Legitimate reasons to demote 🟠 → NICE TO HAVE:** pre-existing condition this commit didn't introduce, a trigger threshold we are provably nowhere near, or a 🟠 RISK (UNVERIFIED) I accepted as untested. Say which.
 
 **Never demote to dodge an argument.** If you're unsure whether it blocks, it's MUST HAVE and you say you're unsure. NICE TO HAVE is a claim that shipping without it is safe - own it.
 
@@ -159,6 +159,12 @@ When nothing came up, the heading stays and the table is one line instead:
 - **No severity inflation.** If you cannot write the concrete failure scenario, it is NOT a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG** · MUST HAVE:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED) · MUST HAVE** and state exactly what you couldn't check.
+- **SHIP IT needs executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the verdict, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
+  **Every test you can run yourself, you run - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED) · MUST HAVE** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks SHIP IT until it is run or I accept it as untested. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
+  Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
+  - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
+  - **Sure without it** - a percentage and the reason: which parts of the claim are already proven and what rests on reasoning alone.
+  - **Sure with it** - a percentage, and what would still be unproven after the test passes.
 - **State confidence when you're unsure.** "🟠 RISK · MUST HAVE (high confidence)" vs "🟠 RISK · MUST HAVE (speculative - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently become NICE TO HAVE.
 - **Where the borderline cases land:**
   - Weak/vague commit message → 🟡 · NICE TO HAVE. Commit message making a FALSE CLAIM about behavior → still 🟡 on severity (the code works) but **MUST HAVE** on policy - it lies to whoever bisects this later, and history is permanent. This is the textbook case for why the two axes exist.

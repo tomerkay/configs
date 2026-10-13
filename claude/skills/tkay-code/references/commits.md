@@ -84,8 +84,9 @@ do not add one.
 never who asked for it or what wrote it (`fix-by-claude` says nothing). A
 ticket key goes in when the convention has one and the task has one.
 
-When you create the branch, tell me the name and the convention it follows in
-one line.
+**A branch meant to be pushed is proposed before it is created**: give me the
+name and the convention it follows in one line, and wait for my answer. A
+backup or scratch branch is created without asking.
 
 ## Documentation Sync on Every Commit
 

@@ -4,6 +4,9 @@
     "PATH": "/Users/tkay/.local/bin:/Users/tkay/.cargo/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/tkay/.krew/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/opt/homebrew/share/google-cloud-sdk/bin:/Users/tkay/go/bin:/Users/tkay/repos/atero-um/venv/bin:/Users/tkay/.gvm/pkgsets/go1.24.10/global/bin:/Users/tkay/.gvm/gos/go1.24.10/bin:/Users/tkay/.gvm/pkgsets/go1.24.10/global/overlay/bin:/Users/tkay/.gvm/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Applications/iTerm.app/Contents/Resources/utilities:/Users/tkay/.fzf/bin"
   },
   "permissions": {
+    "ask": [
+      "Bash(python3 *board.py publish *)"
+    ],
     "allow": [
       "SandboxNetworkAccess",
       "Bash(.venv/bin/atero-grafana deploy:*)",
