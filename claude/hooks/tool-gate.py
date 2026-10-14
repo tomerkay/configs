@@ -473,7 +473,11 @@ def classify_xh(args):
     return READ
 
 
+GH_GLOBAL_VALUE_FLAGS = {"-R", "--repo"}
+
+
 def classify_gh(args):
+    args, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
     pos = positionals(args)
     if not pos:
         return READ
@@ -485,7 +489,11 @@ def classify_gh(args):
         method = http_method(args, "-X", "--method")
         if method == "DELETE":
             return DANGER
-        if method != "GET" or has_flag(args, "-f", "-F", "--field", "--raw-field", "--input"):
+        # Fields switch the default method to POST; under an explicit GET they are query params.
+        fields = has_flag(args, "-f", "-F", "--field", "--raw-field")
+        if (method != "GET" or has_flag(args, "--input")
+                or (fields and not any(a == "--method" or a.startswith(("-X", "--method="))
+                                       for a in args))):
             return WRITE
         return READ
     if group in ("search", "status", "browse", "help", "version", "completion"):
@@ -497,15 +505,29 @@ def classify_gh(args):
         return READ
     if sub in ("merge", "delete", "cancel", "rerun-failed", "lock", "unlock", "transfer"):
         return DANGER
+    # Every MR verb but checkout lands on the shared MR where reviewers see it.
+    if group in ("pr", "mr") and sub not in ("", "checkout"):
+        return DANGER
     return WRITE
+
+
+GLAB_LOCAL_GROUPS = {"auth", "config", "alias"}
+GLAB_LOCAL_SUBS = {"checkout", "clone"}
+
+
+def classify_glab(args):
+    kind = classify_gh(args)
+    rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
+    group, sub = (positionals(rest) + ["", ""])[:2]
+    local = group in GLAB_LOCAL_GROUPS or sub in GLAB_LOCAL_SUBS
+    return DANGER if kind == WRITE and not local else kind
 
 
 def classify_claude(args):
     # A print-mode call is a model call that writes nothing only once both tool surfaces are
     # off: `--tools ""` removes the built-in tools and leaves the connectors, which the
     # disallow pattern removes. Anything else can edit files or post somewhere.
-    pos = positionals(args)
-    if pos[:2] == ["auth", "status"]:
+    if args[:2] in (["auth", "status"], ["plugin", "list"]) or args[:3] == ["plugin", "marketplace", "list"]:
         return READ
     if has_flag(args, "-p", "--print"):
         no_builtin = any(a == "--tools=" or (a == "--tools" and args[i + 1:i + 2] == [""])
@@ -890,7 +912,7 @@ HANDLERS = {
     "stern": classify_stern,
     "curl": classify_curl, "http": classify_xh, "https": classify_xh, "xh": classify_xh,
     "wget": classify_wget,
-    "gh": classify_gh, "glab": classify_gh,
+    "gh": classify_gh, "glab": classify_glab,
     "claude": classify_claude,
     "docker": classify_docker, "podman": classify_docker, "nerdctl": classify_docker,
     "gcloud": generic_verbs, "crusoe": generic_verbs, "aws": generic_verbs, "az": generic_verbs,
@@ -1659,6 +1681,12 @@ def selftest():
         (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
         (False, "Bash", 'which claude; stat -f "%Sm %N" "$(readlink -f "$(which claude)")" 2>&1', None),
         (False, "Bash", "claude auth status", None),
+        (False, "Bash", "claude -p auth status", DENY),
+        (False, "Bash", "claude plugin list --json --available", None),
+        (False, "Bash", "claude plugin marketplace list", None),
+        (False, "Bash", "claude -p plugin list", DENY),
+        (False, "Bash", "claude plugin install foo", DENY),
+        (False, "Bash", "claude plugin marketplace update", DENY),
         (False, "Bash", "claude -p 'Review' --tools \"\" --disallowedTools 'mcp__*'", None),
         (False, "Bash", "claude -p 'Review' --tools \"\"", DENY),
         (False, "Bash", "claude -p 'Review'", DENY),
@@ -1798,6 +1826,33 @@ def selftest():
         ("cat <(rm -rf /etc)", DANGER),
         ("diff <(sort a) <(sort b)", READ),
         ("tee >(rm -rf /etc)", DANGER),
+        ("glab mr update 3 --description-file d.md", DANGER),
+        ("gh pr edit 3 --body-file d.md", DANGER),
+        ("glab mr create --fill", DANGER),
+        ("glab mr note 3 -m x", DANGER),
+        ("gh pr checkout 3", WRITE),
+        ("glab mr view 3", READ),
+        ("gh repo clone o/r", WRITE),
+        ("glab api -X PUT projects/p/merge_requests/3 -f title=x", DANGER),
+        ("glab api projects/p/merge_requests/3/notes -f body=x", DANGER),
+        ("glab api graphql -f query='mutation{x}'", DANGER),
+        ("glab api projects/p/merge_requests/3", READ),
+        ("glab api -X GET projects/p/merge_requests -f state=opened", READ),
+        ("glab issue create -t x", DANGER),
+        ("glab ci retry 5", DANGER),
+        ("glab -R g/p mr update 3 -d x", DANGER),
+        ("glab config set editor vim", WRITE),
+        ("glab alias set v 'mr view'", WRITE),
+        ("glab auth login", WRITE),
+        ("glab repo clone g/r", WRITE),
+        ("glab mr checkout 3", WRITE),
+        ("glab -R g/p mr checkout 3", WRITE),
+        ("glab --repo=g/p mr checkout 3", WRITE),
+        ("glab -Rg/p repo clone g/r", WRITE),
+        ("glab api -XGET projects/p/merge_requests -f state=opened", READ),
+        ("glab api --method=GET projects/p/merge_requests -f state=opened", READ),
+        ("glab api -XPUT projects/p/merge_requests/3 -f title=x", DANGER),
+        ("gh api -X PATCH repos/o/r/pulls/1 -f body=x", WRITE),
     ]
     for command, expected in label_cases:
         got = classify_command(command)

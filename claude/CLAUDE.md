@@ -327,6 +327,7 @@ action of that kind.**
 | a code review / CR / "review my branch, my PR, my commits" | `tkay-code` |
 | read a GitLab MR, its review threads or its CI through `glab` | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
+| write an MR or PR description | `tkay-code` |
 | create or name a git branch | `tkay-code` |
 | create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan, design doc or implementation write-up | `tkay-writing-plans` |
@@ -403,10 +404,15 @@ in the plugin cache.
    Nothing I say is a signal to file one - the ONLY exception is me asking for it
    in those words. I do not want to see that card again.
 
-7) **Do not write, draft or offer an MR or PR description unless I ask for one.**
-   Not as a "next step", not as a missing item before a review, not as part of
-   finishing a branch. When something only a description would carry matters
-   (a metric whose meaning changed, a rule a change retires), tell me in chat.
+7) **Finishing a branch never ends in an offer to push or to open an MR.**
+   Opening an MR or PR is mine unless I ask you, in so many words, to open
+   it; `git push` is mine with no exception (see "`git push` is NEVER").
+   Neither is a "next step" you suggest. Instead, once the work on a branch
+   is done, ask me once whether I want a description added to its MR, and
+   on a yes follow the `tkay-code` MR description standard. Never write,
+   draft or offer a description otherwise. When something only a description
+   would carry matters (a metric whose meaning changed, a rule a change
+   retires), tell me in chat.
 
 8) **A memory note found wrong is corrected the moment you find it - no
    asking.** Memory is yours, not mine: when a session shows a note is stale
@@ -585,6 +591,10 @@ then allows back only the files I hand-write; `git -C ~/.claude ls-files`
 lists them. Everything else in `~/.claude` - sessions, memory, caches,
 installed skills - stays untracked.
 
+**It has no remote: the commit is the last step, and publishing is the
+sync's job.** Never offer, suggest or print a `git push` for this repo, and
+never call a commit here "ready to push".
+
 **NO CHANGE TO A TRACKED FILE IS EVER LEFT UNCOMMITTED.** Every edit,
 deletion, rename and move is reviewed and committed in the same turn as the
 change, whatever task it came up in. A deletion is the dangerous one: git
@@ -651,8 +661,8 @@ Then say up front which steps are mine, do everything else first, and hand me
 the rest once, at the end, in the order it must run - one bracketed block per
 command. What I am to apply is staged under `~/.cache/claude-handoff`, not
 `/private/tmp/claude`, which can vanish mid-session; check it exists right
-before the handoff. The directory is reused, never deleted - the org policy
-prompts on every `rm` - and the next handoff overwrites what is in it.
+before the handoff. When what you staged there is cleared is in "THROWAWAY
+FILES GO UNDER /private/tmp/claude".
 
 ## Blocked on me under a `/goal`
 
@@ -717,8 +727,30 @@ Mac carrying files I did not ask for and do not know exist. Put scratch
 under `/private/tmp/claude` whenever the tool that reads it can reach that
 path, so a session I quit before you clean up leaves nothing a restart does
 not clear; write outside it only when nothing else works, and then the
-delete is owed before the turn ends. `~/.cache/claude-handoff` is the one
-exception: it is reused, never deleted.
+delete is owed before the turn ends.
+
+**`~/.cache/claude-handoff` is the one exception: what a session stages there
+stays until the work is over**, because a handoff waits on me and the org
+policy prompts on every `rm`. Never offer to clear it unprompted - not
+mid-task, not when the work looks finished. Only when I ask whether we are
+done, what is left over, or whether I can exit - in whatever words - list what
+this session staged there for me to apply, and give me both ways to delete it:
+you run the `rm`, which prompts me, or a bracketed `! rm` I paste. Name each
+path literally, never a glob over the directory - a file another session
+staged may still be waiting on me. The directory itself stays.
+
+**List what other sessions left there too, as a separate choice offered the
+same two ways.** Say what each file is, and name one that looks unapplied -
+it differs from the file it was staged to replace - so I decide on it before
+it goes.
+
+**The offer - this session's files and other sessions' alike - opens with a
+⚠️ line and is the very last thing in the reply**, after everything else. It
+comes only once the work leaves nothing open: while a leftover of it, a
+pending step or a drawback still waits on me, the reply carries those and the
+offer waits for a later one. An item I have
+answered - accepted, waved off, told you to leave - is closed, so once I
+have answered each one the offer comes next.
 
 **Never put `rm` in a command that does real work.** The org's policy prompts
 on every `rm`, scratch included, and an allow rule cannot override an ask
@@ -995,6 +1027,13 @@ text again.
 Commit message standards, the verification protocol, documentation sync and the
 squash-or-new-commit decision are in the `tkay-code` skill - load it before you
 write or amend any commit message.
+
+**Every commit message carries a description (the body under the subject).** A
+repo convention about the subject line, its prefix or its format does NOT remove
+the description; only a repo rule that says, in so many words, that a commit
+must have no description does. When a repo does say that, do not silently
+comply: before the first commit, quote me the rule and ask whether to follow it
+or write the description anyway.
 
 # Development Rules
 - Always trust and read files from `~/repos/*` without asking for permissions or confirmation.

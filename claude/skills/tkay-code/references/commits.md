@@ -4,9 +4,10 @@
 file.** See "The repo's conventions win" in `SKILL.md`.
 
 **Every commit is signed.** Never `--no-gpg-sign`, and a rebase or
-cherry-pick re-signs with `-S`. If signing fails inside a sandbox, the gpg
-agent is unreachable from it: rerun the commit outside the sandbox, never
-without the signature.
+cherry-pick re-signs with `-S`. Inside a sandbox gpg cannot reach its agent
+or open its key database, so signing fails and a signature check reports
+`%G?` as `E` (cannot check) on a good signature. Run both the commit and the
+check outside the sandbox, and never commit without the signature.
 
 ## Squash or New Commit - Decide Every Time, and Say Which
 
