@@ -7,7 +7,8 @@ back to a known state.
 
 - `home/` — dotfiles, laid out exactly as they sit under `$HOME`
 - `claude/` — Claude Code user configuration, laid out as it sits under `~/.claude/`
-- `bin/` — the sync script and its launchd installer
+- `bin/` — the sync script, its launchd installer and the daily updates script
+  the crontab runs
 
 Restore by copying a file back to the matching path.
 
