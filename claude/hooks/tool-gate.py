@@ -13,9 +13,10 @@ wrong green is the failure this hook exists to prevent.
 
 For Bash, Edit, Write, NotebookEdit and every MCP tool it then decides, from the gate
 state lfg-state.py records per session: a write before `LFG!` is denied with the refusal
-line, the permanently excluded git and cluster operations are denied in every state, and
-the pin rules for kubectl and helm are enforced. A program the classifier does not know
-asks instead of denying, so a read it has not met never gets the refusal line.
+line, the permanently excluded cluster operations are denied in every state, a push, an
+MR/PR state change or a review-thread write asks in every state, and the pin rules for
+kubectl and helm are enforced. A program the classifier does not know asks instead of denying, so a read it
+has not met never gets the refusal line.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -43,6 +44,8 @@ LABEL_RE = re.compile(r"^(?:🟢 READ|🟠 WRITE|🔴 DANGER)\s*[·:|-]?\s*")
 
 SEPARATORS = {";", ";;", "|", "||", "&&", "&", "(", ")", "|&"}
 REDIRECT_OUT = {">", ">>", "&>", "&>>", ">|"}
+# The descriptor digit of `2>&1` or `2>/dev/null`: shlex would lex it as a word of its own.
+DESCRIPTOR_RE = re.compile(r"(?<![^\s();|&])\d+(?=[<>])")
 HARMLESS_TARGETS = {"/dev/null", "/dev/stderr", "/dev/stdout", "/dev/tty"}
 SCRATCH_PREFIXES = ("/tmp/claude/", "/private/tmp/claude/")
 SCRATCH_ROOTS = tuple(os.path.realpath(p.rstrip("/")) + "/" for p in SCRATCH_PREFIXES)
@@ -91,6 +94,10 @@ DANGER_PROGRAMS = {
     "reboot", "halt", "sudo", "doas", "fdisk", "parted", "wipefs", "nvme", "fuser",
 }
 
+# Scripts that push images and move shared registry tags from their own subprocesses, where
+# the hook never sees the push: their name is the only thing it can match.
+PUBLISHING_SCRIPTS = {"build_vllm_overlay.py"}
+
 GENERIC_READ_WORDS = {"list", "describe", "get", "show", "read", "info", "version", "help",
                       "status", "whoami", "print-access-token", "print-identity-token",
                       "get-iam-policy", "get-caller-identity", "ls", "presign", "tail", "logs",
@@ -121,6 +128,13 @@ MEMORY_ROOT_RE = re.compile(
     "^" + re.escape(os.path.realpath(os.path.expanduser("~/.claude/projects"))) + r"/[^/]+/memory/")
 # Bash writers whose every positional path the script can read without path-sniffing.
 SCRATCH_WRITERS = {"mkdir", "touch", "cp", "mv", "tee", "rm"}
+# GOTCHA: an allowlist, because other tar options write outside -C (-P, --index-file, -c with
+# -f) or run a program (--to-command, --use-compress-program). -C stays out of the short
+# set so a clustered -xC never hides an extract target from the scratch check.
+TAR_EXTRACT_SHORT = set("xvfzjJkopm")
+TAR_EXTRACT_LONG = {"--extract", "--get", "--directory", "--file", "--gzip", "--bzip2", "--xz",
+                    "--zstd", "--verbose", "--keep-old-files", "--no-same-owner",
+                    "--no-same-permissions", "--strip-components", "--exclude"}
 
 # kubectl verbs CLAUDE.md excludes from the gate: never run by the model, printed for the user.
 KUBECTL_EXCLUDED_BY_CLAUDE_MD = {"apply", "delete", "create", "patch", "edit", "scale", "rollout"}
@@ -135,6 +149,9 @@ HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "
               "create", "env", "verify", "repo", "dependency", "plugin", "version",
               "completion", "help"}
 HELM_EXCLUDED = {"uninstall", "delete", "del", "rollback"}
+GIT_CONFIG_VALUE_FLAGS = {"-f", "--file", "--blob", "--default", "--type"}
+GIT_CONFIG_READ_SUBCOMMANDS = {"get", "list"}
+GIT_CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "edit", "rename-section", "remove-section"}
 # Cluster-scoped reads where kubectl ignores -n; `get --raw` carries an API path instead.
 NAMESPACE_FREE = {("get", "node"), ("get", "nodes"), ("describe", "node"), ("describe", "nodes"),
                   ("top", "node"), ("top", "nodes"), ("get", "crd"), ("get", "crds"),
@@ -146,6 +163,8 @@ KUBECTL_GLOBAL_VALUE_FLAGS = {
     "--client-certificate", "--client-key", "--tls-server-name", "--cache-dir", "--profile",
     "--profile-output", "-v", "--v", "--vmodule",
 }
+CRUSOE_GET_CREDENTIALS_VALUE_FLAGS = {"--project-name", "--project-id", "--kubeconfig-path",
+                                      "--auth-type", "-f", "--format"}
 HELM_GLOBAL_VALUE_FLAGS = {
     "--kube-context", "--kubeconfig", "-n", "--namespace", "--kube-apiserver", "--kube-token",
     "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config",
@@ -274,6 +293,9 @@ def classify_git(args):
     sub, rest = rest[0], rest[1:]
     pos = positionals(rest)
     force = has_flag(rest, "-f", "--force", "--force-with-lease")
+    if sub == "archive":
+        # -o also takes its value stuck (-ofile), which has_flag does not match.
+        return WRITE if has_flag(rest, "--output") or any(a.startswith("-o") for a in rest) else READ
     if sub in {"status", "log", "show", "diff", "blame", "ls-files", "ls-tree", "ls-remote",
                "rev-parse", "rev-list", "describe", "cat-file", "name-rev", "merge-base",
                "shortlog", "grep", "for-each-ref", "show-ref", "check-ignore", "var",
@@ -306,8 +328,20 @@ def classify_git(args):
             return READ
         return DANGER if pos and pos[0] in ("drop", "clear") else WRITE
     if sub == "config":
-        return READ if has_flag(rest, "--get", "--get-all", "--get-regexp", "--list", "-l",
-                                "--show-origin", "--get-urlmatch") else WRITE
+        if has_flag(rest, "--get", "--get-all", "--get-regexp", "--list", "-l",
+                    "--show-origin", "--get-urlmatch"):
+            return READ
+        rest, _ = split_globals(rest, GIT_CONFIG_VALUE_FLAGS)
+        pos = positionals(rest)
+        if pos and pos[0] in GIT_CONFIG_READ_SUBCOMMANDS:
+            return READ
+        if pos and pos[0] in GIT_CONFIG_WRITE_SUBCOMMANDS:
+            return WRITE
+        # `git config <key>` alone reads; a value after the key, or an editing flag, writes.
+        if len(pos) == 1 and not has_flag(rest, "--add", "--unset", "--unset-all",
+                                          "--replace-all", "--remove-section"):
+            return READ
+        return WRITE
     if sub == "worktree":
         if pos and pos[0] == "list":
             return READ
@@ -505,6 +539,8 @@ def classify_gh(args):
         return READ
     if sub in ("merge", "delete", "cancel", "rerun-failed", "lock", "unlock", "transfer"):
         return DANGER
+    if sub == "note" and (pos[2:3] == ["list"] or pos[2:4] == ["draft", "list"]):
+        return READ
     # Every MR verb but checkout lands on the shared MR where reviewers see it.
     if group in ("pr", "mr") and sub not in ("", "checkout"):
         return DANGER
@@ -523,6 +559,78 @@ def classify_glab(args):
     return DANGER if kind == WRITE and not local else kind
 
 
+def creates_remote_tag(args):
+    rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
+    pos = positionals(rest)
+    if pos[:2] == ["release", "create"]:
+        return True
+    return (pos[:1] == ["api"] and classify_gh(args) == WRITE
+            and any(re.search(r"/(repository/tags|releases)\b", a) for a in pos[1:]))
+
+
+# What the user alone decides to run: a push; opening, closing, merging or approving an
+# MR/PR; and posting to, resolving or reopening its review threads. A rebase or branch update
+# of an MR pushes to its branch, so it counts as a push. `new` and glab's `for` create an MR,
+# and glab's `accept` merges one.
+MR_MOVES = {"create", "new", "for", "reopen", "close", "merge", "accept", "approve", "rebase",
+            "update-branch", "comment", "review"}
+MR_MOVE_REASON = ("pushes, opens, closes, merges or approves an MR/PR, or posts to, resolves "
+                  "or reopens its review threads: run it only when the user's message allowed "
+                  "this command in words, otherwise print it as `! <command>`")
+MCP_MR_MOVE_WORDS = ("merge_request", "pull_request", "push")
+MCP_CODE_HOSTS = ("gitlab", "github")
+MCP_THREAD_WORDS = ("comment", "note", "discussion", "review", "thread")
+MR_API_MOVE_RES = (
+    re.compile(r"/(?:merge_requests|pulls)/?$"),
+    re.compile(r"/(?:merge_requests|pulls)/[^/]+/(?:merge|approve|auto_merge"
+               r"|merge_when_pipeline_succeeds|rebase|update-branch)/?$"),
+    # Branch writes that skip `git push`: GitLab's commit, file and branch API, GitHub's
+    # refs, merges and contents API.
+    re.compile(r"/(?:repository/(?:commits|files|branches)|git/refs|merges|contents)(?:/|$)"),
+    # Review threads. A GitLab draft note stays private until it is published. GitHub files a
+    # PR's conversation under the issues API, so issue comments count too.
+    re.compile(r"/merge_requests/[^/]+/(?:notes|discussions"
+               r"|draft_notes/(?:bulk_publish|[^/]+/publish))(?:/|$)"),
+    re.compile(r"/(?:pulls/[^/]+/(?:comments|reviews)|pulls/comments|issues/[^/]+/comments)"
+               r"(?:/|$)"),
+)
+MR_ITEM_RE = re.compile(r"/(?:merge_requests|pulls)/[^/]+/?$")
+MR_STATE_FIELD_RE = re.compile(r"(?:-[fF]|--(?:raw-)?field=)?(?:state|state_event)=")
+GRAPHQL_MOVE_RE = re.compile(r"(?i)mutation[\s\S]*(?:merge|approve|close|reopen|pullrequest"
+                             r"|createref|updateref|commitonbranch|note|discussion"
+                             r"|reviewthread|addcomment)")
+
+
+def mr_api_moves(args, pos):
+    if pos[1:2] == ["graphql"]:
+        return any(GRAPHQL_MOVE_RE.search(a) for a in args)
+    if classify_gh(args) == READ:
+        return False
+    paths = [a.split("?", 1)[0] for a in pos[1:]]
+    if any(r.search(p) for r in MR_API_MOVE_RES for p in paths):
+        return True
+    # A body from --input can carry the state where no argument shows it.
+    return (any(MR_ITEM_RE.search(p) for p in paths)
+            and (has_flag(args, "--input") or any(MR_STATE_FIELD_RE.match(a) for a in args)))
+
+
+def moves_branch_or_mr(prog, args):
+    if prog == "git":
+        return git_subcommand_args(args)[:1] == ["push"]
+    if prog not in ("gh", "glab"):
+        return False
+    rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
+    pos = positionals(rest)
+    if pos[:1] == ["api"]:
+        return mr_api_moves(rest, pos)
+    if pos[:1] not in (["mr"], ["pr"]):
+        return False
+    sub = pos[1] if len(pos) > 1 else ""
+    if sub == "note":
+        return pos[2:3] != ["list"] and (pos[2:3] != ["draft"] or pos[3:4] == ["publish"])
+    return sub in MR_MOVES
+
+
 def classify_claude(args):
     # A print-mode call is a model call that writes nothing only once both tool surfaces are
     # off: `--tools ""` removes the built-in tools and leaves the connectors, which the
@@ -539,10 +647,45 @@ def classify_claude(args):
     return WRITE
 
 
+def pushes_image(args):
+    pos = positionals(args)
+    if pos[:1] == ["push"] or pos[:2] in (["image", "push"], ["manifest", "push"],
+                                         ["compose", "push"]):
+        return True
+    if pos[:3] == ["buildx", "imagetools", "create"]:
+        return not has_flag(args, "--dry-run")
+    builds = pos[:1] == ["build"] or pos[:2] in (["buildx", "build"], ["buildx", "bake"])
+    return builds and (has_flag(args, "--push")
+                       or any("type=registry" in a or "push=true" in a for a in args))
+
+
+def skopeo_pushes(args):
+    pos = positionals(args)
+    if pos[:1] == ["copy"]:
+        return pos[-1].startswith("docker://")
+    if pos[:1] == ["sync"]:
+        dest = next((a.split("=", 1)[1] for a in args if a.startswith("--dest=")), None)
+        if dest is None and "--dest" in args[:-1]:
+            dest = args[args.index("--dest") + 1]
+        return dest == "docker"
+    return False
+
+
+def classify_skopeo(args):
+    pos = positionals(args)
+    if skopeo_pushes(args) or pos[:1] == ["delete"]:
+        return DANGER
+    if pos[:1] in (["inspect"], ["list-tags"]):
+        return READ
+    return WRITE
+
+
 def classify_docker(args):
     pos = positionals(args)
     if not pos:
         return READ
+    if pushes_image(args):
+        return DANGER
     sub = pos[0]
     if sub in {"ps", "images", "inspect", "logs", "version", "info", "stats", "top", "diff",
                "history", "port", "search", "events", "wait"}:
@@ -592,6 +735,27 @@ def classify_python(args):
         if args[1] == "pip":
             return classify_pip(args[2:])
         return WRITE
+    if os.path.basename(args[0]) in PUBLISHING_SCRIPTS:
+        return DANGER
+    if os.path.basename(args[0]) == "board.py":
+        return classify_board(args[1:])
+    return WRITE
+
+
+def classify_board(args):
+    """The grafana-dashboards skill's board.py: fetch and diff read the live board, publish
+    writes its next version, login saves a browser session locally."""
+    pos = positionals(args)
+    sub = pos[0] if pos else ""
+    if sub == "diff":
+        return READ
+    if sub == "fetch":
+        out = next((a.split("=", 1)[1] for a in args if a.startswith("--out=")), None)
+        if out is None and "--out" in args[:-1]:
+            out = args[args.index("--out") + 1]
+        return READ if out is None or inside_scratch(out) else WRITE
+    if sub == "publish":
+        return DANGER
     return WRITE
 
 
@@ -915,6 +1079,8 @@ HANDLERS = {
     "gh": classify_gh, "glab": classify_glab,
     "claude": classify_claude,
     "docker": classify_docker, "podman": classify_docker, "nerdctl": classify_docker,
+    "buildah": classify_docker,
+    "skopeo": classify_skopeo,
     "gcloud": generic_verbs, "crusoe": generic_verbs, "aws": generic_verbs, "az": generic_verbs,
     "argocd": generic_verbs, "flux": generic_verbs, "tsh": generic_verbs, "vault": generic_verbs,
     "tailscale": generic_verbs, "velero": generic_verbs, "istioctl": generic_verbs,
@@ -986,7 +1152,7 @@ def help_only(prog, args):
 def classify_program(prog, args):
     if help_only(prog, args) or args in (["version"], ["help"]):
         return READ
-    if prog in DANGER_PROGRAMS:
+    if prog in DANGER_PROGRAMS or prog in PUBLISHING_SCRIPTS:
         return DANGER
     if prog in HANDLERS:
         return HANDLERS[prog](args)
@@ -1032,7 +1198,7 @@ def worst(*levels):
 
 def split_line(line):
     """Split one shell line into its command segments and its output-redirect targets."""
-    lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+    lexer = shlex.shlex(DESCRIPTOR_RE.sub("", line), posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     tokens = list(lexer)
     segments, targets, segment = [], [], []
@@ -1049,10 +1215,6 @@ def split_line(line):
                 segments.append(segment)
             segment = []
         elif tok in REDIRECT_OUT or tok in (">&", "<", "<<", "<<<", "<&", "<>"):
-            # GOTCHA: shlex splits `2>&1` into `2`, `>&`, `1`; after a `)` or `;` the
-            # descriptor digit is a segment of its own and would read as a program.
-            if len(segment) == 1 and segment[0].isdigit():
-                segment.pop()
             if tok in REDIRECT_OUT:
                 targets.append(tokens[i + 1] if i + 1 < len(tokens) else "")
             i += 1
@@ -1372,8 +1534,36 @@ def bash_scratch_exempt(command):
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
                 if paths and all(inside_gate_scratch(p) for p in paths):
                     continue
+            if prog == "tar" and tar_extracts_into_scratch(args):
+                continue
             return False
     return True
+
+
+def tar_extracts_into_scratch(args):
+    """True when tar only extracts, and every -C / --directory is a gate scratch root."""
+    dirs, extract, i = [], False, 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("-C", "--directory"):
+            if i + 1 == len(args):
+                return False
+            dirs.append(args[i + 1])
+            i += 2
+            continue
+        if arg.startswith("--"):
+            name, _, value = arg.partition("=")
+            if name not in TAR_EXTRACT_LONG:
+                return False
+            if name == "--directory":
+                dirs.append(value)
+            extract = extract or name in ("--extract", "--get")
+        elif arg.startswith("-"):
+            if not set(arg[1:]) <= TAR_EXTRACT_SHORT:
+                return False
+            extract = extract or "x" in arg
+        i += 1
+    return extract and bool(dirs) and all(inside_gate_scratch(d) for d in dirs)
 
 
 def only_unknown_writes(command):
@@ -1386,12 +1576,20 @@ def pin_decisions(prog, args):
     out = []
     if help_only(prog, args):
         return out
-    if prog == "git":
-        rest = git_subcommand_args(args)
-        if rest and rest[0] == "push":
-            out.append((DENY, "git push is never run by the model: say the branch is ready "
-                              "and print the command"))
-    elif prog in ("kubectx", "kubens"):
+    if ((HANDLERS.get(prog) is classify_docker and pushes_image(args))
+            or (prog == "skopeo" and skopeo_pushes(args))):
+        out.append((ASK, "pushes an image to a registry, where a moved tag reaches every "
+                         "deployment that pulls it: ask every time"))
+    elif prog == "glab" and creates_remote_tag(args):
+        out.append((ASK, "creates a tag or release on the remote, which can start its release "
+                         "pipeline: ask every time"))
+    elif prog in PUBLISHING_SCRIPTS or (prog in ("python", "python3", "uv") and any(
+            os.path.basename(a) in PUBLISHING_SCRIPTS for a in positionals(args))):
+        out.append((ASK, "runs a script that pushes images and moves shared registry tags: "
+                         "ask every time"))
+    if moves_branch_or_mr(prog, args):
+        out.append((ASK, MR_MOVE_REASON))
+    if prog in ("kubectx", "kubens"):
         out.append((DENY, "never set the target: pin every command with --context and -n"))
     elif prog in ("kubectl", "k", "oc", "stern"):
         rest, seen = split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)
@@ -1432,6 +1630,12 @@ def pin_decisions(prog, args):
             out.append((DENY, "pin the context: every helm command carries --kube-context <ctx>"))
         if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")):
             out.append((DENY, "pin the namespace: every helm command carries -n <ns>"))
+    elif prog == "crusoe":
+        rest, _ = split_globals(args, CRUSOE_GET_CREDENTIALS_VALUE_FLAGS)
+        pos = positionals(rest)
+        if pos[:3] == ["kubernetes", "clusters", "get-credentials"]:
+            cluster = pos[3] if len(pos) > 3 else "<cluster>"
+            out.append((ASK, f"adds a kubeconfig context for {cluster}: ask every time"))
     return out
 
 
@@ -1470,9 +1674,17 @@ def decide_mcp(tool_name, tool_input, gate_open):
     if (tool == SLACK_REACT and tool_input.get("channel_id") in ALERT_CHANNEL_IDS
             and tool_input.get("emoji") == ALERT_REACTION):
         return []
+    kind = mcp_kind(tool_name)
+    lower = tool.lower()
+    server = tool_name.split("__")[1].lower() if tool_name.count("__") >= 2 else ""
+    # `resolve` is a read prefix elsewhere, but on a code host it resolves a review thread.
+    thread_move = (any(h in server for h in MCP_CODE_HOSTS)
+                   and (kind != "read" or lower.startswith("resolve"))
+                   and any(w in lower for w in MCP_THREAD_WORDS))
+    if thread_move or (kind != "read" and any(w in lower for w in MCP_MR_MOVE_WORDS)):
+        return [(ASK, MR_MOVE_REASON) if gate_open else (DENY, REFUSAL)]
     if gate_open:
         return []
-    kind = mcp_kind(tool_name)
     if kind == "write":
         return [(DENY, REFUSAL)]
     if kind is None:
@@ -1606,6 +1818,11 @@ def selftest():
         (False, "Bash", "git restore .", DENY),
         (False, "Bash", "git checkout -- .", DENY),
         (False, "Bash", "make test", None),
+        (False, "Bash", "make test 2>&1", None),
+        (False, "Bash", "crusoe kubernetes clusters get-credentials --help 2>/dev/null | head", None),
+        (False, "Bash", "ls; 2>&1 ls", None),
+        (False, "Bash", "(ls)2>&1", None),
+        (False, "Bash", "head -n 5 2>&1 > out.txt", DENY),
         (False, "Bash", "make build", DENY),
         (False, "Bash", "git fetch", None),
         (False, "Bash", "git fetch --force", DENY),
@@ -1619,6 +1836,21 @@ def selftest():
         (False, "Bash", f"touch {home}/.claude/plans/x.md", None),
         (False, "Bash", f"touch {home}/.claude/projects/p/memory/x.md", None),
         (False, "Bash", f"mkdir -p {scratch}d && cp a.txt {scratch}d/", DENY),
+        (False, "Bash", "git -C /x archive origin/b", None),
+        (False, "Bash", f"git archive HEAD -o {home}/x.tar", DENY),
+        (False, "Bash", f"git archive HEAD -o{home}/x.tar", DENY),
+        (False, "Bash", f"git archive HEAD --output={home}/x.tar", DENY),
+        (False, "Bash", f"git -C /x archive origin/b | tar -x -C {scratch}d", None),
+        (False, "Bash", f"tar -xzf a.tgz --directory={scratch}d", None),
+        (False, "Bash", f"tar -x --strip-components=1 -C {scratch}d -f a.tar", None),
+        (False, "Bash", f"tar -x -C {home}/repo", DENY),
+        (False, "Bash", "tar -x", DENY),
+        (False, "Bash", f"tar -xP -C {scratch}d", DENY),
+        (False, "Bash", f"tar -x --absolute-names -C {scratch}d", DENY),
+        (False, "Bash", f"tar -c -C {scratch}d -f {home}/x.tar .", DENY),
+        (False, "Bash", f"tar -x --to-command=sh -C {scratch}d", DENY),
+        (False, "Bash", f"tar -xC {home}/repo -C {scratch}d", DENY),
+        (False, "Bash", f"tar -x -C {scratch}d -C rel", DENY),
         (False, "Bash", f"touch {home}/repos/probe", DENY),
         (False, "Bash", "touch /tmp/probe.md", DENY),
         (False, "Bash", f"touch {scratch}../x", DENY),
@@ -1628,15 +1860,130 @@ def selftest():
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", DENY),
         (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", DENY),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
+        (True, "Bash", "CRUSOE_PROFILE=p crusoe kubernetes clusters get-credentials --project-name j -y c", ASK),
+        (True, "Bash", "crusoe kubernetes clusters get-credentials c --project-name j", ASK),
+        (False, "Bash", "crusoe kubernetes clusters get-credentials --project-name j c", DENY),
+        (True, "Bash", "crusoe kubernetes clusters list --project-name j", None),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y", None),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --dry-run", None),
-        (True, "Bash", "git push origin main", DENY),
-        (True, "Bash", "git push --dry-run", DENY),
-        (True, "Bash", "git -C /x push origin main", DENY),
-        (True, "Bash", "git -c user.name=x --no-pager push", DENY),
-        (True, "Bash", "git --git-dir=/x/.git push", DENY),
+        (True, "Bash", "git push origin main", ASK),
+        (False, "Bash", "git push origin main", DENY),
+        (True, "Bash", "git push --dry-run", ASK),
+        (True, "Bash", "git -C /x push origin main", ASK),
+        (True, "Bash", "git -c user.name=x --no-pager push", ASK),
+        (True, "Bash", "git --git-dir=/x/.git push", ASK),
+        (True, "Bash", "git push origin v1.2.3", ASK),
+        (True, "Bash", "git commit -m 'push it' && git push -f", ASK),
+        (True, "Bash", "git commit -m 'git push later'", None),
+        (True, "Bash", "glab mr create --fill", ASK),
+        (False, "Bash", "glab mr create --fill", DENY),
+        (True, "Bash", "glab -R g/p mr merge 3", ASK),
+        (True, "Bash", "glab mr approve 3", ASK),
+        (True, "Bash", "glab mr close 3", ASK),
+        (True, "Bash", "glab mr reopen 3", ASK),
+        (True, "Bash", "glab mr rebase 3", ASK),
+        (True, "Bash", "glab mr accept 3", ASK),
+        (True, "Bash", "glab mr new --fill", ASK),
+        (True, "Bash", "glab mr for 12", ASK),
+        (True, "Bash", "gh pr new --fill", ASK),
+        (True, "Bash", "gh pr create --fill", ASK),
+        (True, "Bash", "gh pr merge 3 --squash", ASK),
+        (True, "Bash", "gh pr close 3", ASK),
+        (True, "Bash", "gh pr review 3 --approve", ASK),
+        (True, "Bash", "gh pr review 3 -a", ASK),
+        (True, "Bash", "gh pr review 3 --comment -b x", ASK),
+        (True, "Bash", "gh pr review 3 -r -b x", ASK),
+        (True, "Bash", "gh pr comment 3 -b x", ASK),
+        (False, "Bash", "gh pr comment 3 -b x", DENY),
+        (True, "Bash", "glab mr update 3 --description-file d.md", None),
+        (True, "Bash", "glab mr note 3 -m x", ASK),
+        (False, "Bash", "glab mr note 3 -m x", DENY),
+        (True, "Bash", "glab mr note 3 --resolve abc", ASK),
+        (True, "Bash", "glab mr note create 3 -m x", ASK),
+        (True, "Bash", "glab mr note resolve abc 3", ASK),
+        (True, "Bash", "glab mr note reopen abc 3", ASK),
+        (True, "Bash", "glab -R g/p mr note update 9 3 -m x", ASK),
+        (True, "Bash", "glab mr note delete 9 3", ASK),
+        (True, "Bash", "glab mr note draft publish 3", ASK),
+        (True, "Bash", "glab mr note draft create 3 -m x", None),
+        (False, "Bash", "glab mr note list 3", None),
+        (False, "Bash", "glab mr note draft list 3", None),
+        (True, "Bash", "glab mr view 3", None),
+        (True, "Bash", "glab mr checkout 3", None),
+        (True, "Bash", "glab api -X POST projects/p/merge_requests -f source_branch=b", ASK),
+        (True, "Bash", "glab api -X PUT projects/p/merge_requests/3/merge", ASK),
+        (True, "Bash", "glab api -X POST projects/p/merge_requests/3/approve", ASK),
+        (True, "Bash", "glab api -X PUT projects/p/merge_requests/3 -f state_event=close", ASK),
+        (True, "Bash", "glab api -X PUT projects/p/merge_requests/3 -f title=x", None),
+        (True, "Bash", "glab api projects/p/merge_requests/3/notes -f body=x", ASK),
+        (True, "Bash", "glab api projects/p/merge_requests/3/discussions/abc/notes -f body=x", ASK),
+        (True, "Bash", "glab api -X PUT projects/p/merge_requests/3/discussions/abc -f resolved=true", ASK),
+        (True, "Bash", "glab api -X POST projects/p/merge_requests/3/draft_notes/bulk_publish", ASK),
+        (True, "Bash", "glab api projects/p/merge_requests/3/draft_notes -f note=x", None),
+        (False, "Bash", "glab api 'projects/p/merge_requests/3/discussions?per_page=100'", None),
+        (True, "Bash", "gh api repos/o/r/pulls/1/comments/5/replies -f body=x", ASK),
+        (True, "Bash", "gh api -X PATCH repos/o/r/pulls/comments/5 -f body=x", ASK),
+        (True, "Bash", "gh api repos/o/r/issues/1/comments -f body=x", ASK),
+        (False, "Bash", "gh api repos/o/r/pulls/1/comments", None),
+        (True, "Bash", "gh api graphql -f query='mutation{resolveReviewThread(input:{}){x}}'", ASK),
+        (True, "Bash", "glab api graphql -f query='mutation{discussionToggleResolve(input:{}){x}}'", ASK),
+        (True, "Bash", "glab api graphql -f query='mutation{createNote(input:{}){x}}'", ASK),
+        (True, "Bash", "glab api -X POST projects/p/repository/commits --input c.json", ASK),
+        (True, "Bash", "glab api -X DELETE projects/p/repository/branches/b", ASK),
+        (True, "Bash", "glab api projects/p/merge_requests/3", None),
+        (True, "Bash", "glab api projects/p/repository/branches", None),
+        (True, "Bash", "glab api graphql -f query='mutation{mergeRequestAccept(input:{}){x}}'", ASK),
+        (True, "Bash", "glab api graphql -f query='{project(fullPath:\"g/p\"){mergeRequests{x}}}'", None),
+        (True, "Bash", "gh api -X PUT repos/o/r/pulls/1/merge", ASK),
+        (True, "Bash", "gh api repos/o/r/pulls -f title=x -f head=b -f base=main", ASK),
+        (True, "Bash", "gh api -X PATCH repos/o/r/pulls/1 -f state=closed", ASK),
+        (True, "Bash", "gh api -X PATCH repos/o/r/pulls/1 -f body=x", None),
+        (True, "Bash", "gh api -X PATCH repos/o/r/pulls/1 --field=state=closed", ASK),
+        (True, "Bash", "gh api -X PATCH repos/o/r/pulls/1 --input b.json", ASK),
+        (True, "Bash", "gh api repos/o/r/pulls/1/reviews --input r.json", ASK),
+        (True, "Bash", "gh api repos/o/r/pulls/1/reviews -f event=APPROVE", ASK),
+        (True, "Bash", "gh api repos/o/r/pulls/1/reviews -f event=COMMENT -f body=x", ASK),
+        (True, "Bash", "gh api -X PATCH repos/o/r/git/refs/heads/b -f sha=abc", ASK),
+        (True, "Bash", "gh api repos/o/r/pulls?state=open", None),
+        (True, "Bash", "git tag v1.2.3", None),
+        (True, "Bash", "glab release create v1.2.3", ASK),
+        (True, "Bash", "glab -R g/p release create dev-x", ASK),
+        (False, "Bash", "glab release create v1.2.3", DENY),
+        (True, "Bash", "glab api -X POST projects/1/repository/tags -f tag_name=v1 -f ref=main", ASK),
+        (True, "Bash", "glab api projects/1/releases -f tag_name=v1", ASK),
+        (True, "Bash", "glab api projects/1/repository/tags", None),
+        (True, "Bash", "glab release list", None),
+        (True, "Bash", "docker push registry.example/x:t", ASK),
+        (True, "Bash", "docker image push registry.example/x:t", ASK),
+        (True, "Bash", "docker buildx build --push -t registry.example/x:t .", ASK),
+        (True, "Bash", "docker buildx build --output type=registry -t registry.example/x:t .", ASK),
+        (True, "Bash", "docker build -t registry.example/x:t --push .", ASK),
+        (True, "Bash", "podman push registry.example/x:t", ASK),
+        (True, "Bash", "buildah push registry.example/x:t", ASK),
+        (False, "Bash", "docker push registry.example/x:t", DENY),
+        (True, "Bash", "docker compose push", ASK),
+        (True, "Bash", "docker buildx imagetools create -t registry.example/x:t registry.example/x:a", ASK),
+        (True, "Bash", "docker buildx imagetools create --dry-run -t registry.example/x:t registry.example/x:a", None),
+        (True, "Bash", "docker buildx imagetools inspect registry.example/x:t", None),
+        (True, "Bash", "skopeo copy --dest-creds u:p docker://a/x:t docker://b/x:t", ASK),
+        (True, "Bash", "skopeo sync --src docker --dest docker a/x b", ASK),
+        (True, "Bash", "skopeo sync --src docker --dest=dir a/x /x/out", None),
+        (True, "Bash", "skopeo copy docker://a/x:t dir:/x/out", None),
+        (True, "Bash", "skopeo inspect docker://a/x:t", None),
+        (True, "Bash", "docker build -t x .", None),
+        (True, "Bash", "docker buildx build -t x --load .", None),
+        (True, "Bash", "python3 /x/scripts/build_vllm_overlay.py --branch b --context c --namespace n", ASK),
+        (True, "Bash", "uv run /x/scripts/build_vllm_overlay.py --branch b", ASK),
+        (True, "Bash", "uv run python3 /x/scripts/build_vllm_overlay.py --branch b", ASK),
+        (True, "Bash", "/x/scripts/build_vllm_overlay.py --branch b --context c --namespace n", ASK),
         (False, "Bash", "kubectl exec p -- sh -c 'rm -rf /data' --help", DENY),
         (False, "Bash", "python3 /x/deploy.py --help", DENY),
+        (False, "Bash", "python3 /x/board.py fetch garbled-output --org 2", None),
+        (False, "Bash", f"python3 /x/board.py fetch g --org 2 --out {scratch}g.json", None),
+        (False, "Bash", "python3 /x/board.py fetch g --org 2 --out /x/g.json", DENY),
+        (False, "Bash", "python3 /x/board.py diff g /x/g.json --org 2", None),
+        (False, "Bash", "python3 /x/board.py login", DENY),
+        (True, "Bash", "python3 /x/board.py publish g /x/g.json --org 2 --message m", None),
         (False, "Bash", "bash -c 'rm -rf /x' --help", DENY),
         (False, "Bash", "kubectl get pods --help", None),
         (False, "Bash", "helm upgrade --help", None),
@@ -1654,6 +2001,16 @@ def selftest():
         (False, "Bash", "git branch -a --contains abc", None),
         (False, "Bash", "git branch --list 'x/*'", None),
         (False, "Bash", "git branch new-branch", DENY),
+        (False, "Bash", "git config user.email", None),
+        (False, "Bash", "git config --global user.email", None),
+        (False, "Bash", "git config user.email x", DENY),
+        (False, "Bash", "git config --unset user.email", DENY),
+        (False, "Bash", "git config get user.email", None),
+        (False, "Bash", "git config list", None),
+        (False, "Bash", "git config set user.email x", DENY),
+        (False, "Bash", "git config edit", DENY),
+        (False, "Bash", "git config -f .gitconfig user.email", None),
+        (False, "Bash", "git config --file .gitconfig user.email x", DENY),
         (False, "Bash", "kubectl get crd --context X", None),
         (False, "Bash", "kubectl get namespaces --context X", None),
         (False, "Bash", "kubectl get pods --context X", DENY),
@@ -1742,6 +2099,20 @@ def selftest():
         (False, "mcp__plugin_plumber-claude_plumber__plumber_dispatch", {}, DENY),
         (False, "mcp__x__frob", {}, ASK),
         (True, "mcp__x__frob", {}, None),
+        (True, "mcp__claude_ai_gitlab__merge_merge_request", {}, ASK),
+        (False, "mcp__claude_ai_gitlab__merge_merge_request", {}, DENY),
+        (True, "mcp__claude_ai_gitlab__create_merge_request", {}, ASK),
+        (True, "mcp__github__create_pull_request_review", {}, ASK),
+        (True, "mcp__github__push_files", {}, ASK),
+        (True, "mcp__claude_ai_gitlab__get_merge_request", {}, None),
+        (True, "mcp__claude_ai_gitlab__create_note", {}, ASK),
+        (True, "mcp__github__add_comment_to_pending_review", {}, ASK),
+        (True, "mcp__github__resolve_review_thread", {}, ASK),
+        (False, "mcp__github__resolve_review_thread", {}, DENY),
+        (True, "mcp__github__unresolve_review_thread", {}, ASK),
+        (False, "mcp__github__get_review_comments", {}, None),
+        (True, "mcp__claude_ai_Atlassian_Rovo__addCommentToJiraIssue", {}, None),
+        (False, "mcp__github__list_pull_requests", {}, None),
     ]
     failures = 0
     for gate_open, tool_name, tool_input, expected in cases:
@@ -1827,9 +2198,13 @@ def selftest():
         ("diff <(sort a) <(sort b)", READ),
         ("tee >(rm -rf /etc)", DANGER),
         ("glab mr update 3 --description-file d.md", DANGER),
+        ("python3 /x/board.py publish g /x/g.json --org 2 --message m", DANGER),
+        ("python3 /x/board.py fetch g --org 2 --out=/x/g.json", WRITE),
         ("gh pr edit 3 --body-file d.md", DANGER),
         ("glab mr create --fill", DANGER),
         ("glab mr note 3 -m x", DANGER),
+        ("glab mr note list 3", READ),
+        ("glab -R g/p mr note draft list 3", READ),
         ("gh pr checkout 3", WRITE),
         ("glab mr view 3", READ),
         ("gh repo clone o/r", WRITE),
@@ -1852,6 +2227,20 @@ def selftest():
         ("glab api -XGET projects/p/merge_requests -f state=opened", READ),
         ("glab api --method=GET projects/p/merge_requests -f state=opened", READ),
         ("glab api -XPUT projects/p/merge_requests/3 -f title=x", DANGER),
+        ("glab release create v1.2.3", DANGER),
+        ("docker push registry.example/x:t", DANGER),
+        ("docker buildx build --push -t registry.example/x:t .", DANGER),
+        ("buildah push registry.example/x:t", DANGER),
+        ("docker build -t x .", WRITE),
+        ("docker compose push", DANGER),
+        ("docker buildx imagetools create -t registry.example/x:t registry.example/x:a", DANGER),
+        ("skopeo copy docker://a/x:t docker://b/x:t", DANGER),
+        ("skopeo copy docker://a/x:t dir:/x/out", WRITE),
+        ("skopeo inspect docker://a/x:t", READ),
+        ("skopeo delete docker://a/x:t", DANGER),
+        ("python3 /x/scripts/build_vllm_overlay.py --branch b", DANGER),
+        ("uv run /x/scripts/build_vllm_overlay.py --branch b", DANGER),
+        ("/x/scripts/build_vllm_overlay.py --branch b", DANGER),
         ("gh api -X PATCH repos/o/r/pulls/1 -f body=x", WRITE),
     ]
     for command, expected in label_cases:

@@ -180,6 +180,22 @@ every copy.
   startup LOUDLY, reporting EVERY missing key at once, not one per redeploy. An
   empty environment variable reads as unset; an empty-string default is still a
   default.
+- **A limit that is safe to lift has an explicit off, and "off" is never a
+  huge number.** When running without a limit is a choice a deployment can
+  legitimately make (a trimming cap, a size cap a consumer may decline), the
+  knob accepts a stated value that switches it off: `0`, or a word like
+  `unlimited` where `0` is itself a legal limit. The code skips the check or
+  the cut on that value. Switching a limit off by setting it above anything
+  that could reach it is banned: that number is a hidden copy of some other
+  limit, and it stops meaning "off" the day the other limit grows. Off is
+  stated, never assumed, so the binary tells "not set" from "set to off" (a
+  pointer, the `ok` of the lookup) and an absent key still fails startup.
+  **Most knobs have no off**, and their range check rejects the values that
+  hurt: an amount the process needs to work at all - a worker count, a
+  buffer, an interval - and a guard that keeps one input from taking the
+  process down - a body or request size limit, a memory bound, a timeout. In
+  a review, a liftable limit with no off, an off spelled as a sentinel
+  number, or an off added to a guard, is a finding.
 - **values.yaml holds ONLY what is meant to be changed.** A knob nobody should
   ever turn is a knob someone WILL turn at 3am.
 - **Fixing drift means deleting the copy, not updating it.** When a change
@@ -196,6 +212,13 @@ every copy.
   both must change together, never for a caller that might come - see
   "OVER-ENGINEERING". A wrong shared helper costs more than the copy it
   replaced.
+- **A copy that cannot drift is cheaper than a pipe that carries the value.**
+  Before you add an API field, a parameter or a lookup so that a consumer can
+  follow a configurable rule, find who sets that config. When only a dev
+  script or a local override sets it, it does not shape a production
+  interface: the consumer keeps a named constant that names its owner. The
+  test is what a change of the value costs - when the change is a migration
+  anyway, the second copy does not drift.
 
 What that looks like in practice:
 
@@ -230,6 +253,15 @@ and what changes for different reasons lives apart.
   into five that always change together adds indirection and nothing else.
 - **Related code is grouped together.** Whatever changes for the same reason
   sits side by side, in the order a reader needs it.
+- **No spaghetti.** One request is followed from entry to exit without
+  doubling back, and every input to a step is visible where the step is
+  called. What hides the path is spaghetti: a flag set in one place and
+  read in another, a value carried through shared mutable state instead of
+  a parameter or a return, an exception thrown to escape a loop, a module
+  importing the module that imports it, branches nested so deep that the
+  condition that led here is off the screen. Untangle it - pass the value,
+  return early, put the two halves side by side - never explain the route
+  in a comment.
 
 ---
 

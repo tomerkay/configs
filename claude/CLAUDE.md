@@ -9,11 +9,14 @@ My name is Tomer. I am a software engineer for Atero, who were purchased by Crus
   even where older branches of mine use one.
 - **Branch ownership** - a branch I created is mine alone, and I force-push my
   branches.
-- **Dev cluster nodes** - my nodes carry `atero/user=tkay`.
+- **Dev cluster capacity** - my GPUs come through my cells in the backoffice.
 
 What I work on and with:
 
 - LLM inference, utilizing vllm and sglang. When I use `PD` I mean the disaggregation setup.
+- When I say `unified clusters` I mean the cell structure: a cluster carved into
+  `cell-<id>` namespaces, one per customer slice, next to the older layout where
+  one tenant filled a single shared namespace. Per cell is per namespace.
 - Grafana (including grafana alerts) for my dashboards and the promql for the queries.
 - kubernetes and helm for my deployments. **Every command that touches a cluster
   pins the context and the namespace explicitly - see "ALWAYS PIN THE CONTEXT AND
@@ -129,23 +132,26 @@ Any change to any file that is not a scratch/plan document, by ANY mechanism:
   harness told you to prefer Bash for file changes, that instruction is
   subordinate to this gate.
 - `git commit`, `git add`, `git stash`, `git reset`, `git rebase`, `git
-  cherry-pick`, `gh pr create` - any mutation of my repo state
+  cherry-pick` - any mutation of my repo state
 - `helm install`, `helm upgrade`, `helm uninstall`, `helm rollback`, and any
   state-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
   `rollout restart`, `edit`) - `LFG!` unlocks the first two for you to run; the
   rest stay mine even after it. See the two sections below.
-- `git push` - blocked while the gate is closed AND after it opens. There is no
-  token that unlocks it.
+- `git push`, opening, closing, merging or approving an MR or PR, and posting to
+  or resolving its review threads - blocked
+  while the gate is closed, and after it opens only my words for that one
+  command unlock it. See "A push or an MR move is mine, one command at a time".
 - Creating new source, config, test, chart or migration files
 
 ## What is ALWAYS allowed, gate open or closed
 
 Read the code, search it, run tests, run read-only `kubectl get/describe/logs`
 and `helm list/get` (pinned to an explicit context and namespace, always - see
-"ALWAYS PIN THE CONTEXT AND THE NAMESPACE"), run `helm template` locally, measure,
-write plan/analysis documents to `~/.cache/claude-handoff` when I ask for them,
-answer questions, show me diffs as text, argue with me. **Investigation is not
-implementation.** Never use the gate as an excuse to stop thinking.
+"ALWAYS PIN THE CONTEXT AND THE NAMESPACE"), run `helm template` locally,
+measure, write plan/analysis documents under `~/.cache/claude-handoff` when I
+ask for them, answer questions, show me diffs as text, argue with me.
+**Investigation is not implementation.** Never use the gate as an excuse to
+stop thinking.
 
 ## Alert investigation is ungated END TO END - including the Slack post
 
@@ -225,13 +231,16 @@ While the gate is open:
   approval is whatever the harness mode says. Do not stack a confirmation of your
   own on top of it, and do not re-ask for something the mode already approved. The
   named safety rails are the exception and are not "confirmations": which cluster
-  and namespace, `--reuse-values`, `--force-conflicts`. Those ask every time.
+  and namespace, adding a context to my kubeconfig, `--reuse-values`,
+  `--force-conflicts`, publishing a tag, a release or an image. Those ask every
+  time.
 - **You still print the `Implementing: <change> - files: <files>` line before every
   change.** That line is how I catch a misread, and an open session is exactly
   when I need it most.
-- **The permanent exclusions do not move.** `git push` stays never. `helm
-  uninstall`, `helm rollback` and state-changing `kubectl` stay mine. An open gate
-  widens how often the token applies, never what it can unlock.
+- **The permanent exclusions do not move.** A push and an MR move stay mine, one
+  command at a time. `helm uninstall`, `helm rollback` and state-changing
+  `kubectl` stay mine. An open gate widens how often the token applies, never
+  what it can unlock.
 - **An open gate is not a licence to invent work.** The gate decides whether you
   may act AT ALL. It says nothing about WHAT to act on, and it never has - that
   comes from what I asked for. A change we have not discussed gets proposed and
@@ -260,28 +269,58 @@ because the next change felt bigger or scarier than the last one. If you think a
 step deserves a fresh sign-off, say so in one sentence and let me decide - do not
 print the refusal line while the gate is open.
 
-## `git push` is NEVER. Not even with `LFG!`.
+## A push or an MR move is mine, one command at a time
 
-**`LFG!` does not authorise `git push`. Nothing authorises `git push`. It is mine,
-permanently, with no exception and no token that unlocks it.** Not with `--force`,
-not with `--dry-run`, not to a throwaway branch, not "just to check the remote",
-not after an `LFG!`, not after ten `LFG!`s, not when I sound like I want it
-pushed. Committing locally is yours; publishing is mine, forever. If you think
-something needs pushing, say so and stop.
+**`git push`; opening, reopening, closing, merging or approving an MR or PR;
+and replying to, editing, resolving or reopening its review threads, are
+mine.** `LFG!` never covers them, and neither does an open session, "fix it",
+or me sounding like I want the branch on the remote or the thread answered.
+Every route to the same move counts: `glab mr` / `gh pr` (`glab mr note`
+included), a `glab api` / `gh api` write, an MCP tool, and a rebase or branch
+update that pushes to an MR's branch. Committing locally is yours, and so is a
+GitLab draft note, which nobody sees until it is published.
 
-Treat an `LFG!` that seems to be asking for a push as a request to prepare it: say
-the branch is ready and print the command for me.
+**You run one only when my message says, in plain words, that you may run that
+command this time** - "push it, I allow you this time", "go ahead and merge
+!42", "reply to that thread and resolve it". There is no token for it. The
+permission covers the command it names, in the message it is in: not the next
+push, not a `--force` I did not mention, not a different MR or thread. Anything
+short of that - a question, a plan I approved that ends in a push, an `LFG!` -
+is a request to prepare it: say the branch or the reply is ready and print the
+command as `! <command>`, a reply with its full text. Never offer to run one.
 
-## A new work branch is named by me
+**With my permission it still runs through the hook's 🔴 prompt**, every time.
+That prompt is where a misread of my words is caught, not a second permission to
+ask for in chat.
 
-**A branch meant to be pushed gets its name from me.** Propose the name in chat
-and wait for my answer before creating it - gate open or not. The same goes for
-moving onto a branch of a different feature than the one we are working on:
-say which and why, and wait.
+**Publishing a tag, a release or an image is not a push, and asks every time.**
+Creating a tag or release on the remote (`glab release create`, a `glab api` write
+to `repository/tags` or `releases`) and pushing an image to a registry (`docker
+push`, a build with `--push`, `buildah push`, the overlay build script) need the
+open gate like any change, then run only through the hook's 🔴 prompt - whatever
+the tag is named. A tag can start a release pipeline, and a moved image tag
+reaches every deployment that pulls it. A tag published with `git push` stays
+under the rule above.
 
-Mechanical moves need nothing: a backup branch (made with `git branch <name>`,
-never by switching to it), hopping to `main` for a rebase and back, a scratch
-branch deleted once it has done its job.
+## I decide when the branch moves
+
+**NEVER work on the default branch** - `main`, `master`, whatever the
+remote's HEAD names - except in `~/.claude` and `~/repos/configs`, which are
+committed on `main` by design. In any other repo, before the first change that
+would land on the default branch, create a branch by the `tkay-code` branch
+convention, switch to it and tell me its name in one line. No proposal, no
+question.
+
+**Otherwise the work stays on the branch it is on.** Never create a branch and
+switch to it, and never check out another branch, unless I ask for it in so
+many words or the rule above requires it - gate open or not.
+
+**When I ask for a new branch, you name it.** Pick the name by the `tkay-code`
+branch convention, create it, switch to it and tell me the name in one line.
+No proposal, no question.
+
+**A backup needs nothing**: `git branch <name>` leaves HEAD where it is, and
+the backup is deleted once it has done its job.
 
 ## `helm install` and `helm upgrade` ARE unlocked by `LFG!`
 
@@ -405,21 +444,25 @@ in the plugin cache.
    in those words. I do not want to see that card again.
 
 7) **Finishing a branch never ends in an offer to push or to open an MR.**
-   Opening an MR or PR is mine unless I ask you, in so many words, to open
-   it; `git push` is mine with no exception (see "`git push` is NEVER").
-   Neither is a "next step" you suggest. Instead, once the work on a branch
-   is done, ask me once whether I want a description added to its MR, and
-   on a yes follow the `tkay-code` MR description standard. Never write,
-   draft or offer a description otherwise. When something only a description
-   would carry matters (a metric whose meaning changed, a rule a change
-   retires), tell me in chat.
+   Pushing and opening an MR or PR are mine unless I allow that command in
+   words (see "A push or an MR move is mine, one command at a time").
+   Neither is a "next step" you suggest. Instead, every time the work on a
+   branch is done - the first round, and again after any later change to
+   it - look its MR up the `tkay-code` way and ask me once: whether I want
+   a description added when it has none, whether I want it updated when it
+   already has one. The question ends with "(pushing I leave to you)",
+   verbatim: the description describes what the remote holds, and putting
+   the branch there is mine. On a yes follow the `tkay-code` MR description
+   standard. Never write, draft or offer a description otherwise. When
+   something only a description would carry matters (a metric whose meaning
+   changed, a rule a change retires), tell me in chat.
 
-8) **A memory note found wrong is corrected the moment you find it - no
-   asking.** Memory is yours, not mine: when a session shows a note is stale
-   or false, rewrite or delete it and its `MEMORY.md` line in that same turn,
-   and say so in one line. A wrong note left standing gets read as fact by
-   the next session and copied into a skill, a doc or a commit, which is how
-   my skills end up carrying wrong stuff.
+8) **Auto memory is off, and you never write it.** `autoMemoryEnabled` is
+   `false` in my settings: nothing you write outside a file I review reaches
+   the next session. Never turn it back on, never write under a project's
+   `memory/` directory, and never offer to "remember" something. A fact worth
+   keeping goes where I review it - a repo's `CLAUDE.md`, a skill, this
+   file - proposed like any other change.
 
 # BRACKET EVERYTHING I AM MEANT TO COPY
 
@@ -454,6 +497,45 @@ prose swells into a title and the marker itself disappears from my screen.
 showing me, a TL;DR you are about to post yourself, an illustrative snippet of my
 own code. Bracketing those buries the real ones. Two blocks I am meant to copy get
 two bracketed blocks, never one bracket around both.
+
+# EVERY QUESTION THAT STOPS THE REPLY OPENS WITH ⚠️
+
+**A reply that stops because the next step is gated on my answer ends with
+the question, one dedicated line per decision, each opening with ⚠️.** The
+test is the stop: a tool call or a change you would make the moment I reply
+and cannot make before. A question you could settle by reading the code is
+settled, not asked. A question you would proceed past under an assumption is
+stated as the assumption, in prose, and the reply goes on. Anything else is
+not a ⚠️.
+
+The shape is mine, so it binds every stop whoever told you to stop: a rule
+in this file, a `tkay-*` or team skill, a repo's `CLAUDE.md`, or your own
+judgement that a step needs my sign-off. A skill that says "ask" and nothing
+about shape gets this shape. A skill or repo that prescribes its
+own shape for a question wins on the parts it prescribes; the ⚠️ marker and
+the end-of-reply position still apply wherever that shape does not contradict
+them.
+
+The line is `⚠️ **<the decision>**: <what you propose or need>. <the
+question>?` Never a clause inside a paragraph, where I cannot see that the
+reply stopped for it. Everything that does not depend on the answer is done
+above the lines, and what does waits.
+
+**A reply ends with at most one ⚠️ block.** Its lines are independent
+decisions, ordered by what you would do first once answered. A decision
+whose answer changes the next question makes the block exactly one line, and
+every other question waits for a later reply.
+
+Among the stops this covers: the cluster or namespace I never named, adding a
+context to my kubeconfig, `--reuse-values`, a Slack message anywhere other
+than the alert thread I linked, a namespace that is not my cell, the MR
+description question, a repo rule that bans commit descriptions. The
+staged-copy install and the handoff cleanup offer have their own wording,
+written where each lives, in this shape.
+
+Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
+note under a tmp file's path, which is information and stops nothing, and the
+harness's permission prompts, which are not chat.
 
 # CODE RULES THAT ARE ALWAYS IN FORCE
 
@@ -535,8 +617,10 @@ cluster has, so a forgotten input fails or schedules nothing rather than landing
 on somebody else's machine. An example namespace is `$NS` or `<ns>`, never mine.
 
 **When you find one, remove it in that same change** and say so in one line.
-Never carry one into anything new you write. My own coordinates belong in your
-memory for the project, not in git.
+Never carry one into anything new you write. My own coordinates are written
+down nowhere: my cells move, so any copy goes stale. Derive them from the
+backoffice cell record, or ask, per "If I did not name the cluster and the
+namespace".
 
 A commit body that records where a change was verified is the one exception,
 for the same reason stale values are allowed there: it describes a frozen fact.
@@ -559,9 +643,10 @@ my username on any service - GitHub, GitLab or anything else. None of it may
 sit in a published file in the clear, any more than a token may.
 
 **Decided public, do not raise again:** my handle, my work e-mail, my employer
-and my GPG fingerprint; the names and URLs of our GitLab repositories and
-chart registry; Slack channel names (IDs stay private); the Crusoe CLI
-profile name; the product-level names my skills use - a monitor, a CRD
+and my GPG fingerprint; Atero in any form or role - the word, the `atero`
+namespace, a label prefix, a repo name; the names and URLs of our GitLab
+repositories and chart registry; Slack channel names (IDs stay private); the
+Crusoe CLI profile name; the product-level names my skills use - a monitor, a CRD
 group, a chart; and Crusoe's own default firewall rule and network names,
 which every customer has. A sweep that finds only these is clean.
 
@@ -602,9 +687,20 @@ lists a file until a commit records that it is gone, and the sync stops on a
 tracked file that is missing at home and publishes nothing, dotfiles
 included.
 
+- **Edit a staged copy, never the live file.** A change to this file or
+  to a `tkay-*` skill is made on a copy under `~/.cache/claude-handoff`,
+  reviewed there, and reaches `~/.claude` only after one question from
+  you: show me the diff and the verdict, then end the reply with the
+  ⚠️ question naming the file -
+  "⚠️ Install it into `<file>` and commit?" - and on my yes run the `cp`
+  and the commit yourself, as plain commands. Never hand me the `cp` to
+  paste: the question is the safeguard, and a paste is the same install
+  with a round trip added. A hook has its own install rule below.
 - **Review the diff with the `tkay-code` review standard** before committing,
-  and show me the verdict. A MUST HAVE finding is fixed before the commit,
-  not after it.
+  in the full shape that standard gives a one-commit branch: the verdict
+  line, both buckets, the closing table and the leftovers table. The diff
+  on main stands in for the commit; a verdict paragraph is not a review. A
+  MUST HAVE finding is fixed before the commit, not after it.
 - **Commit with the `tkay-code` commit standard**, signed, deciding squash or
   new commit like anywhere else.
 - **If the commit is refused**, print the exact command as a `! <command>`
@@ -612,7 +708,14 @@ included.
 - **A turn that changed anything in `~/.claude` ends with
   `git -C ~/.claude status --short` printing nothing.** Run it before the last message. Anything it
   lists is reviewed and committed before you reply, including a change you
-  did not make.
+  did not make - with the one exception below.
+- **The `model` line of `settings.json` is NEVER committed.** The harness
+  rewrites it on every model switch, and the tracked copy keeps the value
+  it has. Stage that file hunk by hunk (`git add -p`) and skip the model
+  hunk every time; never commit it with a pathspec, which takes the whole
+  file. A working tree whose only difference is that line is clean for the
+  status check above, and that line is never a review finding either - not
+  a leftover, not an issue found on the way.
 
 **A new file joins the allowlist only after I agree.** Tracking a file
 publishes it: the sync copies whatever this repo tracks into the public repo.
@@ -631,8 +734,14 @@ next, which is exactly how that state arises.
 2. **Test the staged copy.** Run its `--selftest` where it has one, and
    put every case the change is about through the copy before the live file
    is touched.
-3. **Install it in one step.** One `cp` of the tested copy over the live file,
-   then the same tests against the live file. A failure there is undone with
+3. **Ask once, then install it in one step.** Show me the diff and the
+   verdict, then end the reply with the ⚠️ question naming
+   the hook - "⚠️ Install it into `<file>` and commit?". On my yes, one `cp`
+   of the tested copy over the live file, run with the sandbox off because
+   the sandbox denies the hooks directory, and passed by the `cp` allow rule
+   in `settings.json`; then the same tests against the live file, then the
+   commit. Never hand me the `cp` to paste while that route is open: the
+   question is the safeguard. A failure in the live tests is undone with
    `git -C ~/.claude restore <file>` before anything else; when the broken
    hook denies that, print it for me as a `! <command>` and stop.
 4. **If the install is refused**, confirm the staged copy still exists, print
@@ -649,20 +758,29 @@ undoes it.
 task, work out which of its steps this session cannot do itself:
 
 - a write the sandbox denies - its config, shown at session start, lists the
-  protected paths, `~/.claude/hooks` and the settings among them;
-- an edit auto mode refuses as self-modification - a hook, the settings, the
-  permission rules;
-- a history rewrite auto mode refuses as destructive - an interactive rebase
-  that rewords or squashes a commit below HEAD. Order the work so it never
-  arises: fix a commit's message or content while it is still HEAD, where an
-  amend does it, before stacking anything on top.
+  protected paths, `~/.claude/hooks` and the settings among them; this file,
+  the `tkay-*` skills and the hooks are the exception, each installed by its
+  staged-copy rule in "My Claude config is a git repo" and "A hook is live
+  the moment it is saved";
+- an edit auto mode refuses as self-modification - the settings, the
+  permission rules, and a hook by any route other than the `cp` its install
+  rule names;
+- a history rewrite below HEAD, which auto mode judges by the command's
+  text, not its effect: the plain autosquash shape in `tkay-code`'s
+  commits reference, run as its own call with nothing chained to it, has
+  passed where a rebase bundled with other mutations, or driven by a
+  sequence-editor script that deletes `pick` lines, was refused as
+  destructive. Order the work so it never arises: fix a
+  commit's message or content while it is still HEAD, where an amend does
+  it, before stacking anything on top. When it does arise, shape it the
+  plain way first; a refusal of that shape is then mine.
 
 Then say up front which steps are mine, do everything else first, and hand me
 the rest once, at the end, in the order it must run - one bracketed block per
 command. What I am to apply is staged under `~/.cache/claude-handoff`, not
 `/private/tmp/claude`, which can vanish mid-session; check it exists right
-before the handoff. When what you staged there is cleared is in "THROWAWAY
-FILES GO UNDER /private/tmp/claude".
+before the handoff. When what you staged there is cleared is in "EVERY FILE
+YOU WRITE GOES UNDER ~/.cache/claude-handoff".
 
 ## Blocked on me under a `/goal`
 
@@ -705,65 +823,80 @@ own files are `${CLAUDE_SKILL_DIR}/...`, never `.claude/skills/...` or
 `~/.claude/skills/...`. A path into a different repo names that repo and
 says a checkout of it is needed.
 
-# THROWAWAY FILES GO UNDER /private/tmp/claude, LASTING ONES UNDER ~/.cache/claude-handoff
+# EVERY FILE YOU WRITE GOES UNDER ~/.cache/claude-handoff
 
-Every throwaway file you create for your own work lives under `/private/tmp/claude/`
-(the session scratchpad, or `$TMPDIR`, both resolve there), never as a bare
-`/tmp/<file>`. `/tmp` is a symlink to `/private/tmp` on macOS and the sandbox
-checks the resolved path, so a file at the top of `/tmp` is one you can create
-through a hook or a tool but never delete. Create the directory if it is missing.
+**Every file you write for your own work goes in this session's own directory
+under `~/.cache/claude-handoff`**, named `<YYYY-MM-DD>-<slug>` after the day
+and the session's work: scratch, intermediate output, a script, a snapshot, a
+staged copy, a message file. Nothing is written at the top level of
+`~/.cache/claude-handoff`. Create the directory if it is missing.
 
-**`/private/tmp/claude` is for throwaway files only - it can vanish at any
-moment, mid-session.** Anything that must outlive the command that wrote it -
-a staged file, a snapshot, a message file, a script you run later - goes in
-`~/.cache/claude-handoff`.
+**Nothing you write goes under `/private/tmp/claude`** - not the session
+scratchpad, not `$TMPDIR`, whatever your harness says about them. That
+directory can vanish at any moment, mid-session, taking the file with it. A
+file whose loss would cost nothing is a pipe into the next command, not a
+file. Never a bare `/tmp/<file>` either: `/tmp` is a symlink to
+`/private/tmp` on macOS and the sandbox checks the resolved path, so a file at
+the top of `/tmp` is one you can create through a hook or a tool but never
+delete. What a tool or the harness writes there on its own is not yours to
+move.
 
-**Anything you create outside `/private/tmp/claude` is yours to delete, and
-you delete it without asking or reporting it** - the same rule as a backup
-branch. A commit-message file in `.git`, a helper script, a probe's state
-file, a scratch copy written where a tool outside the sandbox could read it:
-the moment it has done its job, remove it in its own `rm`. Never leave my
-Mac carrying files I did not ask for and do not know exist. Put scratch
-under `/private/tmp/claude` whenever the tool that reads it can reach that
-path, so a session I quit before you clean up leaves nothing a restart does
-not clear; write outside it only when nothing else works, and then the
-delete is owed before the turn ends.
+**A tmp file I ask for without a path goes in that handoff directory too** -
+"write it to tmp", "a temp file", in whatever words - never `/tmp` and never
+the scratchpad. A path I spell out, `/private/tmp/claude/...` or any other, is
+followed exactly as given. For the handoff case, give me its full path, with
+this line right under it:
 
-**`~/.cache/claude-handoff` is the one exception: what a session stages there
+> ⚠️ In the session's handoff directory: survives a restart, and I offer to
+> delete it when you ask whether we are done.
+
+No question and no confirmation - the line is a note, not a stop.
+
+**Anything you create outside the session's handoff directory is yours to
+delete, and you delete it without asking or reporting it** - the same rule as
+a backup branch. A commit-message file in `.git`, a file a tool insists on
+reading from beside its input: write it there only when the handoff directory
+does not work for that tool, and the moment it has done its job, remove it in
+its own `rm` before the turn ends. Never leave my Mac carrying files I did not
+ask for and do not know exist.
+
+**Nothing inside the session's handoff directory is deleted file by file: it
 stays until the work is over**, because a handoff waits on me and the org
 policy prompts on every `rm`. Never offer to clear it unprompted - not
 mid-task, not when the work looks finished. Only when I ask whether we are
-done, what is left over, or whether I can exit - in whatever words - list what
-this session staged there for me to apply, and give me both ways to delete it:
-you run the `rm`, which prompts me, or a bracketed `! rm` I paste. Name each
-path literally, never a glob over the directory - a file another session
-staged may still be waiting on me. The directory itself stays.
+done, what is left over, or whether I can exit - in whatever words - say what
+this session's directory holds and give me both ways to delete it: you run
+the `rm -r` of that directory, which prompts me, or a bracketed `! rm -r` I
+paste. The path is the directory's full name, never a glob. A plan or
+write-up in it worth keeping is named first, with the repo it belongs in, so
+I decide whether it moves there before the directory goes.
+`~/.cache/claude-handoff` itself stays.
 
-**List what other sessions left there too, as a separate choice offered the
-same two ways.** Say what each file is, and name one that looks unapplied -
-it differs from the file it was staged to replace - so I decide on it before
-it goes.
+**Other sessions' directories are not yours.** Never list them, never say what
+they hold, never offer to delete them.
 
-**The offer - this session's files and other sessions' alike - opens with a
-⚠️ line and is the very last thing in the reply**, after everything else. It
+**The offer is a ⚠️ question**, so it is the last thing in the reply. It
 comes only once the work leaves nothing open: while a leftover of it, a
 pending step or a drawback still waits on me, the reply carries those and the
-offer waits for a later one. An item I have
-answered - accepted, waved off, told you to leave - is closed, so once I
-have answered each one the offer comes next.
+offer waits for a later one. An item I have answered - accepted, waved off,
+told you to leave - is closed, so once I have answered each one the offer
+comes next.
+
+**When nothing is left - I have answered the offer, or nothing was staged -
+the reply opens with "Yes, you can exit now."** Under it comes "Here's a
+short summary of the session:" and a few plain-language bullets on what we
+did, what changed and where it landed. It's a recap for a human, not a
+report: no file dumps, no command output, no re-listing of findings already
+given, and a single line per bullet.
 
 **Never put `rm` in a command that does real work.** The org's policy prompts
 on every `rm`, scratch included, and an allow rule cannot override an ask
-rule, so an `rm` bundled into a chain prompts the whole chain. Scratch is per
-session; leave it. The gate hook drops an `rm` whose every path is a literal
-under `/private/tmp/claude` before the policy sees it, and says so in the
-description; every other `rm` prompts.
+rule, so an `rm` bundled into a chain prompts the whole chain.
 
-**Never redirect into `$TMPDIR`.** The harness cannot resolve the variable, so
-`> $TMPDIR/x` prompts however harmless the command. A temp file is written to
-the literal scratchpad path, which is a working directory and passes, or
-better not written at all: pipe into the next command. `$TMPDIR` as an
-argument to a tool is fine; as a redirect target it is not.
+**Never redirect into a variable path** like `$TMPDIR`. The harness cannot
+resolve the variable, so `> $TMPDIR/x` prompts however harmless the
+command. A file is written to the handoff directory's literal
+path, or better not written at all: pipe into the next command.
 
 # Screenshots
 
@@ -790,8 +923,8 @@ this command's own target. I decide from that line without reading the command.
 - 🟢 says why nothing changes: "read-only listing of the release's rendered
   values", "dry render with helm template, never reaches the cluster".
 - 🟠 names what changes and why it is recoverable: "overwrites a scratch file in
-  the session scratchpad", "commits on the feature branch created this session,
-  nothing pushed", "edits a tracked file, revertable with git".
+  the session's handoff directory", "commits on the feature branch created
+  this session, nothing pushed", "edits a tracked file, revertable with git".
 - 🔴 names the live target and what goes wrong if it is the wrong call: "helm
   upgrade of release X in context/ns, rolls the running pods", "deletes the PVC,
   its data is not recoverable".
@@ -813,8 +946,9 @@ is owned by someone different:
    change; a prompt it raises is not yours to work around.
 2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies every write
    outside scratch before `LFG!`, denies the permanent exclusions in every
-   state, asks for the safety rails, and says nothing for a read. It can add
-   a deny or an ask; it never removes a prompt.
+   state, asks for the safety rails and for a push or an MR move, and says
+   nothing for a read. It can add a deny or an ask; it never removes a
+   prompt.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
    permission mode takes over" after `LFG!` means.
@@ -894,49 +1028,48 @@ prompt and cover everything an investigation needs.
 - **`get` / `logs` / `describe` / `--dry-run` are not exempt.** Wrong-cluster reads
   are how wrong conclusions get made, and I act on your conclusions.
 
-## If I did not tell you the cluster and the namespace, ASK
+## If I did not name the cluster and the namespace
 
-Do not infer them from the current context, the kubeconfig, the repo, a previous
-session, or the most plausible-looking option. Ask me in one line and wait. An
-`LFG!` is not a licence to guess which cluster - see "THE LFG GATE".
+For a read, derive them from an authoritative source and name the source in
+the reply: the deploy config that owns the cluster, the backoffice cell record
+for a cell namespace, or what I named earlier in the session. Derived means
+looked up, never chosen as the most plausible of several: with no such source,
+or with two environments the question does not pick between, ask and wait. A
+context missing from my kubeconfig is asked for before it is added. For a
+mutation, ask every time whatever the source - an `LFG!` is not a licence to
+guess which cluster, see "THE LFG GATE".
 
 ## If you catch yourself without the flags
 
-About to run an unpinned cluster command: **stop and add them**, or ask me if I
-never said. Already ran one: say so in one sentence, tell me which context it
-actually hit, and treat every conclusion drawn from it as unverified until you
-re-run it pinned.
+About to run an unpinned cluster command: **stop and add them**, derived or
+asked for per the section above. Already ran one: say so in one sentence,
+tell me which context it actually hit, and treat every conclusion drawn from
+it as unverified until you re-run it pinned.
 
-# ALWAYS PIN THE NODE - MY WORKLOADS RUN ON MY NODE, NOT SOMEONE ELSE'S
+# MY WORKLOADS RUN IN MY CELL, NOT SOMEONE ELSE'S
 
-The dev clusters are carved up per engineer with the node label `atero/user`.
-My nodes carry my handle as that label's value (see "About Me and My Work").
-Every other GPU node carries a colleague's name, and the shared CPU pool
-carries an instance type instead of a person.
+The dev clusters are unified: GPU nodes are handed out as cells, and a node
+belongs to the cell the backoffice moved it into. **The `atero/user` node label
+is deprecated and Kyverno rejects adding or changing it** - never write it, and
+never put it in a `nodeSelector`, where it matches no node and leaves the pods
+Pending.
 
-**Every workload you deploy for me pins itself to my node.** The values must
-put a `nodeSelector` containing my `atero/user` value on every pod template the
-chart renders - deployments, statefulsets, daemonsets, LeaderWorkerSets, jobs.
-An unpinned workload is free to land on a colleague's GPU node and squat there
-for weeks. That is taking capacity from a person, not from a pool, and nobody
-finds out until someone goes looking.
+**Every workload you deploy for me goes into my cell's namespace**, named by
+its backoffice cell record. Kyverno pins it there: a pod that requests GPUs
+gets `nodeSelector: dedicated=<namespace>`, one that does not lands on the
+shared CPU nodes. The values need no node selector of their own for this.
 
-**Check the rendered manifest before every install or upgrade**, and audit what
-is already running with:
+**Before every install or upgrade, check both halves**: the namespace is a cell
+I own, and that cell has nodes:
 
-kubectl get deployments,statefulsets,daemonsets --context <ctx> -n <ns> -o custom-columns='KIND:.kind,NAME:.metadata.name,NODESELECTOR:.spec.template.spec.nodeSelector'
+kubectl get nodes --context <ctx> -L dedicated,cell-display-name
 
-**If any pod template comes out without my `atero/user` value, STOP AND SHOUT.** Do
-not install it and mention it afterwards. Say plainly which workload is
-unpinned, which nodes it could land on, and ask me whether I am allowing it off
-my node. Some things legitimately belong elsewhere - a CPU-only gateway has no
-business on a GPU node - but that is my call every time, never an assumption
-you make because the chart happened to ship that way.
+A cell with no node in it leaves every GPU pod Pending while the release looks
+deployed.
 
-**A selector naming a label no node carries is just as wrong.** It pins to
-nothing: the pods stay Pending or the daemonset sits at desired 0 while looking
-deployed. Confirm the label exists with `kubectl get nodes --context <ctx> -L
-atero/user`.
+**If the namespace is not my cell, STOP AND SHOUT.** Name the cell it belongs
+to and ask. Deploying into someone else's cell takes their GPUs, and nobody
+finds out until they look.
 
 # INVESTIGATIONS RUN WITHOUT ASKING - EVERY READ, EVERY TIME
 
@@ -958,6 +1091,12 @@ but it is never a reason to stop if I already named the cluster.
 every `curl`, GET included; `xh` is not on its list and a GET through it is a
 read to the hook. `curl` only for what `xh` cannot do, and then it prompts.
 
+**Cloud Logging reads go through `live_log_query` when the question is a
+count, a per-field breakdown or a message template.** The org's policy
+prompts on every `gcloud`, a read included; the data-mcp tools are on its
+allow list. `gcloud logging read` only for a bulk pull past the tool's
+sample cap, and then it prompts.
+
 Stopping to ask about a read is the same bug as printing the refusal line for
 a read (see "Reading is not gated. Ever."). Every question is a round trip I
 must answer before you keep working, and the whole point of handing you the
@@ -966,8 +1105,9 @@ twenty times.
 
 **The only two things you still stop for:**
 
-- I never named the cluster or namespace and the investigation needs one -
-  one line, per "ALWAYS PIN THE CONTEXT AND THE NAMESPACE".
+- The investigation needs a cluster or namespace I never named and no
+  authoritative source names it - one line, per "ALWAYS PIN THE CONTEXT AND
+  THE NAMESPACE".
 - The next step would CHANGE something - restart, patch, delete, scale,
   `--force-conflicts`, a Slack message anywhere other than the alert thread I
   linked. That is a mutation and the gate rules apply. The TL;DR into the
@@ -997,7 +1137,9 @@ before telling me you have lost the cluster - it clears on its own, and
 reporting a dead connection that is actually fine sends me chasing nothing.
 That one read is the limit: after any refusal, run nothing else until I
 answer, because three refusals in a row make auto mode hand me even a
-read-only command to approve.
+read-only command to approve. The one exception is a history rewrite
+refused in a bundled shape: it gets one retry in the plain shape of "Know
+what only I can run", and a second refusal is the stop.
 
 # Alert Investigation TL;DRs
 
@@ -1023,6 +1165,15 @@ text again.
   - `git config user.email "tkay@crusoeenergy.com"`
   - `git config user.signingkey D07B37AA6558492679499A20DB915178326D62E2`
   - `git config commit.gpgsign true`
+- **Git the sandbox breaks runs with the sandbox off from the first call.**
+  Anything that reaches the remote over SSH (`fetch`, `ls-remote`): the
+  sandbox proxy refuses SSH authentication. Any checkout, reset, rebase or
+  cherry-pick whose files include the repo's `.claude/` skills, hooks or
+  settings, which the sandbox will not write, or a directory named
+  `secrets`, which it hides: the operation dies halfway and leaves the
+  working tree half-updated. To learn what such a path holds, ask git
+  (`git ls-tree`, `git show`) - it reads objects, not the directory, and
+  works inside the sandbox.
 
 Commit message standards, the verification protocol, documentation sync and the
 squash-or-new-commit decision are in the `tkay-code` skill - load it before you

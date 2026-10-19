@@ -102,7 +102,7 @@ whose answer changed the plan is answered as the plan now stands.
 - **Measurement windows expire.** Say so, and give the recipe for picking a fresh one.
 - **Say what is NOT a problem.** If you checked something and it is fine, write that down
   so I stop wondering about it.
-- **Name the decisions that are mine** and ask them one at a time, not as a wall.
+- **Name the decisions that are mine** and ask them.
 - **Flag what rests on an inference rather than a measurement**, say what would falsify
   it, and if a cheap check exists, make it a step in the plan. Do not let a chain of
   reasoning quietly become a stated fact - I will press on exactly that.

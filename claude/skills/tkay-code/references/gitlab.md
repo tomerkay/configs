@@ -59,6 +59,8 @@ project path is URL-encoded, `crusoeenergy%2Fatero%2F<repo>`.
   log: `projects/<project>/jobs/<id>/trace`, read from the tail with the
   ANSI escapes stripped.
 
-Every one of these is a read. Posting a note, resolving a thread or
-anything else that writes to the MR is a message sent on my behalf and
-asks first, like any other outward-facing action.
+Every one of these is a read. Posting, editing or deleting a note,
+resolving or reopening a thread, or anything else that writes to the MR
+is a message sent on my behalf: run it only when my message allows that
+command in plain words, and otherwise print it, the note's full text
+included, for me to run myself.

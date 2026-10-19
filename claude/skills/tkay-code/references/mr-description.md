@@ -36,6 +36,14 @@ write it once for the whole MR.
 
 ## Writing it
 
+**The description describes what the remote holds, so the push is checked
+first.** Before writing or updating one, compare the branch's remote tip
+with local HEAD - `git ls-remote origin refs/heads/<branch>` against
+`git rev-parse HEAD`. When they differ, the MR still shows the old commits
+and a description written now describes work it does not have: stop, tell
+me the remote is behind, and ask whether I want to push first. Nothing is
+written until I answer.
+
 My yes to a description is the ask `references/gitlab.md` requires before a
 write to the MR, so do not ask again: show me the text and write it from a
 file with `glab mr update <iid> --description-file <file>` (`gh pr edit <n>

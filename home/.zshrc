@@ -203,7 +203,7 @@ function knodes() {
       def dage(t): ((now - (t | fromdateiso8601)) / 86400 | floor | tostring) + "d";
       ($up | split("\n") | map(select(length > 0) | split(" ")
              | {key: .[0], value: ((.[1] | tonumber | floor | tostring) + "d")}) | from_entries) as $uptime
-      | ["NAME","STATUS","AGE","UPTIME","VERSION","INSTANCE-TYPE","USER"],
+      | ["NAME","STATUS","AGE","UPTIME","VERSION","INSTANCE-TYPE","CELL"],
         (.items[] | [
           .metadata.name,
           (([.status.conditions[]? | select(.type == "Ready")
@@ -215,7 +215,7 @@ function knodes() {
           ($uptime[.metadata.labels["crusoe.ai/instance.id"]] // "-"),
           .status.nodeInfo.kubeletVersion,
           (.metadata.labels["beta.kubernetes.io/instance-type"] // "<none>"),
-          (.metadata.labels["atero/user"] // "<none>")
+          (.metadata.labels["cell-display-name"] // "<none>")
         ]) | @tsv' | column -t
 }
 

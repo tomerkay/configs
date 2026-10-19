@@ -198,6 +198,11 @@ update, so an edit there is either lost or lives just long enough to diverge.
 to load the skill, not what is in it. The body is read only after the
 description matched.
 
+**A skill names the decision it stops for and never prescribes the shape of
+the question** - not its length, its position in the reply or a marker on it -
+unless the catalog the skill belongs to fixes one. Otherwise the shape belongs
+to whoever loaded the skill; the skill says what needs deciding and waits.
+
 **A skill never records the current state of something it doesn't control** - a
 dead alert, a blank field, an unfixed bug, a lagging deploy. Somebody fixes it
 without ever opening the skill, and from that day the skill states a false fact

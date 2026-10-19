@@ -11,28 +11,29 @@ check outside the sandbox, and never commit without the signature.
 
 ## Squash or New Commit - Decide Every Time, and Say Which
 
-**Before every commit, work out which of the two it is and tell me in one line.**
-Do not default to a new commit.
+**Before every commit, work out which of the two it is and tell me in one
+line.** Do not default to a new commit.
 
-- **Squash it into the earlier commit** when the change only exists because that
-  commit got something wrong or left it half done: it corrects a claim that commit
-  made, rewrites prose that commit added, or finishes what it should have carried.
-  Nothing is published, so there is nothing to preserve - my history must not
-  record you writing a rationale badly and then rewriting it three commits later.
+- **Squash it into the earlier commit** when the change only exists because
+  that commit got something wrong or left it half done: it corrects a claim
+  that commit made, rewrites prose that commit added, or finishes what it
+  should have carried. Nothing is published, so there is nothing to preserve -
+  my history must not record you writing a rationale badly and then rewriting
+  it three commits later.
 - **Make it a new commit** when it stands on its own: a different change for a
   different reason, one that would still make sense if the earlier commit were
   reverted.
 
 **Doc edits are where this goes wrong most.** A doc fix to wording an earlier
-commit on this branch introduced belongs IN that commit - see "Documentation Sync
-on Every Commit" below. A standalone `docs:` commit for it is the very drift that
-rule exists to prevent.
+commit on this branch introduced belongs IN that commit - see "Documentation
+Sync on Every Commit" below. A standalone `docs:` commit for it is the very
+drift that rule exists to prevent.
 
-**Never choose "new commit" because rewriting history is inconvenient for you.**
-That is my history, not your convenience. When a squash or an amend needs a
-rewrite: branch a backup first, do it, then check `git diff <backup> HEAD`. It
-must show exactly the change you meant to make - nothing for a squash or a
-reword, only the intended edits for an amend that changes content. When it
+**Never choose "new commit" because rewriting history is inconvenient for
+you.** That is my history, not your convenience. When a squash or an amend
+needs a rewrite: branch a backup first, do it, then check `git diff <backup>
+HEAD`. It must show exactly the change you meant to make - nothing for a squash
+or a reword, only the intended edits for an amend that changes content. When it
 does, the rewrite is proven: **delete the backup branch straight away, WITHOUT
 asking permission** - no question in chat, no offer, no backup left behind for
 me to clean up - with `git branch -D` (rewritten commits never count as merged,
@@ -46,25 +47,34 @@ job, delete it in the same session without asking, and never leave it for me
 to find later. Ask only before deleting a branch you did not create.
 
 **The rewrite itself is scripted, because no interactive editor exists in this
-harness.** `git rebase -S -i <base>` works once `GIT_SEQUENCE_EDITOR` names a
-script that edits the todo and `GIT_EDITOR` one that overwrites the message
-file it is handed. Edit the todo by SHA - `s/^pick <sha>/reword <sha>/` - never
-by subject: the todo line may carry a comment marker between SHA and subject,
-and a pattern that matches nothing leaves every `pick` in place, so the rebase
-"succeeds" with nothing changed. Verify the new SHAs appeared before trusting
-it. `git commit --fixup=amend:<sha>` and `--fixup=reword:<sha>` refuse `-m` and
-`-F`, so a prepared message cannot ride on them; the `GIT_EDITOR` script is
-how it gets in. `-S` re-signs every rewritten commit - confirm with
-`git log --format='%h %G? %s'` before deleting the backup.
+harness, and autosquash is the first tool.** `git commit --fixup=<sha>` folds
+content into a commit below HEAD, and a commit whose subject is
+`amend! <target subject>` replaces that commit's content and message at once;
+`git commit -S -F <file>` writes one - `--amend` when the change is already
+HEAD - with the new message under that first line, which is why
+`--fixup=amend:<sha>` and `--fixup=reword:<sha>` - both refuse `-m` and `-F` -
+are never needed. Then
+`GIT_SEQUENCE_EDITOR=true git rebase -S -i --autosquash <sha>~1` applies them,
+as its own command with nothing chained to it: the harness's permission
+classifier judges the command text, and the bare shape has passed where a
+bundled one was refused as destructive. What autosquash cannot express - a
+reorder, a drop - takes a `GIT_SEQUENCE_EDITOR` script that edits the todo and
+a `GIT_EDITOR` one that overwrites the message file it is handed. Edit the todo
+by SHA - `s/^pick <sha>/reword <sha>/` - never by subject: the todo line may
+carry a comment marker between SHA and subject, and a pattern that matches
+nothing leaves every `pick` in place, so the rebase "succeeds" with nothing
+changed. Verify the new SHAs appeared before trusting it. `-S` re-signs every
+rewritten commit - confirm with `git log --format='%h %G? %s'` before deleting
+the backup.
 
 **On a branch only I push to, whether it is already pushed is NOT an input to
-this decision.** I force-push my own branches, so a commit already on the remote
-squashes and amends exactly like one that is not. "It's already pushed" is never
-a reason to make a new commit instead of amending there, and never a reason to
-leave a bad message standing. **A branch someone else also pushes to or builds
-on is different**: rewriting what is already on its remote breaks their copy, so
-ask before touching any commit that is there. When you cannot tell which kind
-the branch is, ask once.
+this decision.** I force-push my own branches, so a commit already on the
+remote squashes and amends exactly like one that is not. "It's already pushed"
+is never a reason to make a new commit instead of amending there, and never a
+reason to leave a bad message standing. **A branch someone else also pushes to
+or builds on is different**: rewriting what is already on its remote breaks
+their copy, so ask before touching any commit that is there. When you cannot
+tell which kind the branch is, ask once.
 
 ## Branch Names
 
@@ -85,20 +95,27 @@ do not add one.
 never who asked for it or what wrote it (`fix-by-claude` says nothing). A
 ticket key goes in when the convention has one and the task has one.
 
-**A branch meant to be pushed is proposed before it is created**: give me the
-name and the convention it follows in one line, and wait for my answer. A
-backup or scratch branch is created without asking.
+**Never work on the default branch, unless I have told you a repo is worked on
+its default branch.** Before the first change that would land on it, create a
+branch by the convention above, switch to it and tell me the name - no
+proposal, no question.
+
+**Otherwise a branch is created and checked out only when I ask for one.** The
+work stays on the branch it is on. When I ask, pick the name, create the branch
+and tell me the name - no proposal, no question. A backup is made with
+`git branch <name>`, which leaves HEAD where it is.
 
 ## Documentation Sync on Every Commit
 
 **Before creating ANY commit, check whether the change makes the repo
 `CLAUDE.md` or any `README.md` near the changed files stale.** A line about
 something that no longer exists is deleted, never turned into a record of what
-used to be there; a line that is now wrong is corrected in place. Either way the
-doc change lands in the SAME commit. If the docs are already accurate, say so
-briefly and move on - don't update docs just to touch them.
+used to be there; a line that is now wrong is corrected in place. Either way
+the doc change lands in the SAME commit. If the docs are already accurate, say
+so briefly and move on - don't update docs just to touch them.
 
-This applies to every commit, not just when I explicitly ask for documentation updates.
+This applies to every commit, not just when I explicitly ask for documentation
+updates.
 
 ## A Version Bump Is Its Own Commit, at the Top of the Branch
 
@@ -174,7 +191,8 @@ it delivers.
 
 **Performance (perf):**
 - ❌ `perf(validator): reduce validation time by 50%` (outcome in subject)
-- ❌ `perf(validator): swapped out hashX because it was slow` (past tense, vague)
+- ❌ `perf(validator): swapped out hashX because it was slow` (past tense,
+  vague)
 - ✅ `perf(validator): use hashY instead of hashX for lookups`
   ```
   Before: blacklist lookups went through hashX, iterating the whole
@@ -202,7 +220,8 @@ it delivers.
   ```
 
 **New Feature (feat):**
-- ❌ `feat(billing): unblock international expansion launch` (business milestone)
+- ❌ `feat(billing): unblock international expansion launch` (business
+  milestone)
 - ❌ `feat(billing): add a bunch of stripe stuff` (vague)
 - ✅ `feat(billing): implement multi-currency stripe webhooks`
   ```
@@ -234,22 +253,30 @@ it delivers.
 **Footers:**
 - Breaking changes: `BREAKING CHANGE: uuid field renamed to id`
 - Issue tracking: `Closes #1234`
-- Co-authors: `Co-authored-by: <the model that actually wrote the commit> <noreply@anthropic.com>` - use the model you actually are, never a model name copied from a config file
+- Co-authors: `Co-authored-by: <the model that actually wrote the commit>
+  <noreply@anthropic.com>` - use the model you actually are, never a model name
+  copied from a config file
 
 ## CRITICAL: Commit Message Verification Protocol
 
 **MANDATORY PROCESS when writing/amending commit messages:**
 
-When I ask you to "amend" or create a commit message, you MUST follow this exact process:
+When I ask you to "amend" or create a commit message, you MUST follow this
+exact process:
 
-1. **Run `git show HEAD` or `git diff HEAD~1 HEAD`** - Actually look at the REAL changes
+1. **Run `git show HEAD` or `git diff HEAD~1 HEAD`** - Actually look at the
+   REAL changes
 2. **Verify EVERY SINGLE CLAIM** in the commit message against the actual diff:
    - For EACH bullet point, find the corresponding code change
-   - If you claim "rename X → Y", find the line that shows `-  label: 'X'` and `+  label: 'Y'`
-   - If you claim "remove column Z", find the line that shows `-  { id: 'Z', ...` being removed
+   - If you claim "rename X → Y", find the line that shows `-  label: 'X'` and
+     `+  label: 'Y'`
+   - If you claim "remove column Z", find the line that shows `-  { id: 'Z',
+     ...` being removed
    - If you claim "add feature W", find the lines showing W being added
-3. **Flag MISSING changes** - Check if significant changes in the diff aren't mentioned in the message
-4. **Remove FALSE claims** - Delete any claim you can't find evidence for in the actual diff
+3. **Flag MISSING changes** - Check if significant changes in the diff aren't
+   mentioned in the message
+4. **Remove FALSE claims** - Delete any claim you can't find evidence for in
+   the actual diff
 5. **Be SPECIFIC about what changed** - Use actual old/new values from the diff
 
 **BANNED commit message patterns:**
@@ -258,7 +285,8 @@ When I ask you to "amend" or create a commit message, you MUST follow this exact
 ```
 - Fix "/GPU" spacing (remove space before slash)
 ```
-When the actual change is: `'QPS Per GPU'` → `'Avg Achieved QPS/GPU'` (not removing a space!)
+When the actual change is: `'QPS Per GPU'` → `'Avg Achieved QPS/GPU'` (not
+removing a space!)
 
 ❌ **Claiming changes from earlier commits:**
 ```
@@ -295,8 +323,11 @@ Before finalizing ANY commit message, ask yourself:
 - "Is this claim about THIS commit or something we discussed earlier?"
 - "Am I being precise about what OLD value changed to what NEW value?"
 
-If you can't answer "YES" to all three, DELETE that claim or rewrite it accurately.
+If you can't answer "YES" to all three, DELETE that claim or rewrite it
+accurately.
 
 **When I catch you with false claims in commit messages:**
 
-This is a CRITICAL failure. It means you didn't actually verify the diff. I will call you out harshly because commit history is permanent and I care deeply about accurate git history.
+This is a CRITICAL failure. It means you didn't actually verify the diff. I
+will call you out harshly because commit history is permanent and I care deeply
+about accurate git history.
