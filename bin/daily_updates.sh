@@ -10,7 +10,7 @@ CLAUDE="$HOME/.local/bin/claude"
 ATERO_MARKETPLACE=atero-skills
 ATERO_BUNDLE="atero-skills@$ATERO_MARKETPLACE"
 STATUS_FILE=/tmp/update_crontab.txt
-BREW_FORMULAE="crusoe k9s gh glab uv kubectx pomerium/tap/pomerium-cli"
+BREW_FORMULAE="crusoe k9s gh glab uv kubectx golangci-lint pomerium/tap/pomerium-cli"
 GO_PIN_REPO="$HOME/repos/data-path"
 
 # A formula can keep older kegs until cleanup runs, so take the last (newest) column.
