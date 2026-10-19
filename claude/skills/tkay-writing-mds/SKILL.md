@@ -1,6 +1,6 @@
 ---
 name: tkay-writing-mds
-description: Standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md, the shape of a README, which copy of a skill to edit and how to write one. Use before creating or editing any of them, including a doc touched on the way through a code change.
+description: Standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md, the shape of a README, which copy of a skill to edit, how to write one and how two skills share code. Use before creating or editing any of them, including a doc touched on the way through a code change.
 ---
 
 # Writing markdown files
@@ -190,6 +190,14 @@ update, so an edit there is either lost or lives just long enough to diverge.
   drift to delete, not a source.
 - **A public skill** installed from an upstream belongs to that upstream. Do
   not edit it.
+
+**Code that two skills of one plugin catalog share is one file, symlinked
+into each skill's folder**, and the script imports it by its bare name: a skill
+can be installed on its own, so it imports only what sits in its own folder.
+Both install routes carry the file. A plugin that holds only the skill gets the
+link's target copied in as a plain file; a plugin rooted at the whole repo
+copies the target with everything else and keeps the link. Never paste a copy
+into each skill instead: the copies drift.
 
 **A skill name** is lowercase letters, digits and hyphens only, which is all the
 [Agent Skills spec](https://agentskills.io/specification) allows.

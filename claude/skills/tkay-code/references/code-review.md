@@ -172,6 +172,7 @@ When nothing came up, the heading stays and the table is one line instead:
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
   - Suspicious logic you traced and it's genuinely wrong → 🔴. Suspicious logic you can't prove either way → 🟠, and say what would prove it.
   - Perf: measurable regression on the per-request path → 🟠 minimum. Cold path → 🟡.
+  - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), a test of nothing the component promises, or a bug fix with no test that reproduces it → 🟡. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "TESTS CHECK THE CONTRACT, NOT THE CODE" in `references/clean-code.md` says what a good one checks.
 - **Still report the nits.** "NOT BROKEN" ≠ "don't mention". Put them below the divider where they can't be mistaken for real problems.
 - **Every finding gets both tags.** A finding with no policy label is an incomplete finding - I can't act on "here's a thing" without knowing if it blocks me.
 - **MUST HAVE is not a wish list.** If everything is MUST HAVE, the label means nothing and I'll start ignoring it. Be willing to write NICE TO HAVE and stand behind it.

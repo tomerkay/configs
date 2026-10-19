@@ -317,6 +317,52 @@ Everything past that point takes the typed value and never re-checks it.
 
 ---
 
+# TESTS CHECK THE CONTRACT, NOT THE CODE
+
+**A unit test earns its place by catching a real regression.** It pins
+something the component promises - its API, an invariant, the intent behind a
+rule - so it fails when that promise breaks and stays green through any
+refactor that keeps it.
+
+- **Test through the public interface.** Call what the callers call, assert on
+  what they observe: the return value, the error raised, the counter
+  incremented, the message sent. Never reach into a private helper, an internal
+  attribute or the order of internal calls.
+- **An invariant is a property, not one example.** "Every reason label starts
+  at zero", "the window never holds more than its size", "parse(render(x)) ==
+  x" - check it across the inputs that matter: empty, the boundary, the one
+  that hit the bug. Where the input space is wide, generate the inputs
+  (Hypothesis in Python, proptest in Rust).
+- **Intent is tested by the case that tells it apart.** A rule like "timeouts
+  are transient, wrong output blacklists" gets a test for each side of the
+  line, so a change that blurs it fails.
+- **The name states the behaviour.**
+  `test_timeout_is_transient_and_never_blacklists`, not `test_validate_3`. A
+  red test's name says which promise broke.
+- **Mock only the boundary**: network, clock, filesystem, cluster, another
+  service. A mocked collaborator inside the component, asserted to have been
+  called with these arguments, tests the wiring - it breaks on every refactor
+  and passes through every bug.
+- **A bug fix carries the test that reproduces it**, red before the fix.
+
+**Banned, because they mirror the implementation instead of checking it:**
+- asserting a private attribute or an intermediate state
+- a snapshot of a whole object or log line when one field is the contract
+- the expected value computed with the same formula the code uses - the test
+  then agrees with the bug
+- a test per getter, constructor or dataclass field, or of what the language
+  or a library already guarantees
+- a test written to raise coverage
+
+**The test for a test:** would it fail if the behaviour broke, and would it
+still pass after a refactor that keeps the behaviour? Both must be yes. A
+behaviour-preserving refactor that breaks it means it is coupled to the
+implementation; no plausible bug that breaks it means it is noise. Delete
+either. A few sharp tests beat many shallow ones - "Effort must be
+proportional to the change" applies to tests too.
+
+---
+
 # Type Safety: Prefer Enums Over Strings
 
 **ALWAYS use enums instead of string literals for representing a fixed set of values.**

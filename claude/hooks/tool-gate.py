@@ -135,6 +135,8 @@ TAR_EXTRACT_SHORT = set("xvfzjJkopm")
 TAR_EXTRACT_LONG = {"--extract", "--get", "--directory", "--file", "--gzip", "--bzip2", "--xz",
                     "--zstd", "--verbose", "--keep-old-files", "--no-same-owner",
                     "--no-same-permissions", "--strip-components", "--exclude"}
+TAR_STDOUT_SHORT = TAR_EXTRACT_SHORT | {"O"}
+TAR_STDOUT_LONG = TAR_EXTRACT_LONG | {"--to-stdout"}
 
 # kubectl verbs CLAUDE.md excludes from the gate: never run by the model, printed for the user.
 KUBECTL_EXCLUDED_BY_CLAUDE_MD = {"apply", "delete", "create", "patch", "edit", "scale", "rollout"}
@@ -907,13 +909,31 @@ def classify_rsync(args):
 
 
 def classify_tar(args):
-    if has_flag(args, "--list", "-t"):
+    if has_flag(args, "--list", "-t") or tar_extracts_to_stdout(args):
         return READ
     first = args[0] if args else ""
     cluster = first.lstrip("-")
     if first and re.match(r"^-?[a-zA-Z]+$", first) and "t" in cluster and not ({"x", "c", "r", "u"} & set(cluster)):
         return READ
     return WRITE
+
+
+def tar_extracts_to_stdout(args):
+    """True when tar only extracts, and -O / --to-stdout sends every member to stdout."""
+    extract = stdout = False
+    for i, arg in enumerate(args):
+        if arg.startswith("--"):
+            name = arg.partition("=")[0]
+            if name not in TAR_STDOUT_LONG:
+                return False
+            extract = extract or name in ("--extract", "--get")
+            stdout = stdout or name == "--to-stdout"
+        elif arg.startswith("-") or i == 0:
+            if not set(arg.lstrip("-")) <= TAR_STDOUT_SHORT:
+                return False
+            extract = extract or "x" in arg
+            stdout = stdout or "O" in arg
+    return extract and stdout
 
 
 def classify_unzip(args):
@@ -1851,6 +1871,14 @@ def selftest():
         (False, "Bash", f"tar -x --to-command=sh -C {scratch}d", DENY),
         (False, "Bash", f"tar -xC {home}/repo -C {scratch}d", DENY),
         (False, "Bash", f"tar -x -C {scratch}d -C rel", DENY),
+        (False, "Bash", "tar -xzOf a.tgz common/x.tpl | diff - x.tpl", None),
+        (False, "Bash", "tar xzOf a.tgz common/x.tpl", None),
+        (False, "Bash", "tar -x --to-stdout --file=a.tgz m", None),
+        (False, "Bash", "tar -xzf a.tgz m", DENY),
+        (False, "Bash", "tar -xO --to-command=sh -f a.tgz", DENY),
+        (False, "Bash", "tar -xOP -f a.tgz", DENY),
+        (False, "Bash", f"tar -xO -C {home}/repo -f a.tgz", DENY),
+        (False, "Bash", "tar -cOf a.tar .", DENY),
         (False, "Bash", f"touch {home}/repos/probe", DENY),
         (False, "Bash", "touch /tmp/probe.md", DENY),
         (False, "Bash", f"touch {scratch}../x", DENY),

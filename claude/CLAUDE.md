@@ -291,7 +291,10 @@ command as `! <command>`, a reply with its full text. Never offer to run one.
 
 **With my permission it still runs through the hook's 🔴 prompt**, every time.
 That prompt is where a misread of my words is caught, not a second permission to
-ask for in chat.
+ask for in chat. **Before running one, check the org's managed policy
+`permissions.deny`**: a command it denies never runs from here, permission or
+not, and no other route - a `glab api` / `gh api` commit write, an MCP tool -
+stands in for it. Print it as `! <command>` straight away and do not attempt it.
 
 **Publishing a tag, a release or an image is not a push, and asks every time.**
 Creating a tag or release on the remote (`glab release create`, a `glab api` write
