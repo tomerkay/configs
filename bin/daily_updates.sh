@@ -9,6 +9,7 @@ export PATH
 CLAUDE="$HOME/.local/bin/claude"
 ATERO_MARKETPLACE=atero-skills
 ATERO_BUNDLE="atero-skills@$ATERO_MARKETPLACE"
+PLUGINS_FILE="$HOME/.claude/plugins/installed_plugins.json"
 STATUS_FILE=/tmp/update_crontab.txt
 BREW_FORMULAE="crusoe k9s gh glab uv kubectx golangci-lint pomerium/tap/pomerium-cli"
 GO_PIN_REPO="$HOME/repos/data-path"
@@ -18,9 +19,16 @@ brew_version() {
 	brew list --versions "$1" 2>/dev/null | awk '{print $NF}'
 }
 
-bundle_version() {
-	jq -r --arg p "$ATERO_BUNDLE" '.plugins[$p][0].version // empty' \
-		"$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null
+# One install per scope: the user one, plus one per repo whose own settings enable the bundle.
+bundle_versions() {
+	jq -r --arg p "$ATERO_BUNDLE" \
+		'[.plugins[$p][] | "\(.projectPath // "user" | split("/") | last)=\(.version)"] | join(" ")' \
+		"$PLUGINS_FILE" 2>/dev/null
+}
+
+bundle_project_dirs() {
+	jq -r --arg p "$ATERO_BUNDLE" '.plugins[$p][] | select(.scope == "project") | .projectPath' \
+		"$PLUGINS_FILE" 2>/dev/null
 }
 
 report() {
@@ -55,11 +63,19 @@ echo "LAST_EPOCH=$(( $(date +%s) / 86400 ))" > "$ZSH/cache/.zsh-update"
 "$CLAUDE" update
 claude_status=$?
 
-bundle_before=$(bundle_version)
+bundle_before=$(bundle_versions)
 # An installed plugin is a frozen copy pinned to its plugin.json version, so the
-# marketplace pull alone changes nothing until `plugin update` re-copies it.
-"$CLAUDE" plugin marketplace update "$ATERO_MARKETPLACE" && "$CLAUDE" plugin update "$ATERO_BUNDLE"
-bundle_status=$?
+# marketplace pull alone changes nothing until `plugin update` re-copies it. Each
+# scope is its own copy, and the default update touches only the user one.
+if "$CLAUDE" plugin marketplace update "$ATERO_MARKETPLACE"; then
+	"$CLAUDE" plugin update "$ATERO_BUNDLE"
+	bundle_status=$?
+	for dir in $(bundle_project_dirs); do
+		(cd "$dir" && "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") || bundle_status=$?
+	done
+else
+	bundle_status=$?
+fi
 
 go_before=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 # The pin is read from origin/main, so whatever branch the checkout is on does not
@@ -100,7 +116,7 @@ brew_report=$(
 
 omz_after=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_after=$("$CLAUDE" --version 2>/dev/null)
-bundle_after=$(bundle_version)
+bundle_after=$(bundle_versions)
 
 # Newest run first, so the head of the file is the current state.
 {
