@@ -44,7 +44,7 @@ PRIVATE_CLOSE='# <<< PRIVATE <<<'
 SECRET_PATTERN='gh[oprsu]_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_.-]{20,}|hf_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|AUTH for claude|INFLECTION_APIKEY=.|://[^/@[:space:]]+:[^/@[:space:]]+@'
 
 REVIEW_MODEL='haiku'
-REVIEW_SYSTEM_PROMPT='Unattended pre-commit review of a diff for a public dotfiles repo. An added line is UNSAFE if it holds a credential (key, token, password, private key, webhook URL), a non-public hostname or IP, a cluster, context, node or namespace name, or a personal e-mail address. The owner handle, work e-mail, employer name, GPG fingerprint, home-directory paths, test fixtures and placeholders such as <ctx>, $NS or C0OTHER are fine; flag only values that are evidently real. Reply with one line per finding (file, the added line, why), then a final line that is exactly CLEAN or UNSAFE. Nothing after the verdict.'
+REVIEW_SYSTEM_PROMPT='Unattended pre-commit review of a diff for a public dotfiles repo. An added line is UNSAFE if it holds a credential (key, token, password, private key, webhook URL), a non-public hostname or IP, a cluster, context, node or namespace name, or a personal e-mail address. The owner handle, work e-mail, employer name (Atero, in any form or role: `atero` as a word, a namespace, a label prefix or a repo name is public), GPG fingerprint, home-directory paths, test fixtures and placeholders such as <ctx>, $NS or C0OTHER are fine; flag only values that are evidently real. Reply with one line per finding (file, the added line, why), then a final line that is exactly CLEAN or UNSAFE. Nothing after the verdict.'
 
 push=true
 if [ "${1:-}" = "--no-push" ]; then
