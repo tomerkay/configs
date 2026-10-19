@@ -10,7 +10,7 @@ CLAUDE="$HOME/.local/bin/claude"
 ATERO_MARKETPLACE=atero-skills
 ATERO_BUNDLE="atero-skills@$ATERO_MARKETPLACE"
 PLUGINS_FILE="$HOME/.claude/plugins/installed_plugins.json"
-STATUS_FILE=/tmp/update_crontab.txt
+LOG_FILE="$(cd "$(dirname "$0")/.." && pwd)/daily-updates.log"
 BREW_FORMULAE="crusoe k9s gh glab uv kubectx golangci-lint pomerium/tap/pomerium-cli"
 GO_PIN_REPO="$HOME/repos/data-path"
 
@@ -118,7 +118,6 @@ omz_after=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_after=$("$CLAUDE" --version 2>/dev/null)
 bundle_after=$(bundle_versions)
 
-# Newest run first, so the head of the file is the current state.
 {
 	echo "last run: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 	report "oh-my-zsh" "$omz_before" "$omz_after" "$omz_status"
@@ -132,6 +131,4 @@ bundle_after=$(bundle_versions)
 	fi
 	echo "$brew_report"
 	echo "============================================================"
-	cat "$STATUS_FILE" 2>/dev/null
-} > "$STATUS_FILE.new"
-mv "$STATUS_FILE.new" "$STATUS_FILE"
+} >> "$LOG_FILE"

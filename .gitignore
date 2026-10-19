@@ -5,3 +5,4 @@
 # project checkout and wrong for the user-level copy this repo keeps.
 !claude/settings.local.json
 sync-configs.log
+daily-updates.log
