@@ -13,10 +13,11 @@ wrong green is the failure this hook exists to prevent.
 
 For Bash, Edit, Write, NotebookEdit and every MCP tool it then decides, from the gate
 state lfg-state.py records per session: a write before `LFG!` is denied with the refusal
-line, the permanently excluded cluster operations are denied in every state, a push, an
-MR/PR state change or a review-thread write asks in every state, and the pin rules for
-kubectl and helm are enforced. A program the classifier does not know asks instead of denying, so a read it
-has not met never gets the refusal line.
+line, every command that needs the user's words for that one command asks in every
+state, and the pin rules for kubectl and helm are enforced. A program the classifier does not know asks instead of denying, so a read it
+has not met never gets the refusal line. A commit, merge, cherry-pick, revert or am that
+lands on a repo's default branch is denied in every state, outside ~/.claude and
+~/repos/configs, which are committed on main by design.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -36,6 +37,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 
 READ, WRITE, DANGER = "🟢 READ", "🟠 WRITE", "🔴 DANGER"
@@ -138,27 +140,31 @@ TAR_EXTRACT_LONG = {"--extract", "--get", "--directory", "--file", "--gzip", "--
 TAR_STDOUT_SHORT = TAR_EXTRACT_SHORT | {"O"}
 TAR_STDOUT_LONG = TAR_EXTRACT_LONG | {"--to-stdout"}
 
-# kubectl verbs CLAUDE.md excludes from the gate: never run by the model, printed for the user.
-KUBECTL_EXCLUDED_BY_CLAUDE_MD = {"apply", "delete", "create", "patch", "edit", "scale", "rollout"}
+# kubectl verbs CLAUDE.md names as writing live cluster state.
+KUBECTL_WRITES_BY_CLAUDE_MD = {"apply", "delete", "create", "patch", "edit", "scale", "rollout"}
 KUBECTL_ROLLOUT_READS = {"status", "history"}
 # Verbs that write live cluster state the same way and that CLAUDE.md does not name.
-KUBECTL_EXCLUDED_WIDENED = {"replace", "set", "label", "annotate", "taint", "cordon", "uncordon",
-                            "drain", "evict", "expose", "run", "debug", "autoscale", "certificate"}
+KUBECTL_WRITES_WIDENED = {"replace", "set", "label", "annotate", "taint", "cordon", "uncordon",
+                          "drain", "evict", "expose", "run", "debug", "autoscale", "certificate"}
 KUBECTL_CONTEXT_SETTERS = {"use-context", "set-context"}
 # Subcommands that never reach a cluster, so the pin rules do not apply.
 KUBECTL_LOCAL = {"config", "kustomize", "completion", "options", "help"}
 HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "registry",
               "create", "env", "verify", "repo", "dependency", "plugin", "version",
               "completion", "help"}
-HELM_EXCLUDED = {"uninstall", "delete", "del", "rollback"}
+HELM_RELEASE_MOVES = {"uninstall", "delete", "del", "rollback"}
 GIT_CONFIG_VALUE_FLAGS = {"-f", "--file", "--blob", "--default", "--type"}
 GIT_CONFIG_READ_SUBCOMMANDS = {"get", "list"}
 GIT_CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "edit", "rename-section", "remove-section"}
-# Cluster-scoped reads where kubectl ignores -n; `get --raw` carries an API path instead.
+# Cluster-scoped commands where kubectl ignores -n; `get --raw` carries an API path instead.
 NAMESPACE_FREE = {("get", "node"), ("get", "nodes"), ("describe", "node"), ("describe", "nodes"),
                   ("top", "node"), ("top", "nodes"), ("get", "crd"), ("get", "crds"),
                   ("get", "customresourcedefinitions"), ("get", "ns"), ("get", "namespace"),
-                  ("get", "namespaces")}
+                  ("get", "namespaces"), ("label", "node"), ("label", "nodes"),
+                  ("annotate", "node"), ("annotate", "nodes"), ("taint", "node"),
+                  ("taint", "nodes")}
+# Verbs whose only target is a node, so the second word is the node's name.
+NODE_VERBS = {"cordon", "uncordon", "drain"}
 KUBECTL_GLOBAL_VALUE_FLAGS = {
     "--context", "--kubeconfig", "-n", "--namespace", "--cluster", "--user", "-s", "--server",
     "--token", "--as", "--as-group", "--request-timeout", "--certificate-authority",
@@ -378,6 +384,17 @@ def kubectl_exec_command(rest):
     return rest[rest.index("--") + 1:]
 
 
+def writes_inside_pod(verb, rest):
+    """An exec that is not a read, a cp whose destination is `pod:path`, or an attach."""
+    if verb == "exec":
+        return classify_kubectl(rest) != READ
+    if verb == "cp":
+        paths = [a for i, a in enumerate(rest)
+                 if not a.startswith("-") and not (i and rest[i - 1] in ("-c", "--container"))]
+        return len(paths) > 2 and ":" in paths[-1]
+    return verb == "attach"
+
+
 def classify_kubectl(args):
     rest, _ = split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)
     pos = positionals(rest)
@@ -409,7 +426,7 @@ def classify_kubectl(args):
         return classify_words(command) if command else WRITE
     if verb == "cp":
         return WRITE
-    if verb in KUBECTL_EXCLUDED_BY_CLAUDE_MD or verb in KUBECTL_EXCLUDED_WIDENED:
+    if verb in KUBECTL_WRITES_BY_CLAUDE_MD or verb in KUBECTL_WRITES_WIDENED:
         return DANGER
     return WRITE
 
@@ -433,7 +450,7 @@ def classify_helm(args):
         if dry_run(rest):
             return READ
         return DANGER if has_flag(rest, "--force", "--force-conflicts") else WRITE
-    if sub in HELM_EXCLUDED:
+    if sub in HELM_RELEASE_MOVES:
         return DANGER
     return WRITE
 
@@ -576,9 +593,14 @@ def creates_remote_tag(args):
 # and glab's `accept` merges one.
 MR_MOVES = {"create", "new", "for", "reopen", "close", "merge", "accept", "approve", "rebase",
             "update-branch", "comment", "review"}
+# The user's words for this one command AND this prompt, every time: CLAUDE.md's
+# "Some commands need my words AND the prompt, every time".
+ON_WORDS = ("run it only when the user's message allowed this command in words, otherwise "
+            "print it as `! <command>`")
+CONTEXT_SETTER_REASON = ("sets the current context or namespace, which every command that "
+                         "relies on it then hits; it never replaces --context and -n")
 MR_MOVE_REASON = ("pushes, opens, closes, merges or approves an MR/PR, or posts to, resolves "
-                  "or reopens its review threads: run it only when the user's message allowed "
-                  "this command in words, otherwise print it as `! <command>`")
+                  f"or reopens its review threads: {ON_WORDS}")
 MCP_MR_MOVE_WORDS = ("merge_request", "pull_request", "push")
 MCP_CODE_HOSTS = ("gitlab", "github")
 MCP_THREAD_WORDS = ("comment", "note", "discussion", "review", "thread")
@@ -1599,18 +1621,18 @@ def pin_decisions(prog, args):
     if ((HANDLERS.get(prog) is classify_docker and pushes_image(args))
             or (prog == "skopeo" and skopeo_pushes(args))):
         out.append((ASK, "pushes an image to a registry, where a moved tag reaches every "
-                         "deployment that pulls it: ask every time"))
+                         f"deployment that pulls it: {ON_WORDS}"))
     elif prog == "glab" and creates_remote_tag(args):
         out.append((ASK, "creates a tag or release on the remote, which can start its release "
-                         "pipeline: ask every time"))
+                         f"pipeline: {ON_WORDS}"))
     elif prog in PUBLISHING_SCRIPTS or (prog in ("python", "python3", "uv") and any(
             os.path.basename(a) in PUBLISHING_SCRIPTS for a in positionals(args))):
         out.append((ASK, "runs a script that pushes images and moves shared registry tags: "
-                         "ask every time"))
+                         f"{ON_WORDS}"))
     if moves_branch_or_mr(prog, args):
         out.append((ASK, MR_MOVE_REASON))
     if prog in ("kubectx", "kubens"):
-        out.append((DENY, "never set the target: pin every command with --context and -n"))
+        out.append((ASK, f"{CONTEXT_SETTER_REASON}: {ON_WORDS}"))
     elif prog in ("kubectl", "k", "oc", "stern"):
         rest, seen = split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)
         pos = positionals(rest)
@@ -1618,18 +1640,22 @@ def pin_decisions(prog, args):
         sub = pos[1] if len(pos) > 1 else ""
         if prog != "stern":
             if verb == "config" and sub in KUBECTL_CONTEXT_SETTERS:
-                out.append((DENY, "never set the target: pin every command with --context and -n"))
+                out.append((ASK, f"{CONTEXT_SETTER_REASON}: {ON_WORDS}"))
                 return out
             if not pos or verb in KUBECTL_LOCAL or (verb == "version" and "--client" in rest):
                 return out
-            excluded = (verb in KUBECTL_EXCLUDED_WIDENED
-                        or (verb in KUBECTL_EXCLUDED_BY_CLAUDE_MD
-                            and not (verb == "rollout" and sub in KUBECTL_ROLLOUT_READS)))
-            if excluded and not dry_run(rest):
-                out.append((DENY, f"kubectl {verb} is yours to run: print it as `! <command>`"))
+            writes = (verb in KUBECTL_WRITES_WIDENED
+                      or (verb in KUBECTL_WRITES_BY_CLAUDE_MD
+                          and not (verb == "rollout" and sub in KUBECTL_ROLLOUT_READS)))
+            if writes and not dry_run(rest):
+                out.append((ASK, f"kubectl {verb} writes live cluster state: {ON_WORDS}"))
+            elif writes_inside_pod(verb, rest):
+                out.append((ASK, f"kubectl {verb} changes what runs or is stored inside a pod: "
+                                 f"{ON_WORDS}"))
         if not seen.get("--context"):
             out.append((DENY, "pin the context: every cluster command carries --context <ctx>"))
         namespace_free = (prog != "stern" and ((verb, sub) in NAMESPACE_FREE
+                                               or verb in NODE_VERBS
                                                or (verb == "get" and has_flag(rest, "--raw"))))
         if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")) and not namespace_free:
             out.append((DENY, "pin the namespace: every cluster command carries -n <ns>, "
@@ -1640,12 +1666,14 @@ def pin_decisions(prog, args):
         sub = pos[0] if pos else ""
         if not pos or sub in HELM_LOCAL:
             return out
-        if sub in HELM_EXCLUDED or has_flag(rest, "--force-conflicts"):
-            out.append((DENY, f"helm {sub}{' --force-conflicts' if has_flag(rest, '--force-conflicts') else ''}"
-                              " is yours to run: print it as `! <command>`"))
+        if has_flag(rest, "--force-conflicts"):
+            out.append((ASK, f"helm {sub} --force-conflicts takes field ownership from every "
+                             f"other manager: {ON_WORDS}"))
+        if sub in HELM_RELEASE_MOVES:
+            out.append((ASK, f"helm {sub} deletes or rewinds a live release: {ON_WORDS}"))
         if sub in ("install", "upgrade") and has_flag(rest, "--reuse-values"):
             out.append((ASK, "--reuse-values replays the previous values onto the new chart: "
-                             "ask every time"))
+                             f"{ON_WORDS}"))
         if not seen.get("--kube-context"):
             out.append((DENY, "pin the context: every helm command carries --kube-context <ctx>"))
         if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")):
@@ -1655,7 +1683,98 @@ def pin_decisions(prog, args):
         pos = positionals(rest)
         if pos[:3] == ["kubernetes", "clusters", "get-credentials"]:
             cluster = pos[3] if len(pos) > 3 else "<cluster>"
-            out.append((ASK, f"adds a kubeconfig context for {cluster}: ask every time"))
+            out.append((ASK, f"adds a kubeconfig context for {cluster}: {ON_WORDS}"))
+    return out
+
+
+# Commands that record a commit on whatever branch is checked out. Committing on a
+# repo's default branch is never right outside the repos committed on main by design.
+COMMIT_MAKERS = {"commit", "merge", "cherry-pick", "revert", "am"}
+COMMIT_MAKER_NON_COMMITS = {"--abort", "--quit", "--skip", "--dry-run"}
+DEFAULT_BRANCH_EXEMPT = tuple(os.path.realpath(os.path.expanduser(p))
+                              for p in ("~/.claude", "~/repos/configs"))
+DEFAULT_BRANCH_REASON = ("commits on {branch}, the default branch of {repo}: create a branch "
+                         "first (CLAUDE.md: never work on the default branch)")
+
+
+def git_out(repo_dir, *args):
+    """A git read in repo_dir, or None when git cannot answer it."""
+    try:
+        proc = subprocess.run(["git", "-C", repo_dir, *args], capture_output=True,
+                              text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
+def default_branch(repo_dir):
+    remote_head = git_out(repo_dir, "symbolic-ref", "--quiet", "--short",
+                          "refs/remotes/origin/HEAD")
+    if remote_head:
+        return remote_head.split("/", 1)[-1]
+    for name in ("main", "master"):
+        if git_out(repo_dir, "rev-parse", "--verify", "--quiet", f"refs/heads/{name}"):
+            return name
+    return None
+
+
+def switched_to(sub, rest):
+    """The branch a `git switch` or `git checkout` in the same command moves to, or None."""
+    pos = positionals(rest)
+    for flag in ("-c", "-C", "--create", "--force-create", "-b", "-B", "--orphan"):
+        if flag in rest:
+            i = rest.index(flag)
+            return rest[i + 1] if i + 1 < len(rest) else None
+    if "--" in rest or len(pos) != 1:
+        return None
+    return pos[0] if sub in ("switch", "checkout") else None
+
+
+def default_branch_commits(command, cwd):
+    """A deny row for each commit the command makes on a repo's default branch.
+
+    The working directory follows every `cd` and `git -C` in the command, and a branch
+    switched to earlier in the same command counts as checked out. A git or filesystem
+    lookup that fails adds no row: the hook denies everything when it raises.
+    """
+    out = []
+    here = cwd
+    switched = {}
+    for prog, args in invocations(command):
+        if prog == "cd":
+            pos = positionals(args)
+            here = os.path.join(here, os.path.expanduser(pos[0])) if pos else os.path.expanduser("~")
+            continue
+        if prog != "git":
+            continue
+        repo_dir, rest = here, list(args)
+        while rest and rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P"):
+            if rest[0] == "-C" and len(rest) > 1:
+                repo_dir = os.path.join(repo_dir, os.path.expanduser(rest[1]))
+            rest = rest[2:] if rest[0] in ("-C", "-c", "--git-dir", "--work-tree") else rest[1:]
+        if not rest:
+            continue
+        sub, rest = rest[0], rest[1:]
+        top = git_out(repo_dir, "rev-parse", "--show-toplevel")
+        if not top:
+            continue
+        top = os.path.realpath(top)
+        if sub in ("switch", "checkout"):
+            target = switched_to(sub, rest)
+            created = any(f in rest for f in ("-c", "-C", "--create", "--force-create",
+                                              "-b", "-B", "--orphan"))
+            # A bare `checkout <name>` restores a file unless <name> is a branch.
+            if target and (created or git_out(repo_dir, "rev-parse", "--verify", "--quiet",
+                                              f"refs/heads/{target}")):
+                switched[top] = target
+            continue
+        if sub not in COMMIT_MAKERS or COMMIT_MAKER_NON_COMMITS & set(rest):
+            continue
+        if top in DEFAULT_BRANCH_EXEMPT:
+            continue
+        branch = switched.get(top) or git_out(repo_dir, "symbolic-ref", "--quiet", "--short", "HEAD")
+        if branch and branch == default_branch(repo_dir):
+            out.append((DENY, DEFAULT_BRANCH_REASON.format(branch=branch, repo=top)))
     return out
 
 
@@ -1668,13 +1787,14 @@ def mcp_kind(tool_name):
     return None
 
 
-def decide_bash(tool_input, gate_open):
+def decide_bash(tool_input, gate_open, cwd):
     command = tool_input.get("command")
     if not isinstance(command, str):
         raise ValueError("Bash call without a command string")
     out = []
     for prog, args in invocations(command):
         out.extend(pin_decisions(prog, args))
+    out.extend(default_branch_commits(command, cwd))
     if not gate_open and classify_command(command) != READ and not bash_scratch_exempt(command):
         if only_unknown_writes(command):
             out.append((ASK, "unclassified - fix the handler in tool-gate.py"))
@@ -1690,7 +1810,9 @@ def decide_mcp(tool_name, tool_input, gate_open):
     if tool == SLACK_SEND:
         if tool_input.get("thread_ts") and tool_input.get("channel_id") in ALERT_CHANNEL_IDS:
             return []
-        return [(ASK, "a Slack message outside the linked alert thread: show the text and ask")]
+        return [(ASK, "a Slack message outside the linked alert thread: send it only when the "
+                      "user's message allowed this message in words, otherwise show its full "
+                      "text")]
     if (tool == SLACK_REACT and tool_input.get("channel_id") in ALERT_CHANNEL_IDS
             and tool_input.get("emoji") == ALERT_REACTION):
         return []
@@ -1712,10 +1834,13 @@ def decide_mcp(tool_name, tool_input, gate_open):
     return []
 
 
-def decide(tool_name, tool_input, gate_open):
-    """The strictest decision over every matching row, as (decision, reason) or None."""
+def decide(tool_name, tool_input, gate_open, cwd=None):
+    """The strictest decision over every matching row, as (decision, reason) or None.
+
+    cwd is the directory the tool call runs in, which a Bash commit is judged against.
+    """
     if tool_name == "Bash":
-        out = decide_bash(tool_input, gate_open)
+        out = decide_bash(tool_input, gate_open, cwd or os.getcwd())
     elif tool_name in PATH_FIELD:
         out = []
         if not gate_open and not inside_gate_scratch(tool_input.get(PATH_FIELD[tool_name])):
@@ -1756,7 +1881,8 @@ def hook_output(payload):
             label = classify_command(tool_input["command"])
             updated["description"] = f"{label} · {description}" if description else label
             output["updatedInput"] = updated
-        decision = decide(tool_name, tool_input, gate_is_open(payload.get("session_id")))
+        decision = decide(tool_name, tool_input, gate_is_open(payload.get("session_id")),
+                          payload.get("cwd"))
     except Exception as exc:
         decision = (DENY, f"tool-gate.py failed closed: {type(exc).__name__}: {exc}")
     if decision:
@@ -1796,8 +1922,16 @@ def selftest():
         (False, "Bash", "kubectl get pods --context=X --namespace=Y", None),
         (False, "Bash", "kubectl get pods -nY --context X", None),
         (False, "Bash", "kubectl --context X -n Y get pods", None),
-        (True, "Bash", "kubectl --context X -n Y delete pod p", DENY),
-        (True, "Bash", "helm --kube-context X -n Y uninstall r", DENY),
+        (True, "Bash", "kubectl --context X -n Y delete pod p", ASK),
+        (False, "Bash", "kubectl --context X -n Y delete pod p", DENY),
+        (True, "Bash", "kubectl delete pod p -n Y", DENY),
+        (True, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
+        (False, "Bash", "helm --kube-context X -n Y uninstall r", DENY),
+        (True, "Bash", "helm del r --kube-context X -n Y", ASK),
+        (True, "Bash", "helm uninstall r", DENY),
+        (True, "Bash", "helm rollback r 1 --kube-context X -n Y", ASK),
+        (False, "Bash", "helm rollback r 1 --kube-context X -n Y", DENY),
+        (True, "Bash", "helm rollback r 1 --kube-context X -n Y --force-conflicts", ASK),
         (False, "Bash", "helm list --kube-context X -n Y", None),
         (False, "Bash", "helm list -n Y", DENY),
         (False, "Bash", "kubectl get nodes --context X -L atero/user", None),
@@ -1832,6 +1966,14 @@ def selftest():
         (False, "Bash", "kubectl exec -it p --context X -n Y -- sh", DENY),
         (False, "Bash", "kubectl cp p:/x /tmp/y --context X -n Y", DENY),
         (True, "Bash", "kubectl cp p:/x /tmp/y --context X -n Y", None),
+        (True, "Bash", "kubectl cp ./f p:/x --context X -n Y", ASK),
+        (True, "Bash", "kubectl cp -c ctr ./f ns/p:/x --context X -n Y", ASK),
+        (True, "Bash", "kubectl cp ns/p:/x ./f -c ctr --context X -n Y", None),
+        (True, "Bash", "kubectl exec p --context X -n Y -- rm -rf /data", ASK),
+        (True, "Bash", "kubectl exec -it p --context X -n Y -- sh", ASK),
+        (True, "Bash", "kubectl exec p --context X -n Y -- curl localhost:8000/health", None),
+        (True, "Bash", "kubectl attach p -it --context X -n Y", ASK),
+        (False, "Bash", "kubectl attach p -it --context X -n Y", DENY),
         (False, "Bash", f"git log -1 --output={home}/.claude/lfg-state/abc", DENY),
         (False, "Bash", "git log -1", None),
         (False, "Bash", "git stash", DENY),
@@ -1885,7 +2027,7 @@ def selftest():
         (True, "Bash", f"rm -rf {scratch}x {home}/.cache/x", ASK),
         (True, "Bash", f"rm -rf {scratch}x", None),
         (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", DENY),
-        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", DENY),
+        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", ASK),
         (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", DENY),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
         (True, "Bash", "CRUSOE_PROFILE=p crusoe kubernetes clusters get-credentials --project-name j -y c", ASK),
@@ -2046,16 +2188,24 @@ def selftest():
         (False, "Bash", "python3 -m unittest", None),
         (False, "Bash", "gh api graphql -f query='{viewer{login}}'", None),
         (False, "Bash", "gh api graphql -f query='mutation{x}'", DENY),
-        (True, "Bash", "kubectl config use-context x", DENY),
-        (True, "Bash", "kubectx x", DENY),
-        (True, "Bash", "kubens x", DENY),
-        (True, "Bash", "kubectl label node n atero/user=x --context X", DENY),
+        (True, "Bash", "kubectl config use-context x", ASK),
+        (False, "Bash", "kubectl config use-context x", DENY),
+        (True, "Bash", "kubectx x", ASK),
+        (False, "Bash", "kubectx x", DENY),
+        (True, "Bash", "kubens x", ASK),
+        (True, "Bash", "kubectl label node n atero/user=x --context X", ASK),
+        (True, "Bash", "kubectl label node n atero/user=x", DENY),
+        (True, "Bash", "kubectl label pod p a=b --context X", DENY),
+        (True, "Bash", "kubectl taint nodes n k=v:NoSchedule --context X", ASK),
+        (True, "Bash", "kubectl cordon n --context X", ASK),
         (True, "Bash", "kubectl certificate approve x --context X", DENY),
         (False, "Bash", "kubectl rollout status deploy/x --context X -n Y", None),
-        (True, "Bash", "kubectl rollout restart deploy/x --context X -n Y", DENY),
-        (True, "Bash", "kubectl apply -f x.yaml --context X -n Y", DENY),
+        (True, "Bash", "kubectl rollout restart deploy/x --context X -n Y", ASK),
+        (True, "Bash", "kubectl apply -f x.yaml --context X -n Y", ASK),
+        (False, "Bash", "kubectl apply -f x.yaml --context X -n Y", DENY),
         (False, "Bash", "kubectl apply -f x.yaml --dry-run=server --context X -n Y", None),
-        (True, "Bash", "kubectl drain n --context X --ignore-daemonsets", DENY),
+        (True, "Bash", "kubectl drain n --context X --ignore-daemonsets", ASK),
+        (False, "Bash", "kubectl drain n --context X --ignore-daemonsets", DENY),
         (False, "Bash", "frobnicate --flag", ASK),
         (False, "Bash", "frobnicate | grep x", ASK),
         (False, "Bash", "frobnicate && touch /etc/x", DENY),
@@ -2277,7 +2427,61 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} label {command!r} -> {got}"
               + ("" if ok else f" (want {expected})"))
-    total = len(cases) + len(payload_cases) + len(strip_cases) + len(label_cases)
+    # A commit on a repo's default branch is denied in every gate state; throwaway repos
+    # stand in for the real ones, and one is exempted the way ~/.claude is.
+    import tempfile
+    with tempfile.TemporaryDirectory() as root:
+        def repo(name, branch, remote_head=True):
+            path = os.path.join(root, name)
+            for args in (["init", "-q", "-b", branch], ["-c", "user.email=t@t", "-c", "user.name=t",
+                         "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "x"]):
+                subprocess.run(["git", "-C", path, *args] if args[0] != "init"
+                               else ["git", *args, path], check=True, capture_output=True)
+            if remote_head:
+                subprocess.run(["git", "-C", path, "update-ref", f"refs/remotes/origin/{branch}",
+                                "HEAD"], check=True)
+                subprocess.run(["git", "-C", path, "symbolic-ref", "refs/remotes/origin/HEAD",
+                                f"refs/remotes/origin/{branch}"], check=True)
+            return path
+
+        on_main = repo("on-main", "main")
+        on_feature = repo("on-feature", "main")
+        subprocess.run(["git", "-C", on_feature, "switch", "-q", "-c", "feat"], check=True)
+        on_master = repo("on-master", "master", remote_head=False)
+        exempt = repo("exempt", "main")
+        not_repo = os.path.join(root, "plain")
+        os.makedirs(not_repo)
+        global DEFAULT_BRANCH_EXEMPT
+        saved_exempt = DEFAULT_BRANCH_EXEMPT
+        DEFAULT_BRANCH_EXEMPT = (os.path.realpath(exempt),)
+        branch_cases = [
+            # (cwd, command, expected decision with the gate open)
+            (not_repo, f"git -C {on_main} commit -m x", DENY),
+            (on_main, "git commit -m x", DENY),
+            (not_repo, f"cd {on_main} && git add -A && git commit -m x", DENY),
+            (not_repo, f"git -C {on_main} merge feat", DENY),
+            (not_repo, f"git -C {on_master} commit -m x", DENY),
+            (on_feature, "git commit -m x", None),
+            (not_repo, f"git -C {on_main} switch -c feat2 && git -C {on_main} commit -m x", None),
+            (not_repo, f"git -C {on_feature} switch main && git -C {on_feature} commit -m x", DENY),
+            (not_repo, f"git -C {on_main} merge --abort", None),
+            (not_repo, f"git -C {on_main} checkout README.md && git -C {on_main} commit -m x", DENY),
+            (not_repo, f"git -C {on_feature} checkout main && git -C {on_feature} commit -m x", DENY),
+            (not_repo, f"git -C {on_main} log --oneline", None),
+            (not_repo, f"git -C {exempt} commit -m x", None),
+            (not_repo, "git commit -m x", None),
+        ]
+        try:
+            for cwd, command, expected in branch_cases:
+                got = decide("Bash", {"command": command}, True, cwd)
+                got = got[0] if got else None
+                ok = got == expected
+                failures += not ok
+                print(f"{'ok  ' if ok else 'FAIL'} branch {command!r} in {os.path.basename(cwd)} "
+                      f"-> {got}" + ("" if ok else f" (want {expected})"))
+        finally:
+            DEFAULT_BRANCH_EXEMPT = saved_exempt
+    total = len(cases) + len(payload_cases) + len(strip_cases) + len(label_cases) + len(branch_cases)
     print(f"\n{total - failures}/{total} passed")
     return failures == 0
 

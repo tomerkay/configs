@@ -101,9 +101,19 @@ branch by the convention above, switch to it and tell me the name - no
 proposal, no question.
 
 **Otherwise a branch is created and checked out only when I ask for one.** The
-work stays on the branch it is on. When I ask, pick the name, create the branch
-and tell me the name - no proposal, no question. A backup is made with
-`git branch <name>`, which leaves HEAD where it is.
+work stays on the branch it is on, whatever that branch was made for, and its
+commits go on top of the ones already there. When I ask, pick the name, create
+the branch and tell me the name - no proposal, no question. A backup is made
+with `git branch <name>`, which leaves HEAD where it is.
+
+**`git worktree add` runs only when I ask for a worktree in so many words.** A
+worktree checks out another branch without moving this one, so it is the same
+switch by another route, and its registration in the repo's `.git` keeps that
+branch undeletable after the session is gone.
+
+**When you think the work does not belong on the current branch**, say why in
+one sentence and ask whether to check out a new branch for it. The work waits
+for the answer.
 
 ## Documentation Sync on Every Commit
 

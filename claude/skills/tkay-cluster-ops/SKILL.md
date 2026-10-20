@@ -1,6 +1,6 @@
 ---
 name: tkay-cluster-ops
-description: Procedures for helm upgrades against a live release, for tearing the user's deployments out of a cell or off a node, and the rule that node labels are never Claude's to write. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything the user owns in a namespace before a cluster is destroyed or a node is drained, and whenever a node label would have to be added, changed or removed to make something schedule.
+description: Procedures for helm upgrades against a live release, for tearing the user's deployments out of a cell or off a node, and the rule that node labels are written only on the user's explicit words. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything the user owns in a namespace before a cluster is destroyed or a node is drained, and whenever a node label would have to be added, changed or removed to make something schedule.
 ---
 
 # Cluster operations
@@ -96,11 +96,12 @@ A `worker` timestamp seconds after the install means it was the *installer*, not
 a live controller; also check whether a reconciler is even running before
 claiming something will revert my change.
 
-**Never run `--force-conflicts` on your own initiative — show me the command and
-let me decide.** It transfers ownership of those fields to `helm`, and then
-data-path's own redeploy applies as `worker` without force and hits the
-mirror-image conflict, so forcing trades my problem for a landmine in the deploy
-path. Always state that consequence when you offer it, and offer the
+**`--force-conflicts` runs only when my message says, in plain words, that you
+may run it this time — otherwise show me the command and let me decide.** The
+permission covers that one command in that one message. It transfers ownership
+of those fields to `helm`, and then data-path's own redeploy applies as
+`worker` without force and hits the mirror-image conflict, so forcing trades my
+problem for a landmine in the deploy path. Always state that consequence when you offer it, and offer the
 alternative: make the change through data-path so `worker` stays the owner.
 Patching the object by hand is no alternative - it takes the patched fields
 from `worker` the same way, and helm's recorded release goes out of sync on
@@ -129,15 +130,17 @@ cluster and would leave the node in its cell anyway.
 
 ---
 
-## Never Label a Node Yourself - Labelling Is ALWAYS Mine
+## Never Label a Node on Your Own - Only on My Words
 
-**`kubectl label node` is not yours to run, in either direction, ever.** Not
-claiming a node by giving it a cell's `dedicated` value, not freeing one by
-removing it, not "correcting" a label that looks wrong, not as the last step of
-a teardown, not when I have said the node is mine, not when the label is the
-single thing standing between a Pending pod and a running one. Moving a node
-between cells is a backoffice action; any other label change, print the exact
-command and suggest it as `! <command>` so it runs in my session.
+**`kubectl label node` runs only when my message says, in plain words, that you
+may run that label change this time.** Not on your own initiative to claim a
+node by giving it a cell's `dedicated` value, to free one by removing it, to
+"correct" a label that looks wrong, as the last step of a teardown, because I
+have said the node is mine, or because the label is the single thing standing
+between a Pending pod and a running one. The permission covers that one
+command in that one message. Moving a node between cells is a backoffice
+action; any other label change without my words, print the exact command and
+suggest it as `! <command>` so it runs in my session.
 
 The cell labels are how the fleet is carved up between people, so writing one
 does two things at once: it moves a machine between cells, and it retargets
@@ -245,11 +248,18 @@ them all at once.
 `helm uninstall` accepts every release name in a single invocation, and so does
 `kubectl delete <kind>`. Most teardowns are therefore ONE command, the helm one.
 A second, batched `kubectl delete` shows up only when something hand-applied is
-still running - never for storage, config or the namespace. **Both are mine to
-run**: print each one and suggest it as `! <command>`. Each separate invocation
-is another command I have to run, and a teardown is the worst possible time to
-make me run twenty. A model the backoffice deployed is in neither command: it
-comes down through the backoffice, for the same ownership reason as an upgrade.
+still running - never for storage, config or the namespace.
+
+**Each runs only when my message says, in plain words, that you may run that
+command this time** - "uninstall them", "delete those". The permission covers
+what it names, in the message it is in, not the next uninstall or delete.
+Anything short of that - a question, a teardown plan I approved - means print
+it and suggest it as `! <command>`.
+
+Each separate invocation is another command I have to approve or run, and a
+teardown is the worst possible time to make me run twenty. A model the
+backoffice deployed is in neither command: it comes down through the
+backoffice, for the same ownership reason as an upgrade.
 
 ### The things that actually block a drain
 

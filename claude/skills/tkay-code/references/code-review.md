@@ -197,20 +197,24 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Any nil pointer risks?
    - Race conditions or concurrency issues?
 
-3. **Metrics & Observability** [default: 🟠 · MUST HAVE for missing/partial metric calls and wrong metric type, 🟡 · NICE TO HAVE for naming]
+3. **Security** [default: 🟠 · MUST HAVE, a leak or bypass you can show: 🔴 · MUST HAVE]
+   - **Ask every question in "SECURITY" in `references/clean-code.md`** of the diff and of the component it lands in.
+   - An exposure the branch did not introduce goes into the leftovers table - never dropped because it is pre-existing.
+
+4. **Metrics & Observability** [default: 🟠 · MUST HAVE for missing/partial metric calls and wrong metric type, 🟡 · NICE TO HAVE for naming]
    - Is every significant event tracked with a metric?
    - Are metrics called BEFORE logs? (metric-first pattern)
    - Are metric names/labels correct?
    - Right metric type? (Counter vs Gauge vs Histogram)
    - Any missing metric calls?
 
-4. **Logging** [default: 🟡 · NICE TO HAVE, missing context on an error path that would block debugging prod: 🟠 · MUST HAVE]
+5. **Logging** [default: 🟡 · NICE TO HAVE, missing context on an error path that would block debugging prod: 🟠 · MUST HAVE]
    - Is every metric accompanied by a log?
    - Log levels correct? (INFO vs WARNING vs ERROR)
    - Consistent formatting across similar log messages?
    - Include all necessary context (pod_name, pod_ip, model_name)?
 
-5. **Code Quality** [default: 🟡 · NICE TO HAVE, EXCEPT "logical correctness of NEW code" below - wrong logic is 🔴/🟠 · MUST HAVE]
+6. **Code Quality** [default: 🟡 · NICE TO HAVE, EXCEPT "logical correctness of NEW code" below - wrong logic is 🔴/🟠 · MUST HAVE]
    - Duplicated logic or values? "ONE SOURCE OF TRUTH" in `references/clean-code.md` says what counts
    - Ordering issues? (should things be grouped differently?)
    - Naming clarity? (are variables/functions named clearly?)
@@ -229,7 +233,7 @@ Each category below has a **default severity** - deviate only with a stated reas
      - **Example**: `corrupted_pattern = text_prompts[0].get("corruptedRegex", ...)` - why only first prompt when each can have different patterns?
      - **For refactors**: Carefully analyze new logic paths, don't just check that old functions aren't called
 
-6. **Nits** [default: ⚪ · NICE TO HAVE - always below the divider]
+7. **Nits** [default: ⚪ · NICE TO HAVE - always below the divider]
    - Minor style issues
    - Comment quality
    - Documentation gaps

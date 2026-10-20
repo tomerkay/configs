@@ -223,6 +223,23 @@ function kshell() {
     kubectl "${@:2}" exec -it $1 -- /bin/bash
 }
 
+function k9cell() {
+    local ctx cell
+    local -a ns
+    if (( $# == 1 )); then
+        ctx=$(kubectl config current-context) || return 1
+        cell=$1
+    else
+        ctx=$1 cell=$2
+    fi
+    ns=(${(f)"$(kubectl get ns --context "$ctx" -l "cell-display-name=$cell" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')"}) || return 1
+    if (( ${#ns} != 1 )); then
+        print -u2 "expected one namespace with cell-display-name=$cell in $ctx, found ${#ns}: ${ns[*]}"
+        return 1
+    fi
+    k9s --context "$ctx" -n "${ns[1]}" "${@:3}"
+}
+
 function kgdev() {
     k get pods | grep atero-dev | cut -d " " -f 1
 }
@@ -248,8 +265,6 @@ function watchp() {
 }
 source /Users/tkay/.zshrc.crusoe
 
-[[ -s "/Users/tkay/.gvm/scripts/gvm" ]] && source "/Users/tkay/.gvm/scripts/gvm"
-unset -f cd
 export GPG_TTY=$(tty)
 fpath=(~/.zsh/completion $fpath)
 autoload -Uz compinit

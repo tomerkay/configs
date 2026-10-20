@@ -37,7 +37,7 @@ to be helpful. Planning is free. Acting is gated. **When in doubt, you are gated
 is session-wide by default" below. It closes again only when I close it. Until
 that first token, you are gated.
 
-**The gate and its permanent exclusions are enforced by
+**The gate and the commands that need my words are enforced by
 `~/.claude/hooks/tool-gate.py`**, a PreToolUse hook that reads the state
 `~/.claude/hooks/lfg-state.py` records when I type the token. A call it denies
 is the hook doing its job, never a reason to look for another way to the same
@@ -133,14 +133,13 @@ Any change to any file that is not a scratch/plan document, by ANY mechanism:
   subordinate to this gate.
 - `git commit`, `git add`, `git stash`, `git reset`, `git rebase`, `git
   cherry-pick` - any mutation of my repo state
-- `helm install`, `helm upgrade`, `helm uninstall`, `helm rollback`, and any
-  state-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
-  `rollout restart`, `edit`) - `LFG!` unlocks the first two for you to run; the
-  rest stay mine even after it. See the two sections below.
-- `git push`, opening, closing, merging or approving an MR or PR, and posting to
-  or resolving its review threads - blocked
-  while the gate is closed, and after it opens only my words for that one
-  command unlock it. See "A push or an MR move is mine, one command at a time".
+- `helm install` and `helm upgrade` - `LFG!` unlocks them for you to run. See
+  "`helm install` and `helm upgrade` ARE unlocked by `LFG!`".
+- `git push`, an MR or PR move, `helm uninstall`, `helm rollback`,
+  state-changing `kubectl` and the rest of "Some commands need my words AND
+  the prompt, every time" - blocked while
+  the gate is closed, and after it opens each one needs my words and the
+  prompt, every time.
 - Creating new source, config, test, chart or migration files
 
 ## What is ALWAYS allowed, gate open or closed
@@ -166,9 +165,11 @@ it.
 
 The carve-out is exactly that wide and no wider: one message, the TL;DR, into
 the alert thread I linked. Any other Slack message - another channel, a DM, a
-thread I did not hand you - is sent on my behalf and asks first, every time,
-with the text shown. When I tell you to post one of those, post it and do not
-ask again for that thread. And nothing in it touches a cluster.
+thread I did not hand you - is sent on my behalf and needs my words and the
+prompt, with its text shown - see "Some commands need my words AND the prompt,
+every time". When I tell you to post one of those, post it and do not ask
+again for that thread; the prompt still comes for each message. And nothing in
+it touches a cluster.
 
 ## An `LFG!` is a signature, not a mood
 
@@ -200,8 +201,8 @@ Guessing here is the exact failure I am trying to prevent.
 Once the gate is open, **only 2 stops applying** - there is no token left for a
 proposal to be attached to. **1 never stops applying**, because it was never a gate
 rule in the first place: you do not change something we have not discussed, gate
-open or gate shut. 3 still applies, the permanent exclusions still apply, and
-everything else in this section stands.
+open or gate shut. 3 still applies, the commands that need my words still need
+them, and everything else in this section stands.
 
 ### Say what you are about to do, before you do it
 
@@ -230,17 +231,15 @@ While the gate is open:
   start until I say so"; from then on, whether a given edit or command needs my
   approval is whatever the harness mode says. Do not stack a confirmation of your
   own on top of it, and do not re-ask for something the mode already approved. The
-  named safety rails are the exception and are not "confirmations": which cluster
-  and namespace, adding a context to my kubeconfig, `--reuse-values`,
-  `--force-conflicts`, publishing a tag, a release or an image. Those ask every
-  time.
+  exceptions are not "confirmations": which cluster and namespace asks every
+  time, and everything in "Some commands need my words AND the prompt, every
+  time" needs both, every time.
 - **You still print the `Implementing: <change> - files: <files>` line before every
   change.** That line is how I catch a misread, and an open session is exactly
   when I need it most.
-- **The permanent exclusions do not move.** A push and an MR move stay mine, one
-  command at a time. `helm uninstall`, `helm rollback` and state-changing
-  `kubectl` stay mine. An open gate widens how often the token applies, never
-  what it can unlock.
+- **What needs my words does not move.** Everything in "Some commands need my
+  words AND the prompt, every time" stays one command at a time. An open gate
+  widens how often the token applies, never what it can unlock.
 - **An open gate is not a licence to invent work.** The gate decides whether you
   may act AT ALL. It says nothing about WHAT to act on, and it never has - that
   comes from what I asked for. A change we have not discussed gets proposed and
@@ -269,41 +268,61 @@ because the next change felt bigger or scarier than the last one. If you think a
 step deserves a fresh sign-off, say so in one sentence and let me decide - do not
 print the refusal line while the gate is open.
 
-## A push or an MR move is mine, one command at a time
+## Some commands need my words AND the prompt, every time
 
-**`git push`; opening, reopening, closing, merging or approving an MR or PR;
-and replying to, editing, resolving or reopening its review threads, are
-mine.** `LFG!` never covers them, and neither does an open session, "fix it",
-or me sounding like I want the branch on the remote or the thread answered.
-Every route to the same move counts: `glab mr` / `gh pr` (`glab mr note`
-included), a `glab api` / `gh api` write, an MCP tool, and a rebase or branch
-update that pushes to an MR's branch. Committing locally is yours, and so is a
-GitLab draft note, which nobody sees until it is published.
+**Nothing ever grants these** - not `LFG!`, not an open session, not "fix it",
+not a plan I approved, not my yes to the previous one:
 
-**You run one only when my message says, in plain words, that you may run that
-command this time** - "push it, I allow you this time", "go ahead and merge
-!42", "reply to that thread and resolve it". There is no token for it. The
-permission covers the command it names, in the message it is in: not the next
-push, not a `--force` I did not mention, not a different MR or thread. Anything
-short of that - a question, a plan I approved that ends in a push, an `LFG!` -
-is a request to prepare it: say the branch or the reply is ready and print the
-command as `! <command>`, a reply with its full text. Never offer to run one.
+- `git push`.
+- Opening, reopening, closing, merging or approving an MR or PR, and replying
+  to, editing, resolving or reopening its review threads - by every route:
+  `glab mr` / `gh pr` (`glab mr note` included), a `glab api` / `gh api`
+  write, an MCP tool, and a rebase or branch update that pushes to an MR's
+  branch. Committing locally is yours, and so is a GitLab draft note, which
+  nobody sees until it is published.
+- `helm uninstall` and `helm rollback`.
+- `--reuse-values` and `--force-conflicts` on any helm command.
+- State-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
+  `rollout restart`, `edit` and every other verb that writes live cluster
+  state), short of a `--dry-run`. A node label is one of them, and the
+  `tkay-cluster-ops` skill says why it stays rare. So is anything that
+  changes a pod from the inside: a `kubectl exec` whose command is not a
+  read (an interactive shell included), a `kubectl cp` into a pod, and a
+  `kubectl attach`.
+- Adding a context to my kubeconfig, and switching the current context or
+  namespace (`kubectl config use-context`, `kubectx`, `kubens`). A switch is a
+  change to my environment, never a stand-in for the pin flags.
+- Publishing a tag, a release or an image, whatever the tag is named: a tag or
+  release on the remote (`glab release create`, a `glab api` write to
+  `repository/tags` or `releases`), an image pushed to a registry (`docker
+  push`, a build with `--push`, `buildah push`, the overlay build script). A
+  tag can start a release pipeline, and a moved image tag reaches every
+  deployment that pulls it.
+- A Slack message anywhere other than the alert thread I linked. Here my words
+  cover the thread they name, not only the one message - "Alert investigation
+  is ungated END TO END" says so.
 
-**With my permission it still runs through the hook's 🔴 prompt**, every time.
-That prompt is where a misread of my words is caught, not a second permission to
-ask for in chat. **Before running one, check the org's managed policy
-`permissions.deny`**: a command it denies never runs from here, permission or
-not, and no other route - a `glab api` / `gh api` commit write, an MCP tool -
-stands in for it. Print it as `! <command>` straight away and do not attempt it.
+**Each one runs only when BOTH hold, every single time:**
 
-**Publishing a tag, a release or an image is not a push, and asks every time.**
-Creating a tag or release on the remote (`glab release create`, a `glab api` write
-to `repository/tags` or `releases`) and pushing an image to a registry (`docker
-push`, a build with `--push`, `buildah push`, the overlay build script) need the
-open gate like any change, then run only through the hook's 🔴 prompt - whatever
-the tag is named. A tag can start a release pipeline, and a moved image tag
-reaches every deployment that pulls it. A tag published with `git push` stays
-under the rule above.
+1. **My message says, in plain words, that you may run that command this
+   time** - "push it, I allow you this time", "go ahead and merge !42",
+   "uninstall that release", "yes, use `--reuse-values`", "post it". My answer
+   to your ⚠️ question naming that command counts. There is no token for it.
+   It covers the command it names, in the message it is in: not the next one,
+   not a `--force` I did not mention, not a different MR, release, thread or
+   message. Anything short of that is a request to prepare it: say it is ready
+   and print the command as `! <command>`, a reply or a Slack message with its
+   full text.
+2. **It runs through the hook's 🔴 prompt.** That prompt is where a misread of
+   my words is caught, not a second permission to ask for in chat.
+
+All but the Slack message also need the open gate. Rule 7 under "Instructions
+for you" says which of them you never offer.
+
+**Before running one, check the org's managed policy `permissions.deny`**: a
+command it denies never runs from here, permission or not, and no other route -
+a `glab api` / `gh api` commit write, an MCP tool - stands in for it. Print it
+as `! <command>` straight away and do not attempt it.
 
 ## I decide when the branch moves
 
@@ -314,9 +333,19 @@ would land on the default branch, create a branch by the `tkay-code` branch
 convention, switch to it and tell me its name in one line. No proposal, no
 question.
 
-**Otherwise the work stays on the branch it is on.** Never create a branch and
-switch to it, and never check out another branch, unless I ask for it in so
-many words or the rule above requires it - gate open or not.
+**Otherwise the work stays on the branch it is on**, whatever that branch was
+made for: its commits go on top of the ones already there. Never create a
+branch and switch to it, and never check out another branch, unless I ask for
+it in so many words or the rule above requires it - gate open or not.
+
+**Never run `git worktree add` unless I ask for a worktree in so many words.**
+A worktree checks out another branch without moving this one, so it is the
+same switch by another route, and its registration in the repo's `.git` keeps
+that branch undeletable after the session is gone.
+
+**If you think the work does not belong on the current branch**, say why in
+one sentence and end the reply with the ⚠️ question whether to check out a new
+branch for it. The work waits for my answer.
 
 **When I ask for a new branch, you name it.** Pick the name by the `tkay-code`
 branch convention, create it, switch to it and tell me the name in one line.
@@ -338,19 +367,14 @@ inside the operation rather than gates on it:
   <ns>`, `kubectl --context <ctx> -n <ns>`. Never rely on the current context, and
   if I did not name the cluster and namespace, ASK - an `LFG!` is not a licence to
   guess which cluster. Full rule: "ALWAYS PIN THE CONTEXT AND THE NAMESPACE".
-- **The sub-decisions still need me**, `LFG!` or not: `--reuse-values` (ask),
-  `--force-conflicts` (mine), and using the chart the release actually installed
-  rather than my local tree. Procedure in the `tkay-cluster-ops` skill.
+- **The sub-decisions still need me**, `LFG!` or not: `--reuse-values` and
+  `--force-conflicts` (my words and the prompt), and using the chart the
+  release actually installed rather than my local tree. Procedure in the
+  `tkay-cluster-ops` skill.
 
-**Still mine, still not unlocked by `LFG!`:** `helm uninstall`, `helm rollback`,
-and state-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
-`rollout restart`, `edit`). Those delete or overwrite live state, so print the
-command and let me run it. If you want `LFG!` to cover them too, say so and I will
-widen this list - do not widen it by inference.
-
-When one of those is the next step, print the exact command you would have run and
-suggest it as `! <command>` so it executes in my session - do not run it yourself
-and do not ask for permission to.
+**`helm uninstall`, `helm rollback` and state-changing `kubectl` need my words
+and the prompt, every time** - see "Some commands need my words AND the
+prompt, every time".
 
 ## If you break this gate
 
@@ -448,7 +472,7 @@ in the plugin cache.
 
 7) **Finishing a branch never ends in an offer to push or to open an MR.**
    Pushing and opening an MR or PR are mine unless I allow that command in
-   words (see "A push or an MR move is mine, one command at a time").
+   words (see "Some commands need my words AND the prompt, every time").
    Neither is a "next step" you suggest. Instead, every time the work on a
    branch is done - the first round, and again after any later change to
    it - look its MR up the `tkay-code` way and ask me once: whether I want
@@ -948,10 +972,10 @@ is owned by someone different:
    says. It also decides which commands run outside the sandbox. Not mine to
    change; a prompt it raises is not yours to work around.
 2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies every write
-   outside scratch before `LFG!`, denies the permanent exclusions in every
-   state, asks for the safety rails and for a push or an MR move, and says
-   nothing for a read. It can add a deny or an ask; it never removes a
-   prompt.
+   outside scratch before `LFG!`, denies an unpinned cluster command in every
+   state, asks for every command in "Some commands need my words AND the
+   prompt, every time", and says nothing for a read. It can add a deny or
+   an ask; it never removes a prompt.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
    permission mode takes over" after `LFG!` means.
@@ -1024,7 +1048,9 @@ prompt and cover everything an investigation needs.
   session having worked. Every invocation carries its own flags.
 - **Do not "set" the target instead of flagging it** - no `kubectl config
   use-context`, no `kubens`, no exporting `KUBECONFIG`. That is relying on ambient
-  state with extra steps, and it mutates my environment on top.
+  state with extra steps, and it mutates my environment on top. A switch I ask
+  for in words is a change to my environment, and the next command still
+  carries its flags.
 - **Nesting exempts nothing.** A cluster command inside a pipeline, a `for` loop,
   `xargs`, `bash -c`, a heredoc, a Makefile target or a script you write gets the
   flags on every invocation.
@@ -1087,8 +1113,13 @@ Non-affecting means it changes no state: `kubectl get/describe/logs/top`,
 `helm list/get/history/template`, `xh` against health, metrics or a single
 test request, PromQL, Grafana and log queries, `git log/show/diff`, reading
 files, `gh pr view` and `gh api` GETs, reading Slack threads, every MCP read
-tool. Pinned to context and namespace as always - the pin rule never bends,
-but it is never a reason to stop if I already named the cluster.
+tool. A `kubectl exec` counts only when its command inside the pod is itself
+a read (`cat`, `ls`, `nvidia-smi`, `curl` of an endpoint, an `sh -c` of only
+those); code run inside a pod - `python3 -c`, a script, an interactive shell -
+is in "Some commands need my words AND the prompt, every time", whatever it is
+meant to do, so print it and carry on with the reads. Pinned to context and namespace as always - the pin
+rule never bends, but it is never a reason to stop if I already named the
+cluster.
 
 **HTTP reads go through `xh`, never `curl`.** The org's policy prompts on
 every `curl`, GET included; `xh` is not on its list and a GET through it is a
@@ -1112,10 +1143,10 @@ twenty times.
   authoritative source names it - one line, per "ALWAYS PIN THE CONTEXT AND
   THE NAMESPACE".
 - The next step would CHANGE something - restart, patch, delete, scale,
-  `--force-conflicts`, a Slack message anywhere other than the alert thread I
-  linked. That is a mutation and the gate rules apply. The TL;DR into the
-  linked alert thread is not one of these - see "Alert investigation is
-  ungated END TO END".
+  `--force-conflicts`, code run inside a pod, a Slack message anywhere other
+  than the alert thread I linked. That is a mutation and the gate rules
+  apply. The TL;DR into the linked alert thread is not one of these - see
+  "Alert investigation is ungated END TO END".
 
 Everything else: do it. **If you are about to type a question that starts with
 "should I", "shall I" or "do you want me to" and the answer would be a read,
