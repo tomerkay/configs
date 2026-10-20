@@ -1,12 +1,13 @@
 ---
 name: tkay-writing-plans
-description: The shape for a plan document - problem first, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked to write, update, re-check or keep alive a plan, design doc, proposal or implementation write-up, and when implementing an agreed plan.
+description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked to write, update, re-check or keep alive a plan, design doc, proposal or implementation write-up, and when implementing an agreed plan.
 ---
 
 # Writing Plans
 
-When I ask for a plan document, this is the shape I want. Write it to `/tmp` or a
-scratchpad unless I name somewhere else.
+When I ask for a plan document, this is the shape I want. Write it to a directory that
+survives the session unless I name somewhere else - never `/tmp` or a session
+scratchpad, which can vanish while the plan is still in use.
 
 ## The problem comes first. Always.
 
@@ -23,7 +24,7 @@ Structure:
    code would mix up go here first: two layers with similar names, a count that has
    two sources, a word the codebase uses loosely.
 3. One section per problem, with the evidence for it
-4. The fix
+4. The fix, opening with the known architecture it follows - see below
 5. **Known incidents** - see below
 6. The commits
 7. **Questions and answers** - see below
@@ -33,6 +34,42 @@ Structure:
 
 Anything I would read once goes below the divider. Say at the top which sections are the
 plan and which are reference, so I know where to stop.
+
+## Start from a known architecture
+
+**The idiomatic architecture is the core motivation of every design discussion.** A
+design is chosen from known architectures out in the world, not invented: a pattern
+of a mature system, a documented controller or protocol, the way a well-known
+project handles the same failure. Inventing a mechanism is a cost the plan has to
+justify; following a known one hands the reader its documentation, its failure modes
+and its track record.
+
+**Search first, then discuss it with me, before the design is written.** Look
+outward - the documentation and source of the systems that solved the same problem,
+not only this codebase - and bring me what you found:
+
+- **The candidates**: each known architecture that is relevant, with a link, and how
+  it matches and does not match our needs.
+- **Which one you recommend**, and why it suits us better than the others.
+- **When none is relevant, say so** and say what you searched, so I can point you
+  at one you missed. Never present an invented design as if no search were needed.
+
+The choice of architecture is mine, like any other decision in the plan. Every later
+question in the discussion - a race, a failure mode, a limit - is argued from that
+reference first: what it does in the same case, and whether we follow it.
+
+Once it is chosen, the plan carries it:
+
+- **The fix opens by naming it**: "this follows X, because it suits us in A and B",
+  with a link to where X is documented - or, when none fit, the ones considered.
+- **Every decision names the design it resembles and the approach it rejected**:
+  "Z resembles X's design; over W it gives <advantage>, and it costs
+  <disadvantage>." In a decision table, that sentence is the reason column.
+- **A departure from the reference is stated where it happens**, with why: a state
+  the reference keeps reversible that this design makes final, a check it runs that
+  this one skips.
+- **The same holds for a decision taken while implementing** (see "Executing a
+  plan"): a fix that changes the design names the known design it moves toward.
 
 ## Known incidents, each with a verdict
 
@@ -88,9 +125,40 @@ why not the obvious alternative, what happens in a race, what breaks in the next
 planned feature. Group them by topic. Answer each in a few sentences with a concrete
 example where one helps, and point to the section that holds the detail.
 
-Add every question I ask during the review once it is answered, so the section grows
-with the review. Answer with the current plan, never with how we got there: a question
-whose answer changed the plan is answered as the plan now stands.
+**A question belongs here only if a design reviewer would ask it.** Judge each one
+yourself, from the questions I ask during the review and from the decisions taken
+while executing, and never ask me whether to add one. The test: would someone reading
+the plan cold, who was not in the discussion, ask it and be better off for the
+answer? A decision's "why this and not the obvious alternative", a race, a failure
+mode and a limit pass. A question I asked only to understand something for myself,
+or one whose answer is common knowledge, stays out.
+
+Answer with the current plan, never with how we got there: a question whose answer
+changed the plan is answered as the plan now stands.
+
+## Every line is for a human reader
+
+A plan is read by a person who wants to know what is broken, what we will do and why.
+A line that does not help them with that is noise, and noise buries the lines that
+matter. Cut it:
+
+- **Dates and timestamps** - "as of", "verified on", "last updated", a date heading a
+  section. A date says when a sentence was typed, not whether it is still true. Keep
+  one only when the date is itself the fact: when an incident happened, a deadline,
+  the window a measurement covers.
+- **The plan's own history** - "v2", "updated after review", "this section used to
+  say". The plan describes the design as it stands; how it got there is the commit
+  bodies' and the chat's.
+- **Narration of the work** - "I checked", "as discussed", "per your request", "after
+  reading the code". State the finding. A method worth keeping is a reproduction
+  recipe, and it goes below the divider.
+- **Machine coordinates** - an absolute path into someone's machine, a scratch path,
+  a line number. Name the file relative to the repo and the function in it.
+- **Raw output** - a pasted log, a whole command output, a dumped config. Quote the
+  line that proves the point and give the command that produces the rest.
+
+The test: would a reader who was not in the session lose anything if the line were
+gone? If not, cut it.
 
 ## Rules that keep a plan usable
 
@@ -113,20 +181,23 @@ Implementing a plan is where its holes show: a race nobody traced, an input that
 not exist, an assumption the code contradicts. **When you find a hole or a break in the
 plan's architecture, stop and ask me before you write more code on top of it.** Lay it
 out as a concrete scenario - the state, the sequence, what goes wrong - then give me
-the options with your recommendation, and wait.
+the options with your recommendation, and wait. Search for how known architectures
+handle the same case first, and anchor each option in one where one fits, as "Start
+from a known architecture" says.
 
 That stop is for what needs a discussion: a flaw in the design, a fix that changes how
 components interact, adds state or a read, or reverses a decision the plan settled.
 A bug you can fix inside the agreed design - a wrong comparator, a missed condition, an
 off-by-one - is not a stop: fix it and name it in your next message.
 
-**Every decision made while executing updates the plan, without being asked.** A hole
-we settled, an option I picked, a commit dropped, merged or split, a scope change, a
-fix that turned out to change behavior the plan describes: the plan is edited in the
-same pass as the decision, before the next piece of code. Change the sections it
-touches - design, commits, risks, decisions - and add a question and answer when the
-reader will ask why. The plan must describe the branch as it stands, so the reviewer
-never meets a plan the code already contradicts.
+**Every decision made while executing updates the plan, without being asked**, in
+the shape "Start from a known architecture" gives a decision. A hole we settled, an
+option I picked, a commit dropped, merged or split, a scope change, a fix that turned
+out to change behavior the plan describes: the plan is edited in the same pass as the
+decision, before the next piece of code. Change the sections it touches - design,
+commits, risks, decisions - and add a question and answer when the reader will ask
+why. The plan must describe the branch as it stands, so the reviewer never meets a
+plan the code already contradicts.
 
 ## Keeping it alive
 

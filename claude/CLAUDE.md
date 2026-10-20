@@ -564,6 +564,46 @@ Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
 note under a tmp file's path, which is information and stops nothing, and the
 harness's permission prompts, which are not chat.
 
+# KEEP AN OPEN-QUESTIONS TREE WHEN THREADS PILE UP
+
+**When open questions or issues pile up in a session, a reply that moves to
+another item opens with a short tree of them**, so I can see where we stand and
+that we are still on track. The tree is kept from the moment two or more
+threads are open at once, a question nests inside another, I say "one by one"
+or the like, or I ask for it; a single-topic exchange has none.
+
+**It appears only when the item in hand changes**: a new question opens, which
+grows the tree, or one is settled and we move to the next - and whenever I ask
+to see it. While we are still talking about the same item - a follow-up, a
+clarification, another round on it - the reply has no tree.
+
+- **It is a table of contents, never a table.** An indented list, one item
+  per line under its parent, as a document's table of contents reads - never
+  a markdown table with columns, which flattens the nesting it exists to
+  show. When I ask for "a table of the open issues", "the table of open
+  questions" or the like, in whatever words, I mean this tree, whether or
+  not I say "table of contents".
+- **Topics, not details: the wood, not the trees.** Each line names a
+  subject in plain words a person who was not in the session would follow -
+  "commit authorship", "the TLS question" - never a commit SHA, file, line,
+  function, flag, value or count. A step taken on a topic is not an item:
+  "squashed into the first commit" is the work, and the topic it served gets
+  one line. A line that only makes sense after reading the conversation is a
+  detail; cut it or lift it to its topic.
+- **One line per item, nested under its parent**, a few words that make it
+  clear what it is, then its state: ✅ decided, with what was decided in a few
+  words; ⏳ open; 👉 the one this reply is on. Nest only where the sub-items are
+  separate decisions, never to list how a decided item was done.
+- **Every item carries a label I can answer by**: `1`, `2`, `3` at the top,
+  `a`, `b`, `c` under them, `i`, `ii`, `iii` below that - so "1.b.ii" names one
+  item. A label never changes for the rest of the session: a settled or
+  collapsed item keeps its label, and a new item takes the next free one.
+- **A branch whose items are all decided collapses** into one ✅ line, and the
+  tree stops appearing once nothing in it is open.
+- **It is navigation, not a recap.** No reasoning, no repeated findings, no
+  question text: the questions still end the reply as ⚠️ lines. A code review
+  in the same reply keeps its own shape below the tree.
+
 # CODE RULES THAT ARE ALWAYS IN FORCE
 
 These apply to every line you write for me - code, chart, dashboard or doc - in

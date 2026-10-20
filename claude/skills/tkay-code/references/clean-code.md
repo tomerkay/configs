@@ -231,19 +231,42 @@ every copy.
 - **A limit that is safe to lift has an explicit off, and "off" is never a
   huge number.** When running without a limit is a choice a deployment can
   legitimately make (a trimming cap, a size cap a consumer may decline), the
-  knob accepts a stated value that switches it off: `0`, or a word like
-  `unlimited` where `0` is itself a legal limit. The code skips the check or
-  the cut on that value. Switching a limit off by setting it above anything
-  that could reach it is banned: that number is a hidden copy of some other
-  limit, and it stops meaning "off" the day the other limit grows. Off is
-  stated, never assumed, so the binary tells "not set" from "set to off" (a
-  pointer, the `ok` of the lookup) and an absent key still fails startup.
-  **Most knobs have no off**, and their range check rejects the values that
+  knob accepts a stated value that switches it off, and the code skips the
+  check or the cut on that value. Switching a limit off by setting it above
+  anything that could reach it is banned: that number is a hidden copy of
+  some other limit, and it stops meaning "off" the day the other limit grows.
+  Off is stated, never assumed, so the binary tells "not set" from "set to
+  off" (a pointer, the `ok` of the lookup) and an absent key still fails
+  startup.
+- **Choose the off value in its context, from three candidates, and never
+  `null`.** Weigh each against the knob before deciding:
+  - `0`, when zero can never be a real limit for this knob - a cap of zero
+    replicas per step would block everything, so zero is free to mean "no
+    cap". The first choice whenever it holds: it reads as "no limit" with no
+    convention to learn.
+  - a word such as `unlimited`, when `0` is itself a legal limit and the
+    value can be a string or an enum - "keep 0 items" is a real setting, so
+    zero cannot also mean off.
+  - `-1`, when `0` is a legal limit and the value must stay a number - a
+    numeric flag or API, or an upstream tool whose own convention is `-1`.
+    It is a stated off, not a huge number, but a reader has to know it, and
+    the range check must reject every other negative value.
+  - never `null`: in Helm values it deletes the key, so the `required` guard
+    fails the render, and in Go it reads as a missing value, which merges
+    "not set" with "off" - the exact distinction the rule above keeps.
+- **Name the off value at the key when the name and the value do not say it
+  themselves.** One line in values.yaml and in the flag's help text - "0
+  turns the cap off" - is a gotcha comment, the kind "COMMENTS IN CODE"
+  allows: a reader cannot deduce which value switches the limit off. Leave it
+  out when it is self-evident, such as a word `unlimited` among the allowed
+  values.
+- **Most knobs have no off**, and their range check rejects the values that
   hurt: an amount the process needs to work at all - a worker count, a
   buffer, an interval - and a guard that keeps one input from taking the
   process down - a body or request size limit, a memory bound, a timeout. In
-  a review, a liftable limit with no off, an off spelled as a sentinel
-  number, or an off added to a guard, is a finding.
+  a review, a liftable limit with no off, an off spelled as a huge number,
+  `null` used as off, an off value nobody can find without reading the code,
+  or an off added to a guard, is a finding.
 - **values.yaml holds ONLY what is meant to be changed.** A knob nobody should
   ever turn is a knob someone WILL turn at 3am.
 - **Fixing drift means deleting the copy, not updating it.** When a change
