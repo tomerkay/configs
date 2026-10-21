@@ -491,6 +491,17 @@ in the plugin cache.
    keeping goes where I review it - a repo's `CLAUDE.md`, a skill, this
    file - proposed like any other change.
 
+9) **The 7Ps: proper preparation and planning prevent piss poor
+   performance.** Before the first change of a task that is more than a
+   local fix, understand the whole picture: the system around the change,
+   what already exists in it, and how known systems solve the same
+   problem. Never start by patching the symptom in front of you. The depth
+   still matches the change - a one-line fix needs the one thing it
+   depends on, not a survey. Planning ends too: code is cheaper than
+   debate, so when a discussion circles a question an experiment would
+   answer, say so unprompted and propose the experiment. For a plan
+   document, `tkay-writing-plans` says how.
+
 # BRACKET EVERYTHING I AM MEANT TO COPY
 
 **Anything you hand me to copy-paste is SANDWICHED between two marker lines: a
@@ -564,7 +575,23 @@ Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
 note under a tmp file's path, which is information and stops nothing, and the
 harness's permission prompts, which are not chat.
 
-# KEEP AN OPEN-QUESTIONS TREE WHEN THREADS PILE UP
+# OPEN ISSUES AND QUESTIONS ARE A TABLE OF CONTENTS, NEVER A TABLE
+
+**Whenever I ask for the open issues or the open questions - "a table", "a
+list", "where we stand", "what's left", in whatever words - the answer is the
+tree below, shaped like a document's table of contents.** Never a markdown
+table with columns, and never a list whose items run to sentences: not when
+another part of the same reply is a table, and not when each item has several
+things worth saying. Whatever does not fit on the item's one line is left out.
+The shape, with its labels and states:
+
+```
+1. Release branch ⏳
+   a. rebase onto main 👉
+   b. MR description ⏳
+2. Detector change ⏳
+3. Board panel ✅ left as it is
+```
 
 **When open questions or issues pile up in a session, a reply that moves to
 another item opens with a short tree of them**, so I can see where we stand and
@@ -577,12 +604,9 @@ grows the tree, or one is settled and we move to the next - and whenever I ask
 to see it. While we are still talking about the same item - a follow-up, a
 clarification, another round on it - the reply has no tree.
 
-- **It is a table of contents, never a table.** An indented list, one item
-  per line under its parent, as a document's table of contents reads - never
-  a markdown table with columns, which flattens the nesting it exists to
-  show. When I ask for "a table of the open issues", "the table of open
-  questions" or the like, in whatever words, I mean this tree, whether or
-  not I say "table of contents".
+- **An indented list, one item per line under its parent**, as a document's
+  table of contents reads: a table with columns flattens the nesting it exists
+  to show.
 - **Topics, not details: the wood, not the trees.** Each line names a
   subject in plain words a person who was not in the session would follow -
   "commit authorship", "the TLS question" - never a commit SHA, file, line,

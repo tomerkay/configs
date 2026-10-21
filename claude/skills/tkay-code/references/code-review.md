@@ -170,6 +170,7 @@ When nothing came up, the heading stays and the table is one line instead:
   - Weak/vague commit message → 🟡 · NICE TO HAVE. Commit message making a FALSE CLAIM about behavior → still 🟡 on severity (the code works) but **MUST HAVE** on policy - it lies to whoever bisects this later, and history is permanent. This is the textbook case for why the two axes exist.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
+  - Clever code a plain version replaces with the same behaviour → 🟡. Clever code hiding a bug you traced → 🔴 for the bug, and the plain version is the fix.
   - Suspicious logic you traced and it's genuinely wrong → 🔴. Suspicious logic you can't prove either way → 🟠, and say what would prove it.
   - Perf: measurable regression on the per-request path → 🟠 minimum. Cold path → 🟡.
   - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), a test of nothing the component promises, or a bug fix with no test that reproduces it → 🟡. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "TESTS CHECK THE CONTRACT, NOT THE CODE" in `references/clean-code.md` says what a good one checks.
@@ -202,7 +203,7 @@ Each category below has a **default severity** - deviate only with a stated reas
    - An exposure the branch did not introduce goes into the leftovers table - never dropped because it is pre-existing.
 
 4. **Metrics & Observability** [default: 🟠 · MUST HAVE for missing/partial metric calls and wrong metric type, 🟡 · NICE TO HAVE for naming]
-   - Is every significant event tracked with a metric?
+   - Is every bad path counted, and the unit of work too? "EVERY BAD PATH IS COUNTED, THEN LOGGED" in `references/clean-code.md` says what counts as one
    - Are metrics called BEFORE logs? (metric-first pattern)
    - Are metric names/labels correct?
    - Right metric type? (Counter vs Gauge vs Histogram)

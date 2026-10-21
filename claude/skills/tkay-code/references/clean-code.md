@@ -336,16 +336,56 @@ and what changes for different reasons lives apart.
 
 ---
 
-# FAILURES ARE COUNTED, THEN LOGGED
+# THE PLAIN VERSION WINS
 
-A failure I cannot alert on is a failure I find out about from a customer.
+**When two versions do the same job, write the one a reader follows on the
+first pass.** Clever code is paid for by every reader, every change and every
+bisect, and buys nothing when the plain version is as correct and fast enough.
 
-- **Every failure is counted, then logged.** Each failure path - raised,
-  returned, or caught and swallowed - increments a counter, then logs one line
-  with the context needed to debug it (pod name, pod IP, model name, whatever
-  identifies the thing that failed). Metric first, so the count survives a
-  logging failure. A failure with no metric is invisible to an alert; one with
-  no log is undebuggable when the alert fires.
+- **Plain is the obvious control flow and the idioms every reader knows, not
+  the fewest lines.** A two-level loop with a named variable at each level
+  beats a comprehension with two `for` clauses, a `reduce` over a lambda or a
+  chain of iterator adaptors a reader has to unpick.
+- **A known idiom is already plain**: a one-level comprehension, `any()` /
+  `all()`, `dict.get` with a default, `?` in Rust. Unrolling it into a
+  hand-written loop is not simpler.
+- **Past two levels, nesting is the spaghetti "ONE REASON TO CHANGE" bans**:
+  the inner level becomes a named function, and early returns flatten the
+  branches.
+- **Performance buys complexity only with a measurement** on a path that
+  matters - per token or per request. The WHY comment names what it buys;
+  without the measurement, the plain version stays.
+
+---
+
+# EVERY BAD PATH IS COUNTED, THEN LOGGED
+
+A bad path I cannot alert on is one I find out about from a customer. The
+counter is what lets someone write the alert the day it matters.
+
+- **A bad path is wider than an exception.** Anything the code does because
+  something went wrong: a failure raised, returned, or caught and swallowed; a
+  fallback or default used in place of the real value; a retry; input dropped,
+  truncated or skipped; a limit hit; stale data served. A recovery is still a
+  bad path - one that fires constantly is an outage nobody sees.
+- **Only paths that can occur.** A state the system rules out gets no handler
+  and no counter - see "Metrics or logs for states that cannot occur" under
+  "OVER-ENGINEERING".
+- **Every bad path is counted, then logged.** Each one increments a counter,
+  then logs one line with the context needed to debug it (pod name, pod IP,
+  model name, whatever identifies the thing that went wrong). Metric first, so
+  the count survives a logging failure. A bad path with no metric is invisible
+  to an alert; one with no log is undebuggable when the alert fires.
+- **The happy path is counted per unit of work, not per step.** One counter at
+  the level the service is judged on - a request, a validation, a job run -
+  either total attempts or outcomes labelled by result. It is the denominator
+  that turns a failure count into an error rate, and the only signal of a
+  stall: a service that stopped working raises no failure at all. A counter
+  on every internal step of a success is noise.
+- **A counter makes an alert possible, it does not make one.** Which counters
+  get an alert, and at what threshold, is decided per service.
+- **The scope is a long-running service.** A CLI or a one-shot script has no
+  scrape target; its exit code and its log are the signal.
 - **A counter, labelled by a reason enum.** Alerts are `rate()` or
   `increase()` over a counter. The reason label comes from an enum, so its
   cardinality is bounded - never an error string, an ID or a pod name.
@@ -356,8 +396,10 @@ A failure I cannot alert on is a failure I find out about from a customer.
   paths and not others reads as zero during the outage it should have shown.
 - **The right type.** A counter for events, a histogram for durations, a gauge
   only for a level that goes up and down.
-- **A per-request failure log can flood.** See the rate-limiting bullet in
-  "OVER-ENGINEERING": raise it with me, build nothing.
+- **A bad-path log on a per-request path can flood.** The counter is never
+  cut - it is the signal at any volume. The log line is what gets raised: see
+  the rate-limiting bullet in "OVER-ENGINEERING", raise it with me, build
+  nothing.
 
 ---
 

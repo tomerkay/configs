@@ -44,6 +44,14 @@ project handles the same failure. Inventing a mechanism is a cost the plan has t
 justify; following a known one hands the reader its documentation, its failure modes
 and its track record.
 
+**Without it, the design is built from the symptom outward.** Each hole found gets
+its own patch, each patch opens the next hole, and the result is a hand-made copy of
+a mechanism some mature system already ships - with none of its documentation and
+all of its early bugs. Starting from the architecture means understanding the whole
+problem before the first decision, so every later decision is placed in a design
+that already has a place for it. Proper preparation and planning prevent piss poor
+performance.
+
 **Search first, then discuss it with me, before the design is written.** Look
 outward - the documentation and source of the systems that solved the same problem,
 not only this codebase - and bring me what you found:
@@ -174,6 +182,32 @@ gone? If not, cut it.
 - **Flag what rests on an inference rather than a measurement**, say what would falsify
   it, and if a cheap check exists, make it a step in the plan. Do not let a chain of
   reasoning quietly become a stated fact - I will press on exactly that.
+
+## Call it when planning turns into a rabbit hole
+
+**Be the third person in the design review who says "time to try it".** Implementing
+and testing are cheap now - a prototype that checks a design end to end often takes
+minutes - so a question a test can answer is not argued for another round. Watch the
+discussion for the signs, and say so unprompted the moment one shows, mid-discussion
+included:
+
+- the same question comes back without new evidence
+- two options are argued on how they would behave, and running them would show it
+- hypothetical edge cases pile up faster than they are settled
+- the plan grows sections nobody will read before the code exists
+
+Name the question, the experiment that answers it - a throwaway prototype, a test, a
+run on a dev cluster - and roughly how long it takes. The experiment is a spike: its
+code is thrown away and what it shows goes back into the plan; a spike can also pick
+between candidate architectures. Once the architecture is chosen and the questions
+left are all of that kind, propose starting on the first commit; "Executing a plan"
+is what makes that safe, because a hole found while implementing stops the work and
+goes back into the plan.
+
+A question whose wrong answer is expensive to undo - a data migration, a wire format
+other systems will depend on, a change customers see - is still settled before it
+ships. An experiment is often the fastest way to settle it: run it against a copy, a
+dev cluster or a scratch branch, never against production.
 
 ## Executing a plan
 
