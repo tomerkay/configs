@@ -15,9 +15,11 @@ The commands that modify the file need write access to `~/.kube/config`. If a sa
 
 Input: one or more context/cluster names. If the user gave a partial name, resolve it against `kubectl config get-contexts -o name` first.
 
-1. **Backup** (cheap insurance — client keys are not recoverable):
+1. **Backup** (cheap insurance — client keys are not recoverable), into a
+   `<backup-dir>` that survives the session and that nothing syncs or
+   publishes, since the copy holds those keys:
    ```
-   cp ~/.kube/config ~/.kube/config.bak
+   cp ~/.kube/config <backup-dir>/kubeconfig.bak
    ```
 
 2. **Resolve the referenced cluster and user** for each context name `$NAME`:
@@ -42,4 +44,4 @@ Input: one or more context/cluster names. If the user gave a partial name, resol
    kubectl config get-contexts -o name | head -3   # confirms the file still parses
    ```
 
-6. Report what was deleted (context/cluster/user names), that a backup exists at `~/.kube/config.bak`, and the current-context state.
+6. Report what was deleted (context/cluster/user names), the backup's full path, and the current-context state.

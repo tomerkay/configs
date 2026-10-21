@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Standards for code reviews (CR), commit messages, and where dev versus production deployment material lives in a repo, plus the clean-code rules for every line of code. Use whenever asked to review code, a branch, a PR or commits; to read a GitLab MR, its review threads or its CI through glab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable.
+description: Standards for code reviews (CR), commit messages, and where dev versus production deployment material lives in a repo, plus the clean-code rules for every line of code. Use whenever asked to review code, a branch, a PR or commits, including a CR asked for on an MR or PR link; to read a GitLab MR, its review threads or its CI through glab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable.
 ---
 
 # Code standards
@@ -13,7 +13,7 @@ standards.
 
 | Task | Read first |
 |---|---|
-| A code review / CR / "review my branch, PR, commits" | `references/code-review.md` and `references/clean-code.md` — **before writing a single finding** |
+| A code review / CR / "review my branch, PR, commits", or a CR asked for on an MR or PR link | `references/code-review.md` and `references/clean-code.md` — **before writing a single finding** |
 | Anything on a GitLab MR - its review threads, its pipeline, a job log - or any `glab` call | `references/gitlab.md` — **before the first glab call** |
 | Writing or amending ANY commit message, or committing at all | `references/commits.md` — **before you type the message** |
 | Creating or naming a branch | `references/commits.md` — "Branch Names", **before you pick the name** |
@@ -49,4 +49,6 @@ the two is the point: do not drop a reference wholesale because the repo
 covers part of it.
 
 When the repo and a reference disagree, follow the repo and tell me in one
-line which rule of mine it overrode.
+line which rule of mine it overrode. The one exception is a repo rule that a
+commit must carry no body: quote it to me and ask before the first commit,
+rather than following it.

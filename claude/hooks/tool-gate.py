@@ -16,8 +16,8 @@ state lfg-state.py records per session: a write before `LFG!` is denied with the
 line, every command that needs the user's words for that one command asks in every
 state, and the pin rules for kubectl and helm are enforced. A program the classifier does not know asks instead of denying, so a read it
 has not met never gets the refusal line. A commit, merge, cherry-pick, revert or am that
-lands on a repo's default branch is denied in every state, outside ~/.claude and
-~/repos/configs, which are committed on main by design.
+lands on a repo's default branch is denied in every state, outside the repos in
+DEFAULT_BRANCH_EXEMPT, which are committed on main by design.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -128,6 +128,10 @@ GATE_SCRATCH_ROOTS = tuple(os.path.realpath(os.path.expanduser(p)) + "/"
                            for p in ("/private/tmp/claude", "~/.cache", "~/.claude/plans"))
 MEMORY_ROOT_RE = re.compile(
     "^" + re.escape(os.path.realpath(os.path.expanduser("~/.claude/projects"))) + r"/[^/]+/memory/")
+# GOTCHA: the lexer strips quotes, so a `~` the shell leaves literal ('~', "~", \~) reaches the
+# scratch check looking like one it expands, and the shell expands `~` with its own HOME, which
+# the command may set. A command holding either expands no `~` at all.
+NO_HOME_EXPANSION_RE = re.compile(r"""['"\\]~|HOME""")
 # Bash writers whose every positional path the script can read without path-sniffing.
 SCRATCH_WRITERS = {"mkdir", "touch", "cp", "mv", "tee", "rm"}
 # GOTCHA: an allowlist, because other tar options write outside -C (-P, --index-file, -c with
@@ -162,7 +166,9 @@ NAMESPACE_FREE = {("get", "node"), ("get", "nodes"), ("describe", "node"), ("des
                   ("get", "customresourcedefinitions"), ("get", "ns"), ("get", "namespace"),
                   ("get", "namespaces"), ("label", "node"), ("label", "nodes"),
                   ("annotate", "node"), ("annotate", "nodes"), ("taint", "node"),
-                  ("taint", "nodes")}
+                  ("taint", "nodes"), ("get", "clusterpolicy"), ("get", "clusterpolicies"),
+                  ("get", "cpol"), ("describe", "clusterpolicy"),
+                  ("describe", "clusterpolicies"), ("describe", "cpol")}
 # Verbs whose only target is a node, so the second word is the node's name.
 NODE_VERBS = {"cordon", "uncordon", "drain"}
 KUBECTL_GLOBAL_VALUE_FLAGS = {
@@ -401,6 +407,8 @@ def classify_kubectl(args):
     if not pos:
         return READ
     verb = pos[0]
+    if "$" in verb:
+        return DANGER
     if dry_run(rest):
         return READ
     if verb in {"get", "describe", "logs", "log", "top", "explain", "api-resources",
@@ -437,6 +445,8 @@ def classify_helm(args):
     if not pos:
         return READ
     sub = pos[0]
+    if "$" in sub:
+        return DANGER
     if sub in {"list", "ls", "get", "status", "history", "show", "inspect", "template", "lint",
                "search", "env", "version", "verify", "completion", "help", "diff"}:
         return READ
@@ -1244,15 +1254,32 @@ def split_line(line):
     lexer.whitespace_split = True
     tokens = list(lexer)
     segments, targets, segment = [], [], []
+    # One entry per open `(`: the command a `$(` interrupts, resumed at its `)` so text
+    # glued after the `)` stays that command's argument, or None for a subshell or a
+    # process substitution, whose `)` ends a segment like any separator. shlex splits
+    # `$(` into a token ending in `$` and a `(`.
+    opened = []
     i = 0
     while i < len(tokens):
         tok = tokens[i]
-        if tok in SEPARATORS:
+        if tok == "(" and segment and segment[-1].endswith("$"):
+            opened.append(segment)
+            segment = []
+        elif tok == ")" and opened and opened[-1] is not None:
+            if segment:
+                segments.append(segment)
+            segment = opened.pop()
+        elif tok in SEPARATORS:
+            if tok == "(":
+                opened.append(None)
+            elif tok == ")" and opened:
+                opened.pop()
             if segment:
                 segments.append(segment)
             segment = []
         elif tok in ("<(", ">("):
             # Process substitution runs a command of its own; `)` closes it like a subshell.
+            opened.append(None)
             if segment:
                 segments.append(segment)
             segment = []
@@ -1522,6 +1549,10 @@ def inside_gate_scratch(path):
     return real.startswith(GATE_SCRATCH_ROOTS) or bool(MEMORY_ROOT_RE.match(real))
 
 
+def expand_home(word):
+    return os.path.expanduser(word) if word == "~" or word.startswith("~/") else word
+
+
 def invocations(command):
     """Every program invocation in a command, nested ones included, as (program, args)."""
     for line in command_lines(command):
@@ -1563,6 +1594,9 @@ def bash_scratch_exempt(command):
             segments, targets = split_line(line)
         except ValueError:
             return False
+        if not NO_HOME_EXPANSION_RE.search(command):
+            segments = [[expand_home(w) for w in segment] for segment in segments]
+            targets = [expand_home(t) for t in targets]
         if any(t not in HARMLESS_TARGETS and not inside_gate_scratch(t) for t in targets):
             return False
         for words in segments:
@@ -1644,6 +1678,8 @@ def pin_decisions(prog, args):
                 return out
             if not pos or verb in KUBECTL_LOCAL or (verb == "version" and "--client" in rest):
                 return out
+            if "$" in verb:
+                out.append((ASK, f"kubectl {RUNTIME_VERB_REASON}: {ON_WORDS}"))
             writes = (verb in KUBECTL_WRITES_WIDENED
                       or (verb in KUBECTL_WRITES_BY_CLAUDE_MD
                           and not (verb == "rollout" and sub in KUBECTL_ROLLOUT_READS)))
@@ -1666,6 +1702,8 @@ def pin_decisions(prog, args):
         sub = pos[0] if pos else ""
         if not pos or sub in HELM_LOCAL:
             return out
+        if "$" in sub:
+            out.append((ASK, f"helm {RUNTIME_VERB_REASON}: {ON_WORDS}"))
         if has_flag(rest, "--force-conflicts"):
             out.append((ASK, f"helm {sub} --force-conflicts takes field ownership from every "
                              f"other manager: {ON_WORDS}"))
@@ -1692,9 +1730,14 @@ def pin_decisions(prog, args):
 COMMIT_MAKERS = {"commit", "merge", "cherry-pick", "revert", "am"}
 COMMIT_MAKER_NON_COMMITS = {"--abort", "--quit", "--skip", "--dry-run"}
 DEFAULT_BRANCH_EXEMPT = tuple(os.path.realpath(os.path.expanduser(p))
-                              for p in ("~/.claude", "~/repos/configs"))
+                              for p in ("~/.claude", "~/repos/configs",
+                                        "~/repos/approve-no-look"))
 DEFAULT_BRANCH_REASON = ("commits on {branch}, the default branch of {repo}: create a branch "
                          "first (CLAUDE.md: never work on the default branch)")
+RUNTIME_VERB_REASON = ("verb is built at run time, so the hook cannot tell a read from a "
+                       "write to live cluster state")
+UNRESOLVED_REPO_REASON = ("commits in a repo whose path is built at run time, so the hook "
+                          "cannot tell whether it is a default branch")
 
 
 def git_out(repo_dir, *args):
@@ -1730,12 +1773,24 @@ def switched_to(sub, rest):
     return pos[0] if sub in ("switch", "checkout") else None
 
 
+def resolved_dir(base, path):
+    """base joined with path, or None when either is known only once the command runs."""
+    path = os.path.expanduser(path)
+    if "$" in path:
+        return None
+    if os.path.isabs(path):
+        return path
+    return None if base is None else os.path.join(base, path)
+
+
 def default_branch_commits(command, cwd):
     """A deny row for each commit the command makes on a repo's default branch.
 
     The working directory follows every `cd` and `git -C` in the command, and a branch
     switched to earlier in the same command counts as checked out. A git or filesystem
-    lookup that fails adds no row: the hook denies everything when it raises.
+    lookup that fails adds no row: the hook denies everything when it raises. A path
+    built by a substitution or a variable cannot be resolved here, so a commit made
+    there asks instead.
     """
     out = []
     here = cwd
@@ -1743,18 +1798,22 @@ def default_branch_commits(command, cwd):
     for prog, args in invocations(command):
         if prog == "cd":
             pos = positionals(args)
-            here = os.path.join(here, os.path.expanduser(pos[0])) if pos else os.path.expanduser("~")
+            here = resolved_dir(here, pos[0] if pos else "~")
             continue
         if prog != "git":
             continue
         repo_dir, rest = here, list(args)
         while rest and rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P"):
             if rest[0] == "-C" and len(rest) > 1:
-                repo_dir = os.path.join(repo_dir, os.path.expanduser(rest[1]))
+                repo_dir = resolved_dir(repo_dir, rest[1])
             rest = rest[2:] if rest[0] in ("-C", "-c", "--git-dir", "--work-tree") else rest[1:]
         if not rest:
             continue
         sub, rest = rest[0], rest[1:]
+        if repo_dir is None:
+            if sub in COMMIT_MAKERS and not COMMIT_MAKER_NON_COMMITS & set(rest):
+                out.append((ASK, UNRESOLVED_REPO_REASON))
+            continue
         top = git_out(repo_dir, "rev-parse", "--show-toplevel")
         if not top:
             continue
@@ -1925,6 +1984,15 @@ def selftest():
         (True, "Bash", "kubectl --context X -n Y delete pod p", ASK),
         (False, "Bash", "kubectl --context X -n Y delete pod p", DENY),
         (True, "Bash", "kubectl delete pod p -n Y", DENY),
+        # An empty kubeconfig is no pin: inside a pod client-go falls back to its service account.
+        (True, "Bash", "kubectl create secret generic t --kubeconfig=/dev/null --dry-run=client "
+                       "-o yaml", DENY),
+        # A verb built at run time could be any of the writes above.
+        (True, "Bash", "kubectl $(echo delete) pod p --context X -n Y", ASK),
+        (True, "Bash", 'kubectl "$(echo delete)" pod p --context X -n Y', ASK),
+        (True, "Bash", "V=delete; kubectl $V pod p --context X -n Y", ASK),
+        (True, "Bash", "helm $(echo uninstall) r --kube-context X -n Y", ASK),
+        (True, "Bash", "kubectl get pods -l app=$(echo x) --context X -n Y", None),
         (True, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
         (False, "Bash", "helm --kube-context X -n Y uninstall r", DENY),
         (True, "Bash", "helm del r --kube-context X -n Y", ASK),
@@ -1995,6 +2063,20 @@ def selftest():
         (False, "Bash", f"rm {scratch}x", None),
         (False, "Bash", f"echo hi > {scratch}x", None),
         (False, "Bash", f"touch {home}/.cache/x", None),
+        (False, "Bash", "mkdir -p ~/.cache/claude-handoff/d", None),
+        (False, "Bash", "git -C /x archive HEAD | tar -x -C ~/.cache/claude-handoff/d", None),
+        (False, "Bash", "echo hi > ~/.cache/x", None),
+        (False, "Bash", "mkdir -p '~/.cache/d'", DENY),
+        (False, "Bash", 'mkdir -p "~"/.cache/d', DENY),
+        (False, "Bash", "mkdir -p \\~/.cache/d", DENY),
+        (False, "Bash", "mkdir -p ''~/.cache/d", DENY),
+        (False, "Bash", "echo '~' && mkdir -p ~/.cache/d", DENY),
+        (False, "Bash", "echo '~'\nmkdir -p ~/.cache/d", DENY),
+        (False, "Bash", "export HOME=/x; mkdir -p ~/.cache/d", DENY),
+        (False, "Bash", "HOME=/x\nmkdir -p ~/.cache/d", DENY),
+        (False, "Bash", "mkdir -p ~/repos/d", DENY),
+        (False, "Bash", "mkdir -p ~other/.cache/d", DENY),
+        (False, "Bash", "tar -x -C ~/repo", DENY),
         (False, "Bash", f"touch {home}/.claude/plans/x.md", None),
         (False, "Bash", f"touch {home}/.claude/projects/p/memory/x.md", None),
         (False, "Bash", f"mkdir -p {scratch}d && cp a.txt {scratch}d/", DENY),
@@ -2183,6 +2265,10 @@ def selftest():
         (False, "Bash", "git config --file .gitconfig user.email x", DENY),
         (False, "Bash", "kubectl get crd --context X", None),
         (False, "Bash", "kubectl get namespaces --context X", None),
+        (False, "Bash", "kubectl get clusterpolicies --context X", None),
+        (False, "Bash", "kubectl get clusterpolicy cell-pin --context X -o yaml", None),
+        (False, "Bash", "kubectl describe cpol cell-pin --context X", None),
+        (False, "Bash", "kubectl get policies --context X", DENY),
         (False, "Bash", "kubectl get pods --context X", DENY),
         (False, "Bash", "python3 -m json.tool", None),
         (False, "Bash", "python3 -m unittest", None),
@@ -2375,6 +2461,14 @@ def selftest():
         ("cat <(rm -rf /etc)", DANGER),
         ("diff <(sort a) <(sort b)", READ),
         ("tee >(rm -rf /etc)", DANGER),
+        # Command substitution runs its own command; text glued after its `)` is still
+        # the outer command's argument, never a program of its own.
+        ("launchctl print gui/$(id -u)/ai.example.agent", READ),
+        ("git -C $(pwd) status", READ),
+        ("ls $(dirname $(pwd))/x", READ),
+        ("echo $(rm -rf /etc)/x", DANGER),
+        ("kubectl get pods -o name $(echo x) && rm -rf /etc", DANGER),
+        ("(cd /x && ls) ; launchctl print gui/$(id -u)/x", READ),
         ("glab mr update 3 --description-file d.md", DANGER),
         ("python3 /x/board.py publish g /x/g.json --org 2 --message m", DANGER),
         ("python3 /x/board.py fetch g --org 2 --out=/x/g.json", WRITE),
@@ -2469,6 +2563,11 @@ def selftest():
             (not_repo, f"git -C {on_feature} checkout main && git -C {on_feature} commit -m x", DENY),
             (not_repo, f"git -C {on_main} log --oneline", None),
             (not_repo, f"git -C {exempt} commit -m x", None),
+            (not_repo, f"git -C $(echo {on_main}) commit -m x", ASK),
+            (not_repo, f"cd $(echo {on_main}) && git commit -m x", ASK),
+            (not_repo, f"cd $(echo x) && git -C {on_main} commit -m x", DENY),
+            (not_repo, f"git -C $(echo {on_main}) merge --abort", None),
+            (not_repo, f"git -C $(echo {on_main}) status", None),
             (not_repo, "git commit -m x", None),
         ]
         try:

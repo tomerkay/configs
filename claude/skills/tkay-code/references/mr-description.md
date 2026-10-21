@@ -40,9 +40,9 @@ write it once for the whole MR.
 first.** Before writing or updating one, compare the branch's remote tip
 with local HEAD - `git ls-remote origin refs/heads/<branch>` against
 `git rev-parse HEAD`. When they differ, the MR still shows the old commits
-and a description written now describes work it does not have: stop, tell
-me the remote is behind, and ask whether I want to push first. Nothing is
-written until I answer.
+and a description written now describes work it does not have: stop and
+tell me the remote is behind HEAD. The push is mine, so it is not offered
+or asked about. Nothing is written until the remote tip matches HEAD.
 
 My yes to a description is the ask `references/gitlab.md` requires before a
 write to the MR, so do not ask again: show me the text and write it from a

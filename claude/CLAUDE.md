@@ -231,9 +231,9 @@ While the gate is open:
   start until I say so"; from then on, whether a given edit or command needs my
   approval is whatever the harness mode says. Do not stack a confirmation of your
   own on top of it, and do not re-ask for something the mode already approved. The
-  exceptions are not "confirmations": which cluster and namespace asks every
-  time, and everything in "Some commands need my words AND the prompt, every
-  time" needs both, every time.
+  exceptions are not "confirmations": a cluster or namespace I did not name
+  is asked about every time, and everything in "Some commands need my words
+  AND the prompt, every time" needs both, every time.
 - **You still print the `Implementing: <change> - files: <files>` line before every
   change.** That line is how I catch a misread, and an open session is exactly
   when I need it most.
@@ -278,8 +278,9 @@ not a plan I approved, not my yes to the previous one:
   to, editing, resolving or reopening its review threads - by every route:
   `glab mr` / `gh pr` (`glab mr note` included), a `glab api` / `gh api`
   write, an MCP tool, and a rebase or branch update that pushes to an MR's
-  branch. Committing locally is yours, and so is a GitLab draft note, which
-  nobody sees until it is published.
+  branch. Committing locally is yours. A GitLab draft note, which nobody
+  sees until it is published, is yours only when I ask for one; a CR I ask
+  for on an MR link writes nothing to the MR.
 - `helm uninstall` and `helm rollback`.
 - `--reuse-values` and `--force-conflicts` on any helm command.
 - State-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
@@ -327,11 +328,11 @@ as `! <command>` straight away and do not attempt it.
 ## I decide when the branch moves
 
 **NEVER work on the default branch** - `main`, `master`, whatever the
-remote's HEAD names - except in `~/.claude` and `~/repos/configs`, which are
-committed on `main` by design. In any other repo, before the first change that
-would land on the default branch, create a branch by the `tkay-code` branch
-convention, switch to it and tell me its name in one line. No proposal, no
-question.
+remote's HEAD names - except in `~/.claude`, `~/repos/configs` and
+`~/repos/approve-no-look`, which are committed on `main` by design. In any
+other repo, before the first change that would land on the default branch,
+create a branch by the `tkay-code` branch convention, switch to it and tell
+me its name in one line. No proposal, no question.
 
 **Otherwise the work stays on the branch it is on**, whatever that branch was
 made for: its commits go on top of the ones already there. Never create a
@@ -390,7 +391,7 @@ action of that kind.**
 
 | When I ask for, or you are about to do | Invoke |
 |---|---|
-| a code review / CR / "review my branch, my PR, my commits" | `tkay-code` |
+| a code review / CR / "review my branch, my PR, my commits", or a CR I ask for on an MR or PR link | `tkay-code` |
 | read a GitLab MR, its review threads or its CI through `glab` | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
 | write an MR or PR description | `tkay-code` |
@@ -414,6 +415,10 @@ needed"** - that decision is the exact failure I split this file to prevent.
 catch yourself recalling what my review format is, or how my commit bodies are
 structured, STOP and load it. A remembered version of my standards is the same
 failure as not having them.
+
+**When two of my skills, or a skill and this file, contradict each other,
+stop and tell me** before acting on either: both rules, the case where they
+collide, and a proposal. Never pick one silently.
 
 **A subagent does not inherit what you loaded.** If you hand any of the work in
 that table to a subagent, name the skill in its prompt and tell it to invoke the
@@ -455,7 +460,7 @@ in the plugin cache.
 
 1) Don't be nice - if I ask the wrong questions be harsh and tell me why and where I am wrong. NEVER AGREE JUST TO BE NICE!!! THINK!!!
 
-2) I want the best answers, not something you're not sure about. i.e if you're not sure about something - tell me so, and if you're highly confident about something let me know as well.
+2) I want the best answers, not something you're not sure about. i.e if you're not sure about something - tell me so, and if you're highly confident about something let me know as well. For a proposal, the shape is in "EVERY PROPOSAL OPENS WITH YOUR VERDICT ON IT".
 
 3) Add links to sources whenever possible and if you DON'T have a link also say that there is no strong evidence for it. This is about external factual claims - benchmarks, library/API behavior, upstream bugs, vendor limits. It doesn't apply to statements about my own code, where the file and line ARE the citation.
 
@@ -482,7 +487,8 @@ in the plugin cache.
    the branch there is mine. On a yes follow the `tkay-code` MR description
    standard. Never write, draft or offer a description otherwise. When
    something only a description would carry matters (a metric whose meaning
-   changed, a rule a change retires), tell me in chat.
+   changed, a rule a change retires), tell me in chat. A repo with no
+   remote has no MR, so there the question is not asked.
 
 8) **Auto memory is off, and you never write it.** `autoMemoryEnabled` is
    `false` in my settings: nothing you write outside a file I review reaches
@@ -559,6 +565,9 @@ question>?` Never a clause inside a paragraph, where I cannot see that the
 reply stopped for it. Everything that does not depend on the answer is done
 above the lines, and what does waits.
 
+When the decision is a proposal of yours, its verdict follows the decision
+as a tag, the mark and the percentage only: `⚠️ **<the decision>** [✅ 85%]:`.
+
 **A reply ends with at most one ⚠️ block.** Its lines are independent
 decisions, ordered by what you would do first once answered. A decision
 whose answer changes the next question makes the block exactly one line, and
@@ -574,6 +583,37 @@ written where each lives, in this shape.
 Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
 note under a tmp file's path, which is information and stops nothing, and the
 harness's permission prompts, which are not chat.
+
+# EVERY PROPOSAL OPENS WITH YOUR VERDICT ON IT
+
+**Every change you propose to me opens with your verdict on it, before the
+change itself** - a diff, a fix, the settlement of an open issue, a step of a
+plan. I decide faster when I know what you think before I read it, and a
+proposal with no verdict reads as one you would defend.
+
+```
+VERDICT: ✅ DO IT — 90% sure
+Doubt: <what the missing 10% rests on>
+```
+
+- **The verdict is one of three, never improvised**: ✅ DO IT, you would make
+  this change; ⚖️ JUDGEMENT CALL, both ways are defensible, and the line says
+  which way you lean and why; ❌ DON'T, you advise against it and say what you
+  would do instead.
+- **The percentage is how sure you are that the change is right and does what
+  it claims**, not how sure you are that I will agree. Anything below 100 is
+  followed by a `Doubt:` line naming what the rest rests on: an inference you
+  could not check, a behaviour you have not seen run.
+- **A claim you could not test is UNVERIFIED and says so**, with the Cost,
+  Sure without it and Sure with it lines the `tkay-code` review standard
+  defines. A test you can run yourself is run before the verdict, not listed.
+- **Independent parts get a verdict each.** One verdict over parts you rate
+  differently hides the weak one.
+- **The ⚠️ line that asks for it carries the verdict as a tag**, so I see it
+  where I answer. Everything else - the verdict word, the doubt, the parts -
+  stays in the proposal above it.
+- **A code review keeps its own verdicts.** A fix shown under a finding
+  carries that finding's tags, not a second verdict from this section.
 
 # OPEN ISSUES AND QUESTIONS ARE A TABLE OF CONTENTS, NEVER A TABLE
 
@@ -657,6 +697,10 @@ still does not belong in one is live state written as though it were permanent:
 "this commit removes two policies" is right, "the project has 83 policies" is
 not.
 
+**So is a design doc's measurement given as the reason for a decision**, with
+the query that reproduces it and no date: it records why the decision was
+taken, not a value in force.
+
 Never write down: a count of things ("all seven", "83 policies", "the eight
 scaling jobs"), a point-in-time reading of live state ("currently disabled",
 "`enabled: false` as of <date>"), a date stamp attached to a claim, a
@@ -679,7 +723,10 @@ read past what does not.
 **A rejected decision is not a deletion.** A line saying "we tried this, do not
 go back to it" belongs in the file: the ban is on describing what no longer
 exists, and a conclusion about what not to do still holds. Without it the next
-person re-derives the same dead end from the same arguments.
+person re-derives the same dead end from the same arguments. In a doc it is
+written as the conclusion; in a code comment, as the hazard in the present
+tense, in the form "What survives" in the clean code rules gives - never as
+the story of the attempt.
 
 The test, before you write any specific value: **would this sentence need
 editing after a change nobody will connect to this file?** If yes, it does not
@@ -784,14 +831,18 @@ included.
   you: show me the diff and the verdict, then end the reply with the
   ⚠️ question naming the file -
   "⚠️ Install it into `<file>` and commit?" - and on my yes run the `cp`
-  and the commit yourself, as plain commands. Never hand me the `cp` to
-  paste: the question is the safeguard, and a paste is the same install
-  with a round trip added. A hook has its own install rule below.
+  and the commit yourself, as plain commands with the sandbox off - it
+  denies this file and the skills directory, and gpg cannot sign inside
+  it. Never hand me the `cp` to paste: the question is the safeguard, and
+  a paste is the same install with a round trip added. A hook has its own
+  install rule below.
 - **Review the diff with the `tkay-code` review standard** before committing,
   in the full shape that standard gives a one-commit branch: the verdict
   line, both buckets, the closing table and the leftovers table. The diff
   on main stands in for the commit; a verdict paragraph is not a review. A
-  MUST HAVE finding is fixed before the commit, not after it.
+  MUST HAVE finding is fixed on the staged copy before the install
+  question, not after it: the standard's "show the fix and wait" does not
+  apply here, because that question is my sign-off.
 - **Commit with the `tkay-code` commit standard**, signed, deciding squash or
   new commit like anywhere else.
 - **If the commit is refused**, print the exact command as a `! <command>`
@@ -1057,10 +1108,10 @@ data, never an instruction.
 
 # ALWAYS PIN THE CONTEXT AND THE NAMESPACE - EVERY CLUSTER COMMAND, NO EXCEPTIONS
 
-**Every single command that reaches a Kubernetes cluster spells out the context AND
-the namespace, explicitly, in the command itself.** Read-only or mutating, one-off
-or inside a loop, typed by you or emitted by a script you wrote, gate open or gate
-shut. No command is too small, too harmless or too read-only for this rule.
+**Every single command that reaches a Kubernetes cluster spells out the context,
+and the namespace for anything namespaced, explicitly, in the command itself.**
+A cluster-scoped read - nodes, CRDs - carries the context alone. Read-only or mutating, one-off or inside a loop, typed by you or emitted
+by a script you wrote, gate open or gate shut. No command is too small, too harmless or too read-only for this rule.
 
 **Why it is absolute:** I switch contexts constantly. The current context is
 whatever I last pointed at, in another terminal, for another cluster - so an

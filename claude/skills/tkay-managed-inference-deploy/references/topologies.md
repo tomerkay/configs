@@ -20,9 +20,9 @@
 
 The backend key moving between charts is an easy silent mistake: a top-level
 `llmBackend:` in an il-model values file is simply ignored, and the chart quietly
-uses the `model.llmBackend` default (`vllm`).
+uses its own `model.llmBackend` default.
 
-`mode.disaggregated` exists in il-model values and defaults to `false`.
+`mode.disaggregated` exists in il-model values too.
 
 ## il-model is single-node only
 
@@ -123,7 +123,7 @@ leader for serving, and the workers only for being Running and joined.
 
 LWS injects `LWS_LEADER_ADDRESS` and `LWS_WORKER_INDEX`. The chart adds
 `POD_NAME`, `POD_IP`, `GPUS_PER_NODE`, `NNODES`, `NCCL_PORT`
-(`multiNode.ncclPort`, default 29500), and — when `multiNode.glooSocketIfName`
+(from `multiNode.ncclPort`), and — when `multiNode.glooSocketIfName`
 is set — both `GLOO_SOCKET_IFNAME` and `NCCL_SOCKET_IFNAME`. `node_bootstrap.sh`
 consumes these to resolve the leader and join the NCCL collective.
 

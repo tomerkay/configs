@@ -239,6 +239,25 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Comment quality
    - Documentation gaps
 
+### A CR asked for on a link
+
+**When I ask for a CR on an MR or PR link, the link names what to review, not
+where the review goes.** A link on its own asks for no review. The review runs
+locally and its findings come back in chat:
+
+- **The MR itself is read through its API**: the description, the review
+  threads and the pipeline.
+- **The code is read from git, not from the web diff.** Fetch the MR's head
+  into a ref without checking it out - `git fetch origin
+  refs/merge-requests/<iid>/head` on GitLab, `refs/pull/<n>/head` on GitHub -
+  and review `FETCH_HEAD` with `git log`, `git show` and `git diff` against
+  its target branch. The current branch and the working tree stay as they
+  are. If no checkout of that repo is open, ask where it is.
+- **Nothing goes back to the link.** No note, no draft note, no inline
+  comment, no suggestion, no approval, no resolved thread, no label, and no
+  review tool's commenting mode. Each of those runs only when my message
+  asks for that one in plain words.
+
 ### Review Process
 
 **DO:**

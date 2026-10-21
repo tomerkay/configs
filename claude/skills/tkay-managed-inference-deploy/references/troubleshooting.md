@@ -8,9 +8,8 @@ the *actual* fault. Always grep the raw log around the first failure rather than
 reading the summarized exception.
 
 ```
-kubectl logs <pod> --context <ctx> -n <ns> > /tmp/claude/pod.log
-grep -n "transfer failed" /tmp/claude/pod.log | head -1     # find the FIRST one
-sed -n '<N-30>,<N+5>p' /tmp/claude/pod.log                  # read what preceded it
+kubectl logs <pod> --context <ctx> -n <ns> | grep -n "transfer failed" | head -1   # line N of the FIRST one
+kubectl logs <pod> --context <ctx> -n <ns> | sed -n '<N-30>,<N+5>p'               # what preceded it
 ```
 
 The first failure is almost always more informative than the thousand that
@@ -28,7 +27,7 @@ follow — later ones degrade into a generic "session is not alive".
 | Only ~N concurrent requests fit, `token usage` high with few running | `--max-total-tokens` set too low in `extraArgs` — it caps the entire KV pool | `grep max_total_num_tokens` in the pod log |
 | Render fails: `AteroModelSpec CRD not found` | Local `helm template` without cluster capabilities | `kubectl get crd --context <ctx> \| grep atero`; re-render with `--api-versions "atero.ai/v1/AteroModelSpec"` |
 | `GDS file-handle setup failed ... cuFileHandleRegister returned an error` | GPUDirect Storage unavailable; falls back to CPU bounce buffer. Benign. | weight-load elapsed time in the log |
-| Pod Pending forever with an RDMA resource request | Combined `hostdev` across co-located pods exceeds node allocatable, **or** an unrelated `nodeSelector` pin | `kubectl describe pod <pod> --context <ctx> -n <ns>` events; `kubectl describe node <n> --context <ctx> \| grep hostdev` |
+| Pod Pending forever with an RDMA resource request | Combined `hostdev` across co-located pods exceeds node allocatable, **or** the cell has fewer nodes than the pods need | `kubectl describe pod <pod> --context <ctx> -n <ns>` events; `kubectl describe node <n> --context <ctx> \| grep hostdev`; `kubectl get nodes --context <ctx> -l dedicated=<ns>` |
 | Pod Pending, large `tensorParallelism`, no error mentioning TP | il-model is single-node only. It asked one pod for more GPUs than a node has. | chart is il-model; compare `tp` to `gpusPerNode` |
 | Multi-node worker pod has no role label; `/v1/models` fails | Correct — only rank 0 serves the API. But `/health` is backend-dependent: sglang worker answers **200**, vLLM `--headless` worker **refuses the connection**. Never infer worker-ness from the HTTP response. | `leaderworkerset.sigs.k8s.io/worker-index` label on the pod |
 | **vLLM** multi-node hangs before weight load, no error, GPUs ~1.4 GiB / 0% | MNNVL symmetric-memory rendezvous in vLLM's custom all-reduce. MNNVL is GB200 hardware; on H100 it never returns (seen on vLLM v0.27.1). The `does not support MNNVL multicast` warning is logged and it still deadlocks. | logs stop after `Connected all trees`; `py-spy dump` shows `_init_mnnvl_buffer`. Fix: `--disable-custom-all-reduce` |
@@ -56,8 +55,8 @@ passes happily over TCP. It does not validate the transport under load.
 
 ## Pods co-located on one node
 
-A dev `nodeSelector` that matches exactly one node puts prefill and decode
-together. Consequences worth remembering:
+A cell with exactly one node puts prefill and decode together. Consequences
+worth remembering:
 
 - The KV transfer never crosses the fabric, so cross-node RDMA stays untested.
 - Their resource requests compete on that single node — `nvidia.com/gpu` and
@@ -65,16 +64,16 @@ together. Consequences worth remembering:
 - `privileged: true` would let each pod see all GPUs and collide on GPU 0. This
   is exactly the case the chart's `privileged: false` default protects.
 
-Check how many nodes actually match before assuming a spread:
+Check how many nodes the cell has before assuming a spread:
 
 ```
-kubectl get nodes --context <ctx> -l <your-selector> -o wide
+kubectl get nodes --context <ctx> -l dedicated=<ns> -o wide
 ```
 
 ## Getting evidence out of a multi-node group
 
 Multi-node failures actively destroy their own evidence. Three things to set
-BEFORE debugging, or you will chase ghosts (all three cost real time today):
+BEFORE debugging, or you will chase ghosts:
 
 - **`restartPolicy: Default` on the LWS while debugging.** The default
   `RecreateGroupOnPodRestart` replaces every pod in the group when any one

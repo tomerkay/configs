@@ -37,10 +37,11 @@ A stale IP produces connection errors that look like model failures.
 Benchmark job pods can be replaced or reaped mid-run, and once deleted their logs
 are **gone** — `kubectl logs` on a deleted pod returns `NotFound`, leaving no
 record of whether requests actually failed. Stream to a file from the start
-rather than tailing after the fact:
+rather than tailing after the fact, in the background, into a directory that
+survives the session - never `/tmp` or a session scratchpad:
 
 ```
-kubectl logs job/wrenchmark-benchmark -c benchmark -f --context <ctx> -n <ns> | tee /tmp/claude/wrench.log
+kubectl logs job/wrenchmark-benchmark -c benchmark -f --context <ctx> -n <ns> | tee <log-file>
 ```
 
 The benchmark pod runs two containers (`benchmark`, `prometheus`) — always pass

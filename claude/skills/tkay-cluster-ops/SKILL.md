@@ -13,7 +13,10 @@ them. Two rules hold throughout.
 --kube-context <ctx> -n <ns>`. Never
 rely on the current context and never switch it with `kubectl config
 use-context` - I switch contexts constantly, so the current one is whatever I
-last pointed at elsewhere. If I did not name the cluster and namespace, ask.
+last pointed at elsewhere. If I did not name the cluster and namespace: for a
+read, take them from an authoritative source - the deploy config that owns the
+cluster, the cell record - and say which; with no such source, ask. For
+anything that changes the cluster, ask.
 
 **Every workload I deploy lands in my cell.** The dev clusters hand GPU nodes
 out as cells: the backoffice moves a node into a cell, and a policy pins every
@@ -57,6 +60,8 @@ version from `git describe`, so the local `Chart.yaml` keeps a placeholder
 against the local `Chart.yaml` before anything else. Upgrading from the local
 directory smuggles in every unreleased change — different values defaults,
 different ConfigMap-mounted source — under what I asked to be a one-value tweak.
+So the deployed chart is the default; when a render of the local tree differs
+from it beyond the change I asked for, say so and ask which chart to use.
 
 Ways to get the real chart:
 
@@ -124,9 +129,7 @@ A cell and the nodes in it are backoffice state; none of it is done with
 3. **Deploy into the cell's namespace** with no node selector - the policy
    above does the pinning.
 
-Releasing a node is the reverse move, out of my cell in the backoffice. The old
-release, `kubectl label node <node> atero/user=free`, is rejected on a unified
-cluster and would leave the node in its cell anyway.
+Releasing a node is the reverse move, out of my cell in the backoffice.
 
 ---
 

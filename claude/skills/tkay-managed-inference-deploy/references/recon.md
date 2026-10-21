@@ -8,9 +8,9 @@ need them.
 **The `Found N HCAs` line exists only in the startup log, and it ages out.**
 
 Under sustained traffic kubelet rotates the container log and drops the startup
-portion. Observed on a busy PD pod ~27h in: 50k+ lines retained, and *zero*
-matches for `server_args=`, `Load weight begin`, `fired up and ready` or
-`Topology discovery`. The log began hours after the pod did.
+portion. On a busy PD pod about a day old, none of `server_args=`,
+`Load weight begin`, `fired up and ready` or `Topology discovery` was left:
+the log began hours after the pod did.
 
 Consequence: **you cannot retroactively prove RDMA was initialized.** Run the
 HCA check within minutes of deploying, or use the age-independent checks below.
@@ -33,6 +33,9 @@ kubectl exec <pod> --context <ctx> -n <ns> -- python3 -c \
 Check 2 is the definitive live test. `ls -l /dev/infiniband` is **not** — the
 nodes show `crw-rw-rw-` even when every open fails.
 
+Check 2 runs code inside the pod, so it is the user's to run: print it as
+`! <command>` unless they allowed it in words. Check 1 is a plain read.
+
 ## Before installing
 
 ```
@@ -40,9 +43,9 @@ nodes show `crw-rw-rw-` even when every open fails.
 kubectl describe node <node> --context <ctx> | grep -E "nvidia.com/(gpu|hostdev)"
 kubectl describe node <node> --context <ctx> | grep -A15 "Allocated resources"
 
-# How many nodes does your selector actually match?
-# One match => prefill and decode co-locate; the fabric is never crossed.
-kubectl get nodes --context <ctx> -l <your-selector> -o wide
+# How many nodes are in the cell?
+# One node => prefill and decode co-locate; the fabric is never crossed.
+kubectl get nodes --context <ctx> -l dedicated=<ns> -o wide
 
 # Which NICs are InfiniBand vs the Ethernet frontend?
 kubectl exec <any-pod-on-that-node> --context <ctx> -n <ns> -- sh -c \
@@ -105,14 +108,12 @@ grep -c "transfer failed"                   # KV transfer health (any age)
 `transfer failed` and `TcpTransport` counts stay meaningful after rotation because
 they recur with traffic. The startup-only lines do not.
 
-When chasing a failure, dump the whole log and find the **first** occurrence — the
-first error names the real fault, later ones degrade into generic
-"session is not alive":
+When chasing a failure, find the **first** occurrence — the first error names
+the real fault, later ones degrade into generic "session is not alive":
 
 ```
-kubectl logs <pod> --context <ctx> -n <ns> > /tmp/claude/pod.log
-grep -n "transfer failed" /tmp/claude/pod.log | head -1
-sed -n '<N-30>,<N+5>p' /tmp/claude/pod.log
+kubectl logs <pod> --context <ctx> -n <ns> | grep -n "transfer failed" | head -1   # line N
+kubectl logs <pod> --context <ctx> -n <ns> | sed -n '<N-30>,<N+5>p'
 ```
 
 ## kubectl invocation gotcha

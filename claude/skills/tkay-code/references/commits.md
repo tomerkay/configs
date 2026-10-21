@@ -17,9 +17,8 @@ line.** Do not default to a new commit.
 - **Squash it into the earlier commit** when the change only exists because
   that commit got something wrong or left it half done: it corrects a claim
   that commit made, rewrites prose that commit added, or finishes what it
-  should have carried. Nothing is published, so there is nothing to preserve -
-  my history must not record you writing a rationale badly and then rewriting
-  it three commits later.
+  should have carried. My history must not record you writing a rationale
+  badly and then rewriting it three commits later.
 - **Make it a new commit** when it stands on its own: a different change for a
   different reason, one that would still make sense if the earlier commit were
   reverted.
@@ -65,7 +64,8 @@ carry a comment marker between SHA and subject, and a pattern that matches
 nothing leaves every `pick` in place, so the rebase "succeeds" with nothing
 changed. Verify the new SHAs appeared before trusting it. `-S` re-signs every
 rewritten commit - confirm with `git log --format='%h %G? %s'` before deleting
-the backup.
+the backup. When a permission layer refuses such a script as destructive, hand
+me the command to run; never reach the same rewrite by another route.
 
 **On a branch only I push to, whether it is already pushed is NOT an input to
 this decision.** I force-push my own branches, so a commit already on the
@@ -87,9 +87,10 @@ any CI rule that matches on the branch name: a name that misses such a rule
 runs a different pipeline without saying so.
 
 **When the convention puts a person in the name, that person is me**, spelled
-the way my own recent branches in this repo spell it; with none to go by, the
-local part of `git config user.email`. When the convention carries no person,
-do not add one.
+as the handle I have given you, whatever older branches of mine use. With no
+handle given, spell it the way my own recent branches in this repo do; with
+none of those either, the local part of `git config user.email`. When the
+convention carries no person, do not add one.
 
 **The rest of the name is the change, in kebab case** - what the branch does,
 never who asked for it or what wrote it (`fix-by-claude` says nothing). A

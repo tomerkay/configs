@@ -101,7 +101,7 @@ Examples of BANNED comments:
 
 **Where that content DOES belong:** the commit message body (which is exactly where "previously X, now Y" is required), or my chat. Not the source.
 
-**What survives:** a comment stating a fact about the code as it exists that a careful reader could not deduce — a non-obvious invariant, an ordering requirement, a gotcha that will bite them. `# MUST NOT await: the loop is single-threaded, so yielding here allows a torn read` is fine. `# MUST NOT await, because I originally wrote this with an await and it broke` is not.
+**What survives:** a comment stating a fact about the code as it exists that a careful reader could not deduce — a non-obvious invariant, an ordering requirement, a gotcha that will bite them. `# MUST NOT await: the loop is single-threaded, so yielding here allows a torn read` is fine. `# MUST NOT await, because I originally wrote this with an await and it broke` is not. An approach that looks right and is not gets the same form: `# MUST NOT batch these: the API rejects more than one per call` names the hazard, never the attempt.
 
 **PRODUCTION CODE IS SACRED.** Every needless comment wastes the reader's time. The log message, function name, or variable name should make the intent clear. If you catch yourself writing a comment that just restates the code, STOP and delete it immediately.
 

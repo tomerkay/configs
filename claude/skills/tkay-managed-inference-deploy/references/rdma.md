@@ -82,6 +82,9 @@ kubectl exec <pod> --context <ctx> -n <ns> -- python3 -c \
   "import os; os.open('/dev/infiniband/uverbs1', os.O_RDWR); print('OK')"
 ```
 
+Step 4 runs code inside the pod, so it is the user's to run: print it as
+`! <command>` unless they allowed it in words. Steps 1-3 are plain reads.
+
 `Found 0 HCAs` + `restartCount: 0` + `EADDRNOTAVAIL` is the complete signature.
 
 ## After the fix
@@ -101,5 +104,5 @@ whichever it actually received.
 
 **Unverified:** whether same-node prefill/decode transfers exercise the RDMA path
 or take a local shortcut. Co-locating both pods on one node (the common dev setup
-with a single `nodeSelector`-matched node) means the fabric is never crossed, so a
+with a cell of one node) means the fabric is never crossed, so a
 green run there does not prove cross-node RDMA works.

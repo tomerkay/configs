@@ -61,7 +61,7 @@ Fields that matter and are invisible in the narrow console view: `direction`,
 
 **Egress is default-allow, so it is almost never the culprit.** The VPC carries a
 blanket `default-allow-tcp-udp-egress` (supernet -> `0.0.0.0/0`, all ports) plus
-an ICMP twin; egress rules are a handful out of hundreds, the rest are ingress.
+an ICMP twin; egress rules are a small minority, the rest are ingress.
 Confirm with a `direction` histogram over the JSON before spending time on the
 outbound side.
 
@@ -92,9 +92,14 @@ different profiles, so a rule on the inbox side is written in the inbox's
 project, not the cluster's. Derive the mapping with the search above every
 time; clusters get moved.
 
-`crusoe projects list` failing with `tls: failed to verify certificate: x509:
-OSStatus -26276` is the **sandbox** blocking `api.cloud.crusoe.ai`, not a cert
-problem. Re-run with the sandbox disabled.
+`crusoe` failing with `tls: failed to verify certificate: x509: OSStatus
+-26276` inside a sandbox on a Mac is neither a network block nor a bad
+certificate: the request reaches `api.cloud.crusoe.ai`, but the CLI is Go, and
+Go on macOS verifies through the Security framework, which the sandbox cuts off
+from the trust store. `SSL_CERT_FILE` does not help - Go ignores it on macOS -
+and `crusoe --help` lists no CA-certificate setting, so run it with the sandbox
+off. The workaround expires when a plain `crusoe projects list` succeeds inside
+the sandbox.
 
 ## IP topology — what is per node, per cluster, per region
 
@@ -145,7 +150,6 @@ Consequences:
 
 The monitor is `hostNetwork: true`, so its source is the **node's** address, not
 a pod IP. It POSTs to `inboxEndpoint`, default the shared inbox LB.
-That LB is the only inbox — nothing regional exists to fail over to.
 
 The ingress rule that has to exist on the inbox side, in its project:
 sources = every cluster's public block, destination = the inbox subnet's `/20`,

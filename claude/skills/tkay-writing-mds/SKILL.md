@@ -13,7 +13,9 @@ state ("currently disabled"), a date stamped on a claim, a measurement quoted
 as fact, a line number or position in a file. Name the owner instead - the
 function, the config key, the command that answers the question. The test:
 would this sentence need editing after a change nobody will connect to this
-file? A commit body is the exception, because the diff it describes is frozen.
+file? A commit body is the exception, because the diff it describes is frozen,
+and so is the record of an incident - when it happened and the numbers it
+showed.
 A deletion is not content - delete the entry, do not record what used to be
 there - but a rejected decision ("tried X, do not go back") stays.
 
@@ -34,6 +36,10 @@ example block carrying the current numbers, no table with a Default column, no
 function body, no snippet that is wrong after the next edit. Name the key, the
 function or the file and point at the one that owns it; describe the pattern, do
 not copy it.
+
+**A design doc may quote a measurement as the reason for a decision**, with the
+query that reproduces it and no date. It records why the decision was taken,
+not a value in force; a setting in force is still named by its owner.
 
 ## Where a fact goes
 

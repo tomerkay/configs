@@ -87,18 +87,27 @@ wrote after an outage, commit bodies, postmortems, tickets - and says what the c
 does to each. The section is there whether the change is a redesign, a feature or a
 bug fix; an incident the plan never names is one the reader assumes it handles.
 
-Per incident:
+**The section opens with a summary table**: one row per incident, numbered, with
+the incident, its verdict, and in one line how it is fixed or why it is not. A
+reader sees the state of every incident before reading any of them.
 
+**Then one block per incident, in a fixed shape, its heading carrying the verdict**,
+so the answer is never buried in a paragraph:
+
+- **The verdict**, one word, in the heading: **Solved** (the cause cannot occur by
+  construction), **Mitigated** (it can still occur and is handled another way),
+  **Not solved** (it can still occur and nothing new handles it), or **Gone** (the
+  mechanism that failed no longer exists). No other word.
 - **What happened**: the symptom, with the numbers, the date and the system when the
   source has them. A detail the source does not state is written as not stated, never
   filled in.
-- **The cause**, in the old code.
-- **The verdict**, one word: **solved** (the cause cannot occur by construction),
-  **mitigated** (it can still occur and is handled another way), **not solved** (it
-  can still occur and nothing new handles it), or **gone** (the mechanism that failed
-  no longer exists). Then the mechanism or the reason, naming the function, the rule
-  or the section that carries it.
-- **The source**: the file and the function or test, or the commit subject.
+- **Cause**, in the old code.
+- **Fix**: the mechanism in the new code, naming the function, the rule or the
+  section that carries it, and the test that pins it. For **Not solved**, this line
+  is **Why not**: what still lets it happen, and what covers it meanwhile - a TBD
+  entry, a known gap, an operator action. For **Gone**, it names the mechanism that
+  no longer exists.
+- **Source**: the file and the function or test, or the commit subject.
 
 **A verdict is a claim about the new code, so it is checked against the new code, not
 taken from the plan's own prose.** Solved without a named mechanism is not a verdict.
@@ -117,8 +126,9 @@ after I agree to defer it. A TBD you invented reads as a commitment I never made
 
 ## Divide it into commits
 
-Not a pile of edits. One section per commit, each independently correct, deployable, and
-leaving the tests passing - so any prefix of the list can ship on its own. For each one:
+Not a pile of edits. One section per commit, each independently correct and leaving the
+tests passing - so any prefix of the list is correct on its own. Where the repo requires a
+version bump, the bump is the last commit and the one that releases. For each one:
 the subject line, the files, the tests, and **what the commit body has to say**.
 
 Call out whatever a commit touches that is easy to miss: a doc whose wording it
@@ -222,7 +232,9 @@ from a known architecture" says.
 That stop is for what needs a discussion: a flaw in the design, a fix that changes how
 components interact, adds state or a read, or reverses a decision the plan settled.
 A bug you can fix inside the agreed design - a wrong comparator, a missed condition, an
-off-by-one - is not a stop: fix it and name it in your next message.
+off-by-one - in the code this plan's commits write is not a stop: fix it and name it in
+your next message. A bug in code the plan does not touch is a finding: report it, do not
+fix it.
 
 **Every decision made while executing updates the plan, without being asked**, in
 the shape "Start from a known architecture" gives a decision. A hole we settled, an
@@ -232,6 +244,15 @@ decision, before the next piece of code. Change the sections it touches - design
 commits, risks, decisions - and add a question and answer when the reader will ask
 why. The plan must describe the branch as it stands, so the reviewer never meets a
 plan the code already contradicts.
+
+## Committing a plan to a repo
+
+Committed to a repo, a plan becomes a record read by someone who was not in the
+review. It names a setting in force by its owner, the key and the file, never by
+its value. It keeps a measurement only as the reason for a decision, with the
+query that reproduces it and no date: git history dates it. Working notes go:
+instructions to whoever executes it, people's names, branch names, a section on
+running things on one machine.
 
 ## Keeping it alive
 

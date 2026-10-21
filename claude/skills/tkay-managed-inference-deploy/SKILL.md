@@ -27,7 +27,10 @@ Run the verification gate below on **every** fresh deploy. It takes ten seconds.
 **Every command that reaches a cluster names its target**: `kubectl ...
 --context <ctx>` plus `-n <ns>` for anything namespaced, `helm ...
 --kube-context <ctx> -n <ns>`. Never rely on the current context. If the user
-did not name the cluster and namespace, ask.
+did not name the cluster and namespace: for a read, take them from an
+authoritative source - the deploy config that owns the cluster, the cell
+record - and say which; with no such source, ask. For anything that changes
+the cluster, ask.
 
 ## Pick the chart before writing values
 
@@ -78,9 +81,28 @@ never reaches the API server. Render errors are precise — read them literally.
 
 ### 2. Install / upgrade
 
-Cluster-mutating commands are the user's to run. Print them as `! <command>`
-and let them execute, unless they have explicitly authorized you for the
-namespace and cluster in the current session.
+Run `helm install` / `helm upgrade` only once the user has authorized installs
+in this session and named the cluster and namespace; otherwise print the
+command as `! <command>` for them to run.
+
+Before either, check that the namespace is a cell of the user's and that the
+cell has nodes:
+
+```
+kubectl get nodes --context <ctx> -L dedicated,cell-display-name
+```
+
+A policy pins every GPU pod in a cell's namespace to that cell's nodes, so the
+values carry no node selector of their own, and admission rejects `nodeName`,
+a node affinity on `dedicated` or one that matches by field, and a `dedicated`
+toleration. A cell with no node leaves
+every GPU pod Pending while the release looks deployed.
+
+Before an upgrade, read who wrote the release's objects:
+`kubectl get <obj> --context <ctx> -n <ns> -o jsonpath='{.metadata.managedFields[*].manager}'`.
+`worker` among them means the backoffice installed it: the change goes through
+the backoffice, never `helm upgrade`, which would take every field it sets from
+`worker` and make the backoffice's next deploy conflict on all of them.
 
 ### 3. Verification gate — non-negotiable
 
@@ -96,10 +118,10 @@ deploying**: the line lives only in the startup log and is lost once kubelet
 rotates it under traffic (see `references/recon.md` for age-independent checks):
 
 ```
-for p in prefill decode; do
-  kubectl logs <release>-pd-model-$p-0 --context <ctx> -n <ns> | grep -E "Found . HCAs"
-  kubectl logs <release>-pd-model-$p-0 --context <ctx> -n <ns> | grep -c TcpTransport   # must be 0
-done
+kubectl logs <release>-pd-model-prefill-0 --context <ctx> -n <ns> | grep -E "Found . HCAs"
+kubectl logs <release>-pd-model-decode-0 --context <ctx> -n <ns> | grep -E "Found . HCAs"
+kubectl logs <release>-pd-model-prefill-0 --context <ctx> -n <ns> | grep -c TcpTransport   # must be 0
+kubectl logs <release>-pd-model-decode-0 --context <ctx> -n <ns> | grep -c TcpTransport    # must be 0
 ```
 
 **PD only** — is work actually being split? A single pod doing both halves means
@@ -110,8 +132,9 @@ kubectl logs <release>-pd-model-prefill-0 --context <ctx> -n <ns> | grep "Prefil
 kubectl logs <release>-pd-model-decode-0 --context <ctx> -n <ns> | grep "Decode batch"  | tail -2
 ```
 
-**Multi-node** — only rank 0 serves. Workers are headless: no HTTP server, no
-probes, no role label. Do not read a worker's lack of `/health` as a fault. Check
+**Multi-node** — only rank 0 serves. Workers are headless: no inference API and
+no role label, and whether they answer `/health` depends on the backend (see
+`references/topologies.md`). Never judge a worker by its HTTP response. Check
 the leader for serving, workers for Running + joined, and the NCCL init output for
 which transport it selected.
 
@@ -119,7 +142,9 @@ Pod names differ by chart — il-model pods come from a `Deployment` (hashed suf
 pd-model from LWS/StatefulSet (`-prefill-0` / `-decode-0`). Resolve with
 `kubectl get pods --context <ctx> -n <ns> -l app.kubernetes.io/instance=<release>`.
 
-Then a real request through the gateway. If the gateway returns no route, check
+Then a real request through the gateway. A cell whose routing stack is `none`
+has no gateway; check `kubectl get deploy --context <ctx> -n <ns>` before
+probing one. If the gateway returns no route, check
 `/v1/inference_servers` on the management port: `{"models":[]}` means pod
 discovery worked but there is no `AteroModelSpec` CR, so the model catalog is
 empty. Discovery gives the gw *servers*; the CR gives it *models*.
