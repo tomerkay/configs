@@ -7,6 +7,32 @@ code; this file says how to report a departure from it and how bad each one is.
 
 When I ask for a code review (CR), I want you to be **thorough as fuck** because this is serious production code. Don't hold back, don't be nice - if something is wrong, tell me straight up.
 
+## THE BRANCH IS WHAT SHIPS, NOT THE COMMITS
+
+**The target of a review is the final outcome: the tree at the top of the
+branch, merged into its base.** Commits are how that outcome is reached and
+read; they are never a target of their own. The worst review I can get is
+every commit marked `✅ SHIP IT` while the branch as a whole is broken - each
+commit judged against the one before it, and nobody judging what lands.
+
+- **Read the whole branch first, as one change**: `git diff
+  <merge-base>..HEAD`. Know what the branch delivers before judging any
+  commit's part in it.
+- **Judge the outcome at HEAD**: does the merged result work, does every piece
+  the branch adds join up, does it do what the branch set out to do. A defect
+  that lives in no single commit - two commits that pass alone and break
+  together, a change no later commit finishes - is still a finding. It goes in
+  the review of the commit that should carry the fix, so that commit's verdict
+  blocks.
+- **The commit verdicts never read greener than the outcome.** If the branch
+  at HEAD is broken, at least one row of the closing table is not `✅ SHIP IT`.
+- **Squash when it makes the outcome clearer.** When reading the commits apart
+  hides what the branch does - steps that only make sense together, a commit
+  that is broken until a later one lands, a split that leaves the reader to
+  assemble the change in their head - recommend `🔀 SQUASH INTO` even when no
+  commit got anything wrong. A commit earns its place by making the outcome
+  easier to understand or to bisect, not by existing.
+
 ## CRITICAL: IS IT A REAL BUG OR A NIT — AND MUST I FIX IT NOW?
 
 **Two questions I must be able to answer about every single finding, without reading between the lines:**
@@ -96,9 +122,40 @@ Then exactly two sections, in this order, with the divider. **The buckets split 
 
 **If a bucket is empty, SAY IT OUT LOUD** - and say what you actually checked, not that correctness is proven: "REAL ISSUES: none - I traced both new branches and grepped every caller in HEAD." An empty bucket means you found nothing, so don't write "the code is correct" as if you'd proved it. Never make me infer emptiness from absence. Same for the roll-up: "MUST HAVE: none."
 
+### The branch summary — right above the closing table, every CR
+
+After the last commit's review, say in plain words what the branch does as a
+whole at HEAD - what someone who never opens the diff gets when it merges.
+No file, function, flag or SHA: sentences a teammate reading release notes
+would follow. Under its own heading:
+
+## What the branch does
+
+```
+- <one thing the branch does, in plain words>
+  VERDICT: ✅ DO IT — 90% sure
+  Doubt: <what the missing 10% rests on>
+```
+
+- **One bullet per distinct thing the branch does.** A branch that does one
+  thing gets one bullet; several changes get one each, never folded into one
+  bullet where a weak part hides behind a strong one.
+- **Each bullet carries your verdict on that change as it stands at HEAD**, one
+  of three, never improvised: `✅ DO IT` - the change is right and does what it
+  claims; `⚖️ JUDGEMENT CALL` - defensible both ways, and the line says which
+  way you lean and why; `❌ DON'T` - the branch is better without it, and the
+  line says what you would do instead.
+- **The percentage is how sure you are that the change is right and works at
+  HEAD**, not how sure you are that I will agree. Anything below 100 is
+  followed by a `Doubt:` line naming what the rest rests on.
+- **These verdicts judge the outcome, so a broken branch shows up here.** A
+  `❌ DON'T`, or a doubt that the change works at HEAD, under a closing table
+  of nothing but `✅ SHIP IT` means the commits above are missing a finding or
+  a `🗑 DROP`: find it and put it on the commit that should carry it.
+
 ### The closing table — the last thing in every CR
 
-After the last commit's review, end the CR with one table: one row per commit,
+After the branch summary, end the CR with one table: one row per commit,
 in branch order, three columns, under its own heading so it never reads as part
 of the last commit's review.
 
@@ -119,13 +176,13 @@ of the last commit's review.
 |---|---|
 | `✅ SHIP IT` | 0 MUST HAVE |
 | `🔧 NEEDS CHANGE` | at least one MUST HAVE, and amending this commit fixes it |
-| `🔀 SQUASH INTO <short-sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done — the squash rule in `references/commits.md` |
+| `🔀 SQUASH INTO <short-sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md` |
 | `🗑 DROP` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
 The verdict agrees with that commit's VERDICT line: never `✅ SHIP IT` while its
 MUST HAVE count is above zero. A single-commit CR still ends with a one-row
-table. The closing table and the leftovers table below are the only summaries
-allowed in a CR.
+table. The branch summary, the closing table and the leftovers table below are
+the only summaries allowed in a CR.
 
 ### The leftovers table — right after the closing table, every CR
 
@@ -261,12 +318,13 @@ locally and its findings come back in chat:
 ### Review Process
 
 **DO:**
+- **Read the whole branch diff before the first commit, and judge the outcome at HEAD after the last** (see "THE BRANCH IS WHAT SHIPS, NOT THE COMMITS")
 - Review commits ONE BY ONE (commit-by-commit)
 - **When reviewing a commit, check HEAD state to verify later commits didn't break it**
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
 - Give each commit a score out of 10
-- **End the CR with the closing table, then the leftovers table** (see "The closing table" and "The leftovers table" above)
+- **End the CR with the branch summary, the closing table, then the leftovers table** (see "The branch summary", "The closing table" and "The leftovers table" above)
 - **Open with the VERDICT line + MUST-HAVE roll-up, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Verdict vocabulary is fixed" above)
@@ -395,7 +453,7 @@ Then wait for me to say "fix it" or "its ok" or "next commit" before continuing.
 
 ### Bottom Line
 
-I care about my commits and want them to be perfect. Be thorough, be direct, and don't hold back. If something is wrong, tell me. If something is misleading, tell me. If I'm about to merge garbage, BLOCK ME.
+I care about my commits and want them to be perfect, because they are how the branch is read - and the branch is what ships. Be thorough, be direct, and don't hold back. If something is wrong, tell me. If something is misleading, tell me. If I'm about to merge garbage, BLOCK ME.
 
 **And be unmistakably clear about two things: is it BROKEN, and do I have to fix it NOW.** Three failures I hate equally:
 1. Burying a 🔴 BUG in a list of whitespace nits so I merge broken code.

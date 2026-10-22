@@ -164,7 +164,8 @@ shift. Shape and content are the skill's - "Alert Investigation TL;DRs" names
 it.
 
 The carve-out is exactly that wide and no wider: one message, the TL;DR, into
-the alert thread I linked. Any other Slack message - another channel, a DM, a
+the alert thread I linked, and the one pickup reaction the investigate-alert
+skill puts on that alert. Any other Slack message - another channel, a DM, a
 thread I did not hand you - is sent on my behalf and needs my words and the
 prompt, with its text shown - see "Some commands need my words AND the prompt,
 every time". When I tell you to post one of those, post it and do not ask
@@ -838,8 +839,9 @@ included.
   install rule below.
 - **Review the diff with the `tkay-code` review standard** before committing,
   in the full shape that standard gives a one-commit branch: the verdict
-  line, both buckets, the closing table and the leftovers table. The diff
-  on main stands in for the commit; a verdict paragraph is not a review. A
+  line, both buckets, the branch summary, the closing table and the
+  leftovers table. The diff on main stands in for the commit; a verdict
+  paragraph is not a review. A
   MUST HAVE finding is fixed on the staged copy before the install
   question, not after it: the standard's "show the fix and wait" does not
   apply here, because that question is my sign-off.

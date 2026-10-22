@@ -11,6 +11,11 @@ check outside the sandbox, and never commit without the signature.
 
 ## Squash or New Commit - Decide Every Time, and Say Which
 
+**Commits serve the branch's final outcome, never the other way round.** What
+ships is the tree at the top of the branch; the commits are how a reader
+understands it and how a bisect finds a fault in it. Every squash-or-new
+decision is judged by that.
+
 **Before every commit, work out which of the two it is and tell me in one
 line.** Do not default to a new commit.
 
@@ -19,6 +24,11 @@ line.** Do not default to a new commit.
   that commit made, rewrites prose that commit added, or finishes what it
   should have carried. My history must not record you writing a rationale
   badly and then rewriting it three commits later.
+- **Squash two commits that read better as one**, even when neither got
+  anything wrong: apart they hide what the branch does - one is broken or
+  meaningless until the other lands, or the reader has to assemble the change
+  from both. The version bump keeps its own commit regardless; see "A Version
+  Bump Is Its Own Commit, at the Top of the Branch".
 - **Make it a new commit** when it stands on its own: a different change for a
   different reason, one that would still make sense if the earlier commit were
   reverted.
