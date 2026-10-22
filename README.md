@@ -19,7 +19,9 @@ Restore by copying a file back to the matching path.
 has Claude review the staged diff, commits and pushes. It holds the list of home
 files it syncs. The Claude files are whatever the `~/.claude` git repo tracks,
 so that repo's `.gitignore` allowlist decides them. Pass `--no-push` to leave
-the commit local.
+the commit local, and `-m <message>` to commit with that message instead of the
+generic sync one, so a change made by hand keeps its reason. The commit takes
+every change the run finds, so the message must cover all of them.
 
 Every run, scheduled or manual, appends to `sync-configs.log` in this directory,
 which is gitignored. `bin/install-launchd.sh` registers the script with launchd

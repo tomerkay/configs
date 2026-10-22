@@ -47,9 +47,17 @@ REVIEW_MODEL='haiku'
 REVIEW_SYSTEM_PROMPT='Unattended pre-commit review of a diff for a public dotfiles repo. An added line is UNSAFE if it holds a credential (key, token, password, private key, webhook URL), a non-public hostname or IP, a cluster, context, node or namespace name, or a personal e-mail address. The owner handle, work e-mail, employer name (Atero, in any form or role: `atero` as a word, a namespace, a label prefix or a repo name is public), GPG fingerprint, home-directory paths, test fixtures and placeholders such as <ctx>, $NS or C0OTHER are fine; flag only values that are evidently real. Reply with one line per finding (file, the added line, why), then a final line that is exactly CLEAN or UNSAFE. Nothing after the verdict.'
 
 push=true
-if [ "${1:-}" = "--no-push" ]; then
-    push=false
-fi
+message="chore: sync configs from $(hostname -s)"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --no-push) push=false; shift ;;
+        -m)
+            [ -n "${2:-}" ] || { echo "-m needs a message" >&2; exit 2; }
+            message="$2"
+            shift 2 ;;
+        *) echo "unknown argument: $1" >&2; exit 2 ;;
+    esac
+done
 
 # The script appends to the log itself so a manual run is recorded like a
 # scheduled one; launchd captures only stderr, for failures nothing here logged.
@@ -162,7 +170,7 @@ if [ -z "$(git status --porcelain)" ]; then
 else
     git add -A
     review_staged
-    git commit -q -m "chore: sync configs from $(hostname -s)"
+    git commit -q -m "$message"
     log "committed $(git rev-parse --short HEAD)"
 fi
 
