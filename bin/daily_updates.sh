@@ -11,8 +11,10 @@ ATERO_MARKETPLACE=atero-skills
 ATERO_BUNDLE="atero-skills@$ATERO_MARKETPLACE"
 PLUGINS_FILE="$HOME/.claude/plugins/installed_plugins.json"
 LOG_FILE="$(cd "$(dirname "$0")/.." && pwd)/daily-updates.log"
-BREW_FORMULAE="crusoe k9s gh glab uv kubectx golangci-lint pomerium/tap/pomerium-cli"
+BREW_FORMULAE="crusoe k9s gh glab uv kubectx pomerium/tap/pomerium-cli"
 GO_PIN_REPO="$HOME/repos/data-path"
+LINT_REPO="https://github.com/golangci/golangci-lint"
+LINT_BIN="$HOME/.local/bin/golangci-lint"
 
 # A formula can keep older kegs until cleanup runs, so take the last (newest) column.
 brew_version() {
@@ -103,6 +105,30 @@ if [ "$go_status" -eq 0 ]; then
 fi
 go_after=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 
+# Homebrew's formula depends on its own go, a second toolchain beside the gvm pin.
+# The release binary has no such dependency and runs whichever go is on PATH.
+lint_before=$("$LINT_BIN" version --short 2>/dev/null)
+lint_after=$lint_before
+lint_latest=$(curl -sSfL -o /dev/null -w '%{url_effective}' "$LINT_REPO/releases/latest")
+lint_status=$?
+lint_latest=${lint_latest##*/v}
+if [ "$lint_status" -eq 0 ] && [ "$lint_latest" != "$lint_before" ]; then
+	lint_asset="golangci-lint-$lint_latest-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/')"
+	lint_dir=$(mktemp -d)
+	(
+		cd "$lint_dir" &&
+			curl -sSfLO "$LINT_REPO/releases/download/v$lint_latest/$lint_asset.tar.gz" &&
+			curl -sSfLO "$LINT_REPO/releases/download/v$lint_latest/golangci-lint-$lint_latest-checksums.txt" &&
+			grep " $lint_asset.tar.gz\$" "golangci-lint-$lint_latest-checksums.txt" | shasum -a 256 -c &&
+			tar -xzf "$lint_asset.tar.gz" &&
+			mkdir -p "$(dirname "$LINT_BIN")" &&
+			mv "$lint_asset/golangci-lint" "$LINT_BIN"
+	) >&2
+	lint_status=$?
+	rm -rf "$lint_dir"
+	lint_after=$("$LINT_BIN" version --short 2>/dev/null)
+fi
+
 brew_report=$(
 	for f in $BREW_FORMULAE; do
 		before=$(brew_version "$f")
@@ -124,6 +150,7 @@ bundle_after=$(bundle_versions)
 	report "claude" "$claude_before" "$claude_after" "$claude_status"
 	report "$ATERO_BUNDLE" "$bundle_before" "$bundle_after" "$bundle_status"
 	report "go (data-path pin)" "$go_before" "$go_after" "$go_status"
+	report "golangci-lint" "$lint_before" "$lint_after" "$lint_status"
 	if [ "$brew_update_status" -eq 0 ]; then
 		echo "brew update: ok"
 	else

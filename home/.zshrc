@@ -265,6 +265,8 @@ function watchp() {
 }
 source /Users/tkay/.zshrc.crusoe
 
+[[ -s "/Users/tkay/.gvm/scripts/gvm" ]] && source "/Users/tkay/.gvm/scripts/gvm"
+unset -f cd
 export GPG_TTY=$(tty)
 fpath=(~/.zsh/completion $fpath)
 autoload -Uz compinit

@@ -358,6 +358,92 @@ bisect, and buys nothing when the plain version is as correct and fast enough.
 
 ---
 
+# A NAME MEANS ONE THING, LITERALLY
+
+**A reader who never saw the code before must know what a variable, field,
+function, state or label holds from its name alone, without a comment and
+without tracing where it is set.** A name that holds more than its words
+say makes every reader rebuild the hidden condition, and the one who gets
+it wrong ships the bug.
+
+- **A name that needs a comment to be understood is the wrong name.** Make
+  it longer (`reason` -> `frozenReason`, `t` -> `requestTimeout`) or split
+  it into two names. A comment is for what no name can carry - why it is
+  so, a gotcha, an invariant - never for what the name holds.
+- **The literal word is the meaning.** `unread` is true for everything that
+  was not read, `ready` for everything that is ready. A name that is true
+  only for part of what its word covers - `unread` that is really "unread
+  and admitted to the split" - is a lie to every reader who takes the word
+  at its meaning.
+- **One fact per name.** Two facts are two names. A compound condition
+  that readers need goes into its own named state, never into the belly of
+  one of the facts it is built from.
+- **A state is named for what it means, not for what causes it.** `frozen`
+  means "held as it is this pass"; why it is frozen is decided once, where
+  it is set, and the readers act on the state alone. The next cause is one
+  more line at that one place, and no reader changes.
+- **A change that shifts what a name means renames it.** Keeping the old
+  name over a new meaning leaves every existing reader on the old one, and
+  the reader nobody re-checked is where the bug lands. Grep every reader of
+  the old name, and give each the name it actually means.
+- **Labels follow the same rule**: an enum value, a metric label value, a
+  log key or a status word must be literally true for every case that
+  produces it. A `cluster_unread` count that also counts reads of something
+  else on a cluster that was read is false data on a dashboard.
+- **One word, one meaning, everywhere.** The code, its comments, the docs,
+  the metrics and the chat use the codebase's word for a thing. A new
+  synonym in a doc or a review ("dark" for what the code calls "serves no
+  traffic") is a second name a reader must map, so use the existing word or
+  define the new one once, where the thing is defined.
+
+**Worked example.** A scaling loop held one field for "this deployment's
+cluster could not be read". A fix made it skip deployments the database
+already excludes, and added a second field for the plain fact:
+
+```go
+// ❌ the word "unread" holds a hidden "and the rows admit it"
+type deployment struct {
+	unread string // set only when not read AND admitted to the split
+	blind  bool   // not read - the field that actually means unread
+}
+
+// a restart guard written when unread still meant unread:
+case !dep.obs.DeployRunning && dep.unread == "":
+	restart(task) // runs on a cluster nobody could read when the rows exclude it
+```
+
+Every reader written before the fix kept the old meaning, and the restart
+guard started a task on a cluster the loop could not see. The fix gives
+each name one meaning, and decides the cause of a state where it is set:
+
+```go
+// ✅ one literal meaning per name, and no comment needed to read either
+type deployment struct {
+	unreadReason string
+	frozenReason string
+}
+
+// the one place that decides why a deployment is frozen
+if dep.unreadReason != "" && admittedBySplitRule(dep) {
+	dep.frozenReason = dep.unreadReason
+}
+
+case !dep.obs.DeployRunning && dep.unreadReason == "":
+	restart(task)
+if dep.frozenReason != "" {
+	sum += dep.share
+}
+```
+
+The labels of the same loop had the same flaw:
+
+```go
+SkipClusterUnread = "cluster_unread" // ❌ also counted a deploy check that failed on a cluster that was read
+SkipFrozen        = "frozen"         // ✅ says what the endpoint is, whatever made it so
+```
+
+---
+
 # EVERY BAD PATH IS COUNTED, THEN LOGGED
 
 A bad path I cannot alert on is one I find out about from a customer. The

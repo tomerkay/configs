@@ -77,7 +77,7 @@ Severity says **how broken** it is. Policy says **whether I have to act before m
 - `🟡 QUALITY · MUST HAVE [commit message falsely claims X changed to Y; history is permanent]`
 - `🟡 QUALITY · MUST HAVE [violates an explicit rule in the repo's CLAUDE.md - name the rule]`
 
-**Legitimate reasons to promote 🟡/⚪ → MUST HAVE:** false or misleading commit message (git history is permanent), a violation of a rule stated explicitly in the repo's `CLAUDE.md`, or docs that now actively lie about behavior. A departure from `references/clean-code.md` keeps the severity and policy the checklist below gives it; being written down there is not on its own a reason to promote.
+**Legitimate reasons to promote 🟡/⚪ → MUST HAVE:** false or misleading commit message (git history is permanent), a violation of a rule stated explicitly in the repo's `CLAUDE.md`, docs that now actively lie about behavior, a bug fix with no test that reproduces it when a unit test could (see "Tests" under "Where the borderline cases land"), or a label value (enum, metric label, status word) that is false for some case producing it and has not shipped yet - after it ships, renaming it breaks every dashboard and alert that reads it. A departure from `references/clean-code.md` keeps the severity and policy the checklist below gives it; being written down there is not on its own a reason to promote.
 **Legitimate reasons to demote 🟠 → NICE TO HAVE:** pre-existing condition this commit didn't introduce, a trigger threshold we are provably nowhere near, or a 🟠 RISK (UNVERIFIED) I accepted as untested. Say which.
 
 **Never demote to dodge an argument.** If you're unsure whether it blocks, it's MUST HAVE and you say you're unsure. NICE TO HAVE is a claim that shipping without it is safe - own it.
@@ -227,10 +227,11 @@ When nothing came up, the heading stays and the table is one line instead:
   - Weak/vague commit message → 🟡 · NICE TO HAVE. Commit message making a FALSE CLAIM about behavior → still 🟡 on severity (the code works) but **MUST HAVE** on policy - it lies to whoever bisects this later, and history is permanent. This is the textbook case for why the two axes exist.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
+  - A name that holds more than its words say, is named for a cause instead of a meaning, or kept its name after its meaning changed (see "A NAME MEANS ONE THING, LITERALLY" in `references/clean-code.md`) → 🟡. A reader already acting on the literal word and doing the wrong thing → 🔴 for that reader, with the rename as the fix. A label (enum, metric label value, status word) whose words are false for some case that produces it → 🟡.
   - Clever code a plain version replaces with the same behaviour → 🟡. Clever code hiding a bug you traced → 🔴 for the bug, and the plain version is the fix.
   - Suspicious logic you traced and it's genuinely wrong → 🔴. Suspicious logic you can't prove either way → 🟠, and say what would prove it.
   - Perf: measurable regression on the per-request path → 🟠 minimum. Cold path → 🟡.
-  - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), a test of nothing the component promises, or a bug fix with no test that reproduces it → 🟡. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "TESTS CHECK THE CONTRACT, NOT THE CODE" in `references/clean-code.md` says what a good one checks.
+  - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), or a test of nothing the component promises → 🟡. A bug fix with no test that reproduces it → 🟡 · MUST HAVE when a unit test through the component's public interface could fail on the unfixed code. When none could - a race, a failure only a live cluster shows, a fix to config alone - it stays NICE TO HAVE, and the bracket names which of those it is. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "TESTS CHECK THE CONTRACT, NOT THE CODE" in `references/clean-code.md` says what a good one checks.
 - **Still report the nits.** "NOT BROKEN" ≠ "don't mention". Put them below the divider where they can't be mistaken for real problems.
 - **Every finding gets both tags.** A finding with no policy label is an incomplete finding - I can't act on "here's a thing" without knowing if it blocks me.
 - **MUST HAVE is not a wish list.** If everything is MUST HAVE, the label means nothing and I'll start ignoring it. Be willing to write NICE TO HAVE and stand behind it.
@@ -275,7 +276,7 @@ Each category below has a **default severity** - deviate only with a stated reas
 6. **Code Quality** [default: 🟡 · NICE TO HAVE, EXCEPT "logical correctness of NEW code" below - wrong logic is 🔴/🟠 · MUST HAVE]
    - Duplicated logic or values? "ONE SOURCE OF TRUTH" in `references/clean-code.md` says what counts
    - Ordering issues? (should things be grouped differently?)
-   - Naming clarity? (are variables/functions named clearly?)
+   - Naming clarity? Does each name mean one thing, literally, that a cold reader gets from the name alone? A name that only a comment explains is the wrong name: make it longer or split it. Any state that hides a compound condition, is named for its cause, or kept its name when a change shifted its meaning? When a diff changes what a field means, grep every reader of it.
    - Any TODOs or FIXMEs that shouldn't be there?
    - **Redundant comments**: the comment rules and their worked examples are in `references/clean-code.md`. Flag ANY comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be DELETED.
    - **Inconsistent spacing/indentation in YAML/config files**:
@@ -430,6 +431,7 @@ Then wait for me to say "fix it" or "its ok" or "next commit" before continuing.
 - When I say "fix description" or "fix commit message"
 - When I explicitly say "fix it"
 - When I say "fix the must haves" - fix every MUST HAVE item in the roll-up, including promoted 🟡 ones, and nothing else
+- When I set a target for the fixes - within the limits of "Fixing toward a target" below
 
 **Show me the exact fix, then wait for my word:**
 - **🔴 BUG · MUST HAVE and 🟠 RISK · MUST HAVE** - show me the diff you'd apply, don't apply it. Whether a merge-blocker gets fixed now, ticketed, or shipped knowingly is my call
@@ -439,6 +441,17 @@ Then wait for me to say "fix it" or "its ok" or "next commit" before continuing.
 
 **Never touch unless I say so:**
 - Everything labelled NICE TO HAVE - that label means it's my call by definition
+
+### Fixing toward a target
+
+When I set a target for the fixes - "fix until the score is 8+ and the verdict is SHIP IT", in whatever words - the target is a correct branch, and the score only measures it. A fix that brings a bug of its own is worse than the finding it closed: the finding was named and visible, the new bug is neither.
+
+- **Every fix is the smallest, plainest change that closes its finding** - delete, reorder, rename, add the missing guard or the missing call: a change a reader verifies at a glance. A fix that needs a new mechanism, a new code path or a restructure, or that touches code the finding never named, is not easy: show it and wait, whatever the target says.
+- **Every fix answers two questions as it is made: does it do what it claims, and did it break anything around it?** Read its diff against this standard, trace what it touches - its callers, the paths beside it, the rest of the branch - and run what can be run. Re-scoring the finding it closed answers neither.
+- **A fix that fails either question gets an easy fix of its own, or it stops.** When no easy fix makes both answers yes, stop and ask me: name the finding, what the fix failed to do or broke, and the options as you see them. Never stack a hard fix on top of it to reach the target.
+- **One round of fixes, then one more review of the whole branch at HEAD** - not only the findings it fixed: a fix lands in code the rest of the branch depends on. When that review still finds anything the target needs fixed, stop and ask me before a second round, even in the middle of a goal: the goal is why the fixes run, never permission to keep going past this point.
+- **The score moves only because the code got better.** Never reach the target by demoting a tag, softening a finding, or deleting the test, check or log that exposed the problem.
+- **Fix only what the target needs.** A NICE TO HAVE outside it stays my call, and every extra fix is another chance at a new bug.
 
 ### Tools to Use
 

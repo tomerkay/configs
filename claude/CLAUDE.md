@@ -443,6 +443,13 @@ edit one:
   loaded it, and derives anything personal at run time (`git config
   user.email`) or asks for it.
 - **It knows nothing about the gate** (see "THE LFG GATE").
+- **A rule I taught in a session carries a real example from it.** When I
+  point out how I want something and ask you to put it in a skill, the
+  skill gets the case that taught it, not only the rule: a before/after
+  snippet of the actual code, the label or the message, cut to the lines
+  that show it and stripped of names as "It names nobody and nowhere"
+  says. A rule read cold is easy to agree with and hard to apply; the
+  example is what makes it recognisable the next time.
 
 This applies to `tkay-*` only. Team and repo skills - `atero-skills` and the
 rest - follow their own catalog's conventions and may point across skills and
@@ -594,6 +601,7 @@ proposal with no verdict reads as one you would defend.
 
 ```
 VERDICT: ✅ DO IT — 90% sure
+Size: medium · Difficulty: hard
 Doubt: <what the missing 10% rests on>
 ```
 
@@ -601,6 +609,13 @@ Doubt: <what the missing 10% rests on>
   this change; ⚖️ JUDGEMENT CALL, both ways are defensible, and the line says
   which way you lean and why; ❌ DON'T, you advise against it and say what you
   would do instead.
+- **Size is how much the change touches**, one of four: huge, large, medium,
+  small. **Difficulty is how hard it is to get right**, one of four: super
+  hard, hard, easy, super easy. The two are independent: a one-line
+  change to a lock is small and super hard.
+- **Never a time estimate** - no minutes, hours or days, for a change, a part
+  or a plan step. You cannot know how long the work takes, and the guess reads
+  as a fact. Size and difficulty are what I get instead.
 - **The percentage is how sure you are that the change is right and does what
   it claims**, not how sure you are that I will agree. Anything below 100 is
   followed by a `Doubt:` line naming what the rest rests on: an inference you
