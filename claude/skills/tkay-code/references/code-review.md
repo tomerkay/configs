@@ -12,7 +12,7 @@ When I ask for a code review (CR), I want you to be **thorough as fuck** because
 **The target of a review is the final outcome: the tree at the top of the
 branch, merged into its base.** Commits are how that outcome is reached and
 read; they are never a target of their own. The worst review I can get is
-every commit marked `✅ SHIP IT` while the branch as a whole is broken - each
+every commit marked `✅ Ship it` while the branch as a whole is broken - each
 commit judged against the one before it, and nobody judging what lands.
 
 - **Read the whole branch first, as one change**: `git diff
@@ -25,11 +25,11 @@ commit judged against the one before it, and nobody judging what lands.
   the review of the commit that should carry the fix, so that commit's verdict
   blocks.
 - **The commit verdicts never read greener than the outcome.** If the branch
-  at HEAD is broken, at least one row of the closing table is not `✅ SHIP IT`.
+  at HEAD is broken, at least one row of the closing table is not `✅ Ship it`.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
-  assemble the change in their head - recommend `🔀 SQUASH INTO` even when no
+  assemble the change in their head - recommend `🔀 Squash into` even when no
   commit got anything wrong. A commit earns its place by making the outcome
   easier to understand or to bisect, not by existing.
 
@@ -84,29 +84,35 @@ Severity says **how broken** it is. Policy says **whether I have to act before m
 
 ### Mandatory output shape per commit
 
-Open each commit's review with the VERDICT line plus the MUST-HAVE roll-up, then dive straight into details. (This is NOT the banned "recap of the findings before the findings" - it's a verdict and an action list, not a recap.)
+Open each commit's review with the FINDINGS line, the MUST-HAVE roll-up, its score and its Full Verdict, then dive straight into details. (This is NOT the banned "recap of the findings before the findings" - it's a count, an action list and a verdict, not a recap.)
 
 ```
-VERDICT: 🔴 2 BUGS + 🟠 1 RISK — 3 MUST HAVE, 4 NICE TO HAVE — DO NOT MERGE
+FINDINGS: 🔴 2 BUGS + 🟠 1 RISK — 3 MUST HAVE, 4 NICE TO HAVE
 MUST HAVE: (1) empty-pod IndexError at hash.py:88  (2) failure metric never fires on timeout  (3) commit body claims a 50ms win the diff can't deliver
 ```
 
 ```
-VERDICT: 🟠 2 RISKS, no outright bugs — 2 MUST HAVE, 1 NICE TO HAVE — DO NOT MERGE
+FINDINGS: 🟠 2 RISKS, no outright bugs — 2 MUST HAVE, 1 NICE TO HAVE
 MUST HAVE: (1) blacklist write races the read on concurrent validation  (2) cache grows unbounded, no eviction
 ```
 
 ```
-VERDICT: ✅ NO REAL ISSUES — 0 MUST HAVE, 5 NICE TO HAVE — SHIP IT
+FINDINGS: ✅ NO REAL ISSUES — 0 MUST HAVE, 5 NICE TO HAVE
 MUST HAVE: none.
 ```
 
-**Verdict vocabulary is fixed, don't improvise it:**
+**Findings vocabulary is fixed, don't improvise it:**
 - `✅ NO REAL ISSUES` — **only** when 🔴 and 🟠 are BOTH zero. "No real bugs" is a banned phrasing on its own: it's technically true with three 🟠 open and it reads as all-clear.
 - `🟠 N RISKS, no outright bugs` — the 0-🔴-but-hazards case. Say it in exactly these terms so I can't misread it as clean.
-- **Never `✅` and never `SHIP IT` while the MUST HAVE count is above zero** - including when every MUST HAVE is a promoted 🟡.
+- **Never `✅` while the MUST HAVE count is above zero** - including when every MUST HAVE is a promoted 🟡.
 
 The MUST-HAVE roll-up lists EVERY MUST HAVE item, including any 🟡/⚪ you promoted - that's the whole reason the roll-up exists, so a promoted item below the divider can't hide from me.
+
+**The commit's Full Verdict** follows its score, in the shape and with the commit calls of `references/verdict.md`:
+
+- **Its call is the one its closing-table row gives**, under the rules in "The closing table" below. The row is this verdict's TL;DR, so the two never disagree.
+- **How sure is how sure you are that the commit does what it claims at HEAD once its MUST HAVEs are fixed.** A known bug is in the findings and the call, never in How sure.
+- **Why Yes and Why Not hold what the change gains and costs** - behaviour it introduces, alerts it shifts, doors it closes - never its findings, which the roll-up already lists. When nothing is left beyond them, Why Not says "none, beyond the findings above".
 
 Then exactly two sections, in this order, with the divider. **The buckets split on BROKEN vs NOT BROKEN - severity, not importance.** Importance is what the MUST HAVE tag decides, and a promoted MUST HAVE lives in the second bucket while still blocking the merge. Within each bucket, MUST HAVE items come first:
 
@@ -132,31 +138,32 @@ would follow. Under its own heading:
 ## What the branch does
 
 ```
-- <one thing the branch does, in plain words>
-  VERDICT: ✅ DO IT — LIKELY
-  Doubt: <what keeps it from VERIFIED>
+• <one thing the branch does, in plain words>
+✅ Do it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+**Commits:** `<sha>`, `<sha>`
+
+• <the next thing the branch does>
+⚖️ Close call · **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** hard
+**Commits:** `<sha>`
 ```
 
-- **One bullet per distinct thing the branch does.** A branch that does one
-  thing gets one bullet; several changes get one each, never folded into one
-  bullet where a weak part hides behind a strong one.
-- **Each bullet carries your verdict on that change as it stands at HEAD**, one
-  of three, never improvised: `✅ DO IT` - the change is right and does what it
-  claims; `⚖️ JUDGEMENT CALL` - defensible both ways, and the line says which
-  way you lean and why; `❌ DON'T` - the branch is better without it, and the
-  line says what you would do instead.
-- **The confidence level is how sure you are that the change is right and
-  works at HEAD**, not how sure you are that I will agree. One of four, each
-  defined by what backs it: `VERIFIED` - you ran it or tested the exact
-  behaviour; `CONFIDENT` - not run, but you traced every step in the code or
-  the docs; `LIKELY` - one unchecked inference carries it; `50-50` - more
-  than one unchecked inference, or you do not know. Anything short of
-  `VERIFIED` is followed by a `Doubt:` line naming what keeps it from
-  `VERIFIED`.
+- **One entry per distinct thing the branch does.** A branch that does one
+  thing gets one entry; several changes get one each, never folded into one
+  entry where a weak part hides behind a strong one.
+- **Each entry is a `•` paragraph, never a markdown list item**: the
+  sentence, then the TL;DR Verdict, then the Commits line, one per line,
+  and a blank line before the next entry. A terminal drops the blank line
+  between list items, and the entries run together.
+- **Each entry carries a TL;DR Verdict on that change as it stands at HEAD**,
+  in the shape and with the change calls of `references/verdict.md`. Its How
+  sure is how sure you are that the change works at HEAD.
+- **The Commits line names every commit the change lives in**, in branch
+  order. A commit that serves two entries is on both lines.
 - **These verdicts judge the outcome, so a broken branch shows up here.** A
-  `❌ DON'T`, or a doubt that the change works at HEAD, under a closing table
-  of nothing but `✅ SHIP IT` means the commits above are missing a finding or
-  a `🗑 DROP`: find it and put it on the commit that should carry it.
+  `❌ Don't`, or How sure below `CONFIDENT`, under a closing table of nothing
+  but `✅ Ship it` means the commits above are missing a finding or a `🗑 Drop`:
+  find it on the commits the entry names and put it on the one that should
+  carry it.
 
 ### The closing table — the last thing in every CR
 
@@ -168,24 +175,25 @@ of the last commit's review.
 
 | What the commit does | Score | Verdict |
 |---|---|---|
-| `<short-sha>` <one sentence> | <n>/10 | <verdict> |
+| `<sha>` <one sentence> | <n>/10 | <TL;DR Verdict> |
 
 - **What the commit does** — one sentence on what the diff actually does,
   verified against it. Never the subject line pasted in: the subject may be the
   very claim the review flagged as false.
 - **Score** — the same number as that commit's `Score:` line.
-- **Verdict** — exactly one of these, followed by the reason in a few words for
-  anything other than SHIP IT:
+- **Verdict** — the TL;DR of that commit's Full Verdict, in the shape of
+  `references/verdict.md`, with the reason in a few words for anything other
+  than ✅ Ship it. The commit call is picked by these rules:
 
-| Verdict | When |
+| Call | When |
 |---|---|
-| `✅ SHIP IT` | 0 MUST HAVE |
-| `🔧 NEEDS CHANGE` | at least one MUST HAVE, and amending this commit fixes it |
-| `🔀 SQUASH INTO <short-sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
-| `🗑 DROP` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
+| `✅ Ship it` | 0 MUST HAVE |
+| `🔧 Needs change` | at least one MUST HAVE, and amending this commit fixes it |
+| `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
+| `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
-The verdict agrees with that commit's VERDICT line: never `✅ SHIP IT` while its
-MUST HAVE count is above zero. A single-commit CR still ends with a one-row
+The verdict agrees with that commit's FINDINGS line: never `✅ Ship it` while
+its MUST HAVE count is above zero. A single-commit CR still ends with a one-row
 table. The branch summary, the closing table and the leftovers table below are
 the only summaries allowed in a CR.
 
@@ -200,17 +208,19 @@ the diff happened to expose. Three columns, under its own heading:
 
 | Issue and how bad | Introduced by this branch? | Verdict |
 |---|---|---|
-| <what it is, with `file`, and its severity tag> | `yes <short-sha>` / `no, pre-existing` | 🔧 ADD FIX / ⏸ LEAVE FOR NOW (why) |
+| <what it is, with `file`, and its severity tag> | `yes <sha>` / `no, pre-existing` | <TL;DR Verdict> |
 
 - **Issue and how bad** — one sentence plus the severity tag, so I can tell a
   lying doc from a typo without re-reading the findings.
-- **Introduced by this branch?** — `yes <short-sha>` or `no, pre-existing`.
+- **Introduced by this branch?** — `yes <sha>` or `no, pre-existing`.
   Blame it; never guess. A `yes` means the finding also belongs in that
   commit's review above, and this row points at it.
 - **Verdict** — what you think I should do, as a recommendation I can
-  overrule: 🔧 ADD FIX (a new commit on this branch, or amend the commit that
-  introduced it) or ⏸ LEAVE FOR NOW with the reason in a few words - out of the
-  branch's scope, another owner's file, not worth the review cost today.
+  overrule: a TL;DR Verdict with the leftover calls of `references/verdict.md`.
+  🔧 Add fix is a new commit on this branch, or an amend of the commit that
+  introduced it; ⏸ Leave for now carries the reason in a few words - out of
+  the branch's scope, another owner's file, not worth the review cost today.
+  How sure, Size and Difficulty are the fix's, even when it is left for now.
 
 When nothing came up, the heading stays and the table is one line instead:
 "None found on the way." Never skip it silently - an absent section reads as
@@ -221,13 +231,13 @@ When nothing came up, the heading stays and the table is one line instead:
 - **No severity inflation.** If you cannot write the concrete failure scenario, it is NOT a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG** · MUST HAVE:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED) · MUST HAVE** and state exactly what you couldn't check.
-- **SHIP IT needs executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the verdict, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
-  **Every test you can run yourself, you run - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED) · MUST HAVE** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks SHIP IT until it is run or I accept it as untested. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
+- **✅ Ship it needs executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the verdict, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
+  **Every test you can run yourself, you run - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED) · MUST HAVE** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks ✅ Ship it until it is run or I accept it as untested. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
   Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
-  - **Sure without it** - a confidence level (one of the four under "The branch summary") and the reason: which parts of the claim are already proven and what rests on reasoning alone.
-  - **Sure with it** - a confidence level, and what would still be unproven after the test passes.
-- **State confidence when you're unsure**, as one of the four levels under "The branch summary" and what backs it: "🟠 RISK · MUST HAVE (CONFIDENT)" vs "🟠 RISK · MUST HAVE (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently become NICE TO HAVE.
+  - **Sure without it** - a How sure level from `references/verdict.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
+  - **Sure with it** - a How sure level, and what would still be unproven after the test passes.
+- **State confidence when you're unsure**, as a How sure level from `references/verdict.md` and what backs it: "🟠 RISK · MUST HAVE (CONFIDENT)" vs "🟠 RISK · MUST HAVE (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently become NICE TO HAVE.
 - **Where the borderline cases land:**
   - Weak/vague commit message → 🟡 · NICE TO HAVE. Commit message making a FALSE CLAIM about behavior → still 🟡 on severity (the code works) but **MUST HAVE** on policy - it lies to whoever bisects this later, and history is permanent. This is the textbook case for why the two axes exist.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
@@ -331,16 +341,17 @@ locally and its findings come back in chat:
 - **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
 - Give each commit a score out of 10
 - **End the CR with the branch summary, the closing table, then the leftovers table** (see "The branch summary", "The closing table" and "The leftovers table" above)
-- **Open with the VERDICT line + MUST-HAVE roll-up, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
+- **Open with the FINDINGS line, the MUST-HAVE roll-up, the score and the Full Verdict, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
-- **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Verdict vocabulary is fixed" above)
+- **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Findings vocabulary is fixed" above)
+- **Write every SHA as its first 10 characters** (`git rev-parse --short=10`), everywhere in the CR, so one commit reads the same in every place it is named
 - Order findings within each bucket: MUST HAVE first, then by severity (🔴 → 🟠 → 🟡 → ⚪)
 - Fix issues IMMEDIATELY when I ask (don't ask for permission) - but until I ask, report and wait, even for a 🔴 (see "When to Fix vs When to Ask" below)
 - Be specific: show me the exact line numbers and code
 - If something is wrong, say it's wrong - don't sugarcoat
 
 **DON'T:**
-- Give me a recap of the findings before the findings - the VERDICT line and the MUST-HAVE roll-up are the ONLY things allowed above the details, then dive straight in
+- Give me a recap of the findings before the findings - the FINDINGS line, the MUST-HAVE roll-up, the score and the Full Verdict are the ONLY things allowed above the details, then dive straight in
 - **Mix nits in with real bugs** - if I have to guess which findings matter, the review failed
 - **Leave a finding without a MUST HAVE / NICE TO HAVE label** - or deviate from the default mapping without the reason in brackets
 - **Label everything MUST HAVE to look thorough** - that's the same trust-burning move as severity inflation
@@ -356,10 +367,16 @@ locally and its findings come back in chat:
 ```
 ## Commit 1 of 4: perf(validator): Reduce validation time by 50%
 
-VERDICT: 🔴 1 BUG + 🟠 1 RISK — 3 MUST HAVE, 3 NICE TO HAVE — DO NOT MERGE
+FINDINGS: 🔴 1 BUG + 🟠 1 RISK — 3 MUST HAVE, 3 NICE TO HAVE
 MUST HAVE: (1) empty-pod IndexError at hash.py:88  (2) failure metric never fires
 on timeout  (3) subject claims an outcome the body never substantiates
 Score: 4/10
+
+- **Verdict:** 🔧 Needs change (crashes on an empty pod list) · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+- **Why Yes?**
+  - every lookup drops from O(n) to O(1)
+- **Why Not?**
+  - none, beyond the findings above - checked that hashY keeps the key format
 
 ## 🔴🟠 REAL ISSUES — the code is wrong or hazardous
 
@@ -403,14 +420,20 @@ Doesn't say: hashX did O(n) iteration → CPU spikes; hashY is O(1).
 - The hashY swap itself is correct - the algorithm change is sound
 ```
 
-And when it's clean, the verdict says so plainly - don't make a pile of nits look like danger:
+And when it's clean, the FINDINGS line says so plainly - don't make a pile of nits look like danger:
 
 ```
 ## Commit 2 of 4: fix(gateway): add null check to token extractor
 
-VERDICT: ✅ NO REAL ISSUES — 0 MUST HAVE, 2 NICE TO HAVE — SHIP IT
+FINDINGS: ✅ NO REAL ISSUES — 0 MUST HAVE, 2 NICE TO HAVE
 MUST HAVE: none.
 Score: 9/10
+
+- **Verdict:** ✅ Ship it · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** super easy
+- **Why Yes?**
+  - a request with no auth header gets a 401 instead of a 500
+- **Why Not?**
+  - none - grepped every caller, none relied on the exception
 
 ## 🔴🟠 REAL ISSUES
 None - no 🔴 and no 🟠. I traced both new branches in `extract_token()` and the
@@ -449,7 +472,7 @@ Then wait for me to say "fix it" or "its ok" or "next commit" before continuing.
 
 ### Fixing toward a target
 
-When I set a target for the fixes - "fix until the score is 8+ and the verdict is SHIP IT", in whatever words - the target is a correct branch, and the score only measures it. A fix that brings a bug of its own is worse than the finding it closed: the finding was named and visible, the new bug is neither.
+When I set a target for the fixes - "fix until the score is 8+ and the verdict is ✅ Ship it", in whatever words - the target is a correct branch, and the score only measures it. A fix that brings a bug of its own is worse than the finding it closed: the finding was named and visible, the new bug is neither.
 
 - **Every fix is the smallest, plainest change that closes its finding** - delete, reorder, rename, add the missing guard or the missing call: a change a reader verifies at a glance. A fix that needs a new mechanism, a new code path or a restructure, or that touches code the finding never named, is not easy: show it and wait, whatever the target says.
 - **Every fix answers two questions as it is made: does it do what it claims, and did it break anything around it?** Read its diff against this standard, trace what it touches - its callers, the paths beside it, the rest of the branch - and run what can be run. Re-scoring the finding it closed answers neither.

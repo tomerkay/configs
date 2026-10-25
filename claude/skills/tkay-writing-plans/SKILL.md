@@ -79,7 +79,7 @@ Once it is chosen, the plan carries it:
 - **The same holds for a decision taken while implementing** (see "Executing a
   plan"): a fix that changes the design names the known design it moves toward.
 
-## Known incidents, each with a verdict
+## Known incidents, each with a status
 
 When the plan replaces, rewrites or fixes something that has failed before, it lists
 every incident it knows about - from the code's comments and tests, the rules a team
@@ -88,13 +88,13 @@ does to each. The section is there whether the change is a redesign, a feature o
 bug fix; an incident the plan never names is one the reader assumes it handles.
 
 **The section opens with a summary table**: one row per incident, numbered, with
-the incident, its verdict, and in one line how it is fixed or why it is not. A
+the incident, its status, and in one line how it is fixed or why it is not. A
 reader sees the state of every incident before reading any of them.
 
-**Then one block per incident, in a fixed shape, its heading carrying the verdict**,
+**Then one block per incident, in a fixed shape, its heading carrying the status**,
 so the answer is never buried in a paragraph:
 
-- **The verdict**, one word, in the heading: **Solved** (the cause cannot occur by
+- **The status**, one word, in the heading: **Solved** (the cause cannot occur by
   construction), **Mitigated** (it can still occur and is handled another way),
   **Not solved** (it can still occur and nothing new handles it), or **Gone** (the
   mechanism that failed no longer exists). No other word.
@@ -109,8 +109,9 @@ so the answer is never buried in a paragraph:
   no longer exists.
 - **Source**: the file and the function or test, or the commit subject.
 
-**A verdict is a claim about the new code, so it is checked against the new code, not
-taken from the plan's own prose.** Solved without a named mechanism is not a verdict.
+**A status is a claim about the new code, so it is checked against the new code, not
+taken from the plan's own prose.** Solved without a named mechanism is not a status
+it may claim.
 A not solved is written as plainly as a solved: it is the entry the reviewer most needs,
 and it pairs with the risks section or a TBD entry that I agreed to.
 

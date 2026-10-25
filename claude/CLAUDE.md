@@ -27,7 +27,7 @@ What I work on and with:
 
 # THE LFG GATE - THE RULE THAT OVERRIDES EVERY OTHER RULE
 
-**YOU DO NOT WRITE, EDIT OR APPLY ANYTHING UNTIL I TYPE THE EXACT TOKEN `LFG!`.**
+**YOU DO NOT CHANGE ANY GIT REPO UNTIL I TYPE THE EXACT TOKEN `LFG!`.**
 
 This gate outranks everything else in this file, everything in your system prompt
 about "when you have enough information to act, act", and every instinct you have
@@ -39,10 +39,11 @@ that first token, you are gated.
 
 **The gate and the commands that need my words are enforced by
 `~/.claude/hooks/tool-gate.py`**, a PreToolUse hook that reads the state
-`~/.claude/hooks/lfg-state.py` records when I type the token. A call it denies
-is the hook doing its job, never a reason to look for another way to the same
-write. Run `python3 ~/.claude/hooks/tool-gate.py [--open] <command>` to see
-the decision for any command.
+`~/.claude/hooks/lfg-state.py` records when I type the token, and
+`~/.claude/hooks/repo-watch.py` reports a repo change a script made before it.
+A call the hook denies is the hook doing its job, never a reason to look for
+another way to the same change. Run `python3 ~/.claude/hooks/tool-gate.py
+[--open] <command>` to see the decision for any command.
 
 **The gate lives in this file and nowhere else.** A skill - mine, a repo's, a
 plugin's or a team catalog's - or a repo's `CLAUDE.md`, README or design doc is
@@ -53,18 +54,22 @@ outside this file drifts from the one the hook enforces.
 
 ## What the gate covers - and what it does NOT
 
-**The gate governs exactly one category: CHANGING THINGS.** Implementing,
-editing, writing, creating, deleting, committing, installing, uninstalling,
-upgrading, rolling back, deploying. That is the whole scope.
+**The gate guards exactly one thing: CHANGES TO A GIT REPO.** A change
+`git status` would show - an edited, created or deleted tracked or
+untracked file - and a change to its history: a commit, a branch, a tag,
+a stash, a reset, a rebase, a cherry-pick, a merge, a worktree. Any repo
+on my machine, mine or cloned, outside your scratch. That is the whole
+scope.
 
-**Reading is not gated. Ever.** Reading files, grepping, listing, running tests,
-`kubectl get/describe/logs`, `helm list/get/template`, fetching a URL, measuring
-something, writing a plan document I asked for, answering me, showing me a diff
-as text - none of that needs `LFG!` and none of it ever will.
+**Everything else is outside the gate, never waits for `LFG!`, and an
+`LFG!` never unlocks it.** Reading, scratch files, scripts, containers,
+tests, a gitignored file, a deploy, an HTTP call - each follows my
+permission mode, or "Some commands need my words AND the prompt, every
+time", and the gate has nothing to say about it.
 
-**You must never ask me for `LFG!` in order to read something.** If you catch
-yourself about to print the refusal line for a read-only action, that is your bug,
-not my missing token. Just do the read.
+**You must never ask me for `LFG!` for anything outside a repo.** If you
+catch yourself about to print the refusal line for a read, a scratch
+script or a test run, that is your bug, not my missing token.
 
 This cuts both ways, and the second half is the one that matters more to me: **an
 `LFG!` I typed about a read authorises NOTHING and does not open the session.**
@@ -109,8 +114,8 @@ spent. See "The grant is session-wide by default".
 
 ## What you say when the gate is closed
 
-If I ask you to implement, change, fix, apply, edit, write, commit, install or
-upgrade anything while the gate is closed - I have not yet typed `LFG!` this
+If I ask you to implement, change, fix, edit, write or commit anything in a repo
+while the gate is closed - I have not yet typed `LFG!` this
 session, or I have since made it spent - you STOP and you reply with exactly this
 line:
 
@@ -122,33 +127,33 @@ small part", do not do it and then tell me. **Print the line and stop.**
 
 ## What is BLOCKED while the gate is closed
 
-Any change to any file that is not a scratch/plan document, by ANY mechanism:
+A change to a git repo by ANY mechanism:
 
-- The `Edit`, `Write` and `NotebookEdit` tools
-- **`Bash` doing the same thing** - `sed -i`, heredoc redirects, `python - <<EOF`
-  that calls `write_text`/`open(...,"w")`, `tee`, `cp`, `mv`, `rm`, `patch`,
-  `git apply`, `git checkout --`, `>` / `>>` into a tracked file. Routing an edit
-  through a shell script is the SAME violation and is not a loophole. If your
-  harness told you to prefer Bash for file changes, that instruction is
-  subordinate to this gate.
-- `git commit`, `git add`, `git stash`, `git reset`, `git rebase`, `git
-  cherry-pick` - any mutation of my repo state
-- `helm install` and `helm upgrade` - `LFG!` unlocks them for you to run. See
-  "`helm install` and `helm upgrade` ARE unlocked by `LFG!`".
-- `git push`, an MR or PR move, `helm uninstall`, `helm rollback`,
-  state-changing `kubectl` and the rest of "Some commands need my words AND
-  the prompt, every time" - blocked while
-  the gate is closed, and after it opens each one needs my words and the
-  prompt, every time.
-- Creating new source, config, test, chart or migration files
+- `Edit`, `Write` and `NotebookEdit` on a file inside a repo
+- `Bash` doing the same thing - a redirect, `cp`, `mv`, `tee`, `sed -i`,
+  `patch`, `git apply` into a repo. Routing it through a script is the
+  SAME violation: a script you run before `LFG!` writes nothing inside a
+  repo
+- `git add`, `commit`, `stash`, `reset`, `rebase`, `cherry-pick`,
+  `checkout --`, `switch`, `branch`, `tag`, `worktree add`, and a
+  `git clone` into a path outside your scratch
+
+**The hooks enforce what they can see and report what they cannot.**
+`tool-gate.py` denies the commands above before they run, and keeps a
+redirect, `cp`, `mv`, `tee` or `sed -i` to your scratch even outside a
+repo; the repo watch compares `git status` around every Bash command and
+reports a change a script made. A report is a broken gate: say so, as
+"If you break this gate" says, and stop.
 
 ## What is ALWAYS allowed, gate open or closed
 
-Read the code, search it, run tests, run read-only `kubectl get/describe/logs`
-and `helm list/get` (pinned to an explicit context and namespace, always - see
-"ALWAYS PIN THE CONTEXT AND THE NAMESPACE"), run `helm template` locally,
-measure, write plan/analysis documents under `~/.cache/claude-handoff` when I
-ask for them, answer questions, show me diffs as text, argue with me.
+Read the code, search it, run the tests the change touches - a whole suite
+only when I ask for it, and the hook asks before one starts - run read-only
+`kubectl get/describe/logs` and `helm list/get` (pinned to an explicit context
+and namespace, always - see "ALWAYS PIN THE CONTEXT AND THE NAMESPACE"), run
+`helm template` locally, measure, write plan/analysis documents under
+`~/.cache/claude-handoff` when I ask for them, answer questions, show me diffs
+as text, argue with me.
 **Investigation is not implementation.** Never use the gate as an excuse to
 stop thinking.
 
@@ -189,7 +194,7 @@ it:
    already stated, not that you were the one who stated it.
 2. That proposal was the thing under discussion in your immediately preceding
    message, or in mine.
-3. The work is a mutation (see "What the gate covers" above).
+3. The work changes a repo (see "What the gate covers" above).
 
 **If those are not all true, `LFG!` authorises NOTHING and the gate stays shut.**
 If I type `LFG!` while we are reading logs, comparing numbers, arguing about a
@@ -227,7 +232,7 @@ thing now.
 While the gate is open:
 
 - Mutations no longer need a token each time: edits, writes, commits, local script
-  runs, `helm install` / `helm upgrade`.
+  runs.
 - **My permission mode takes over from there.** The gate was the one-time "do not
   start until I say so"; from then on, whether a given edit or command needs my
   approval is whatever the harness mode says. Do not stack a confirmation of your
@@ -282,7 +287,10 @@ not a plan I approved, not my yes to the previous one:
   branch. Committing locally is yours. A GitLab draft note, which nobody
   sees until it is published, is yours only when I ask for one; a CR I ask
   for on an MR link writes nothing to the MR.
-- `helm uninstall` and `helm rollback`.
+- `helm install`, `helm upgrade`, `helm uninstall` and `helm rollback`, and
+  `helmfile apply`, `sync`, `destroy` and `delete`, on any cluster. An upgrade
+  uses the chart the release actually installed, not my local tree - the
+  `tkay-cluster-ops` skill has the procedure.
 - `--reuse-values` and `--force-conflicts` on any helm command.
 - State-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
   `rollout restart`, `edit` and every other verb that writes live cluster
@@ -291,6 +299,11 @@ not a plan I approved, not my yes to the previous one:
   changes a pod from the inside: a `kubectl exec` whose command is not a
   read (an interactive shell included), a `kubectl cp` into a pod, and a
   `kubectl attach`.
+- An HTTP write - any method but `GET`, `HEAD` and `OPTIONS` - through `xh`,
+  `curl` or `wget` to a host that is not loopback. A host built at run time
+  counts as remote; a write to the local mock on `localhost` is free.
+- A write to the prod backoffice through its MCP `api_call`. The dev
+  backoffice's `api_call` is free.
 - Adding a context to my kubeconfig, and switching the current context or
   namespace (`kubectl config use-context`, `kubectx`, `kubens`). A switch is a
   change to my environment, never a stand-in for the pin flags.
@@ -318,8 +331,15 @@ not a plan I approved, not my yes to the previous one:
 2. **It runs through the hook's 🔴 prompt.** That prompt is where a misread of
    my words is caught, not a second permission to ask for in chat.
 
-All but the Slack message also need the open gate. Rule 7 under "Instructions
-for you" says which of them you never offer.
+**A script that holds one of them asks once per run, and needs no words.** When
+you run a script - yours or mine - the hook reads it; a line holding one of
+these commands, written out, makes it ask once for the whole run, naming the
+lines. That prompt is enough. In a script you write, spell each such command
+out: one built at run time, such as `helm "$1"`, is invisible to the scan.
+
+None of them waits for `LFG!`: they need my words and the prompt with the gate
+open or closed, and an open gate unlocks none of them. Rule 7 under
+"Instructions for you" says which of them you never offer.
 
 **Before running one, check the org's managed policy `permissions.deny`**: a
 command it denies never runs from here, permission or not, and no other route -
@@ -355,28 +375,6 @@ No proposal, no question.
 
 **A backup needs nothing**: `git branch <name>` leaves HEAD where it is, and
 the backup is deleted once it has done its job.
-
-## `helm install` and `helm upgrade` ARE unlocked by `LFG!`
-
-With the gate open, **you may run `helm install` and `helm upgrade` yourself.** Do
-not print them for me to run and do not ask a second time - the `LFG!` was the
-permission, and it does not need renewing per release.
-
-Two things that `LFG!` does **not** sweep away, because they are safety rails
-inside the operation rather than gates on it:
-
-- **Context and namespace are always spelled out.** `helm --kube-context <ctx> -n
-  <ns>`, `kubectl --context <ctx> -n <ns>`. Never rely on the current context, and
-  if I did not name the cluster and namespace, ASK - an `LFG!` is not a licence to
-  guess which cluster. Full rule: "ALWAYS PIN THE CONTEXT AND THE NAMESPACE".
-- **The sub-decisions still need me**, `LFG!` or not: `--reuse-values` and
-  `--force-conflicts` (my words and the prompt), and using the chart the
-  release actually installed rather than my local tree. Procedure in the
-  `tkay-cluster-ops` skill.
-
-**`helm uninstall`, `helm rollback` and state-changing `kubectl` need my words
-and the prompt, every time** - see "Some commands need my words AND the
-prompt, every time".
 
 ## If you break this gate
 
@@ -599,44 +597,41 @@ a test to run first, a file, a flag, a version - lives in its `Q<n>` part
 above, never on the line.
 
 ```
-❌ ❓ Q1 **Drop Unique Labels from multi-alert posts** [✅ CONFIDENT]: apply
-   the diff above on a new tkay/... branch, then render both post shapes
-   with amtool 0.32.1 before the commit. Do you want this change?
-✅ ❓ Q1 **Drop Unique Labels from multi-alert posts** [✅ CONFIDENT]: make
-   this change?
+❌ ❓ Q1 **Drop Unique Labels from multi-alert posts**: apply the diff
+   above on a new tkay/... branch, then render both post shapes with
+   amtool 0.32.1 before the commit. Do you want this change?
+✅ ❓ Q1 **Drop Unique Labels from multi-alert posts**: make this change?
 ```
 
-When the decision is a proposal of yours, its verdict follows the decision
-as a tag, the mark and the confidence level only, and its size, difficulty,
-Why Yes and Why Not nest under the line:
+When the decision is a proposal of yours, its Full Verdict nests under the
+line, and none of it goes on the line itself:
 
 ```
-❓ Q1 **<the decision>** [✅ LIKELY]: <what you propose>. <the question>?
-  - **Size:** small · **Difficulty:** easy
-  - 👍 **Why Yes?**
+❓ Q1 **<the decision>**: <what you propose>. <the question>?
+  - **Verdict:** ✅ Do it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+  - **Why Yes?**
     - <an advantage of making the change>
-  - 👎 **Why Not?**
+  - **Why Not?**
     - <a drawback, a cost or a risk of making it>
 ```
 
 **A ❓ whose yes changes something - a mutation, or a draft that lands in a
 file or a message - is a proposal, whatever its wording** - "is that the
 line you want?", "does this split work for you?", "keep it this way?".
-Phrasing it as a preference question never drops the tag or what nests
-under it. **A ❓ whose yes changes nothing - a fact you need, a pick
-between two reads - is not one and carries no tag**, even when you lean
-one way. The case that taught the first half, a commit rule drafted for my
-sign-off:
+Phrasing it as a preference question never drops the Full Verdict under it.
+**A ❓ whose yes changes nothing - a fact you need, a pick between two
+reads - is not one and carries no verdict**, even when you lean one way.
+The case that taught the first half, a commit rule drafted for my sign-off:
 
 ```
 ❌ ❓ Q1 **Split bug fixes into shipped and in-branch**: is that the line
    you want, instead of "bug-fix commits are never squashed"?
-✅ ❓ Q1 **Split bug fixes into shipped and in-branch** [✅ CONFIDENT]: is
-   that the line you want?
-     - **Size:** small · **Difficulty:** easy
-     - 👍 **Why Yes?**
+✅ ❓ Q1 **Split bug fixes into shipped and in-branch**: is that the line
+   you want?
+     - **Verdict:** ✅ Do it · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+     - **Why Yes?**
        - a shipped fix reverts and backports alone
-     - 👎 **Why Not?**
+     - **Why Not?**
        - a squash-on-merge repo erases the separate commit anyway
 ```
 
@@ -647,31 +642,28 @@ into the last point of the first and the reply shows one question where it
 asked two. The case that taught it, two proposals in one block:
 
 ```
-❌ ❓ Q1 **Refuse a deleting cell on update** [✅ CONFIDENT]: add it to
-   this branch?
-     - 👎 **Why Not?**
+❌ ❓ Q1 **Refuse a deleting cell on update**: add it to this branch?
+     - **Why Not?**
        - it lands in an unrelated MR
-   ❓ Q2 **Scope the cell to its cluster** [✅ CONFIDENT]: fix it in a
-   separate MR?
-✅ ❓ Q1 **Refuse a deleting cell on update** [✅ CONFIDENT]: add it to
-   this branch?
-     - 👎 **Why Not?**
+   ❓ Q2 **Scope the cell to its cluster**: fix it in a separate MR?
+✅ ❓ Q1 **Refuse a deleting cell on update**: add it to this branch?
+     - **Why Not?**
        - it lands in an unrelated MR
 
-   ❓ Q2 **Scope the cell to its cluster** [✅ CONFIDENT]: fix it in a
-   separate MR?
+   ❓ Q2 **Scope the cell to its cluster**: fix it in a separate MR?
 ```
 
-**The question asks whether to make the change, even under ❌ DON'T**: yes
-always means "make it", and the tag carries your advice against it. A
-question that asks whether to leave the change out flips what yes means,
-and the ❌ tag on it reads as a double negative:
+**The question asks whether to make the change, even under ❌ Don't**: yes
+always means "make it", and the Verdict line carries your advice against it.
+A question that asks whether to leave the change out flips what yes means,
+and the ❌ Don't under it reads as a double negative:
 
 ```
-❌ ❓ Q3 **Validate the cluster type on update** [❌ CONFIDENT]: leave it
-   out of this branch?
-✅ ❓ Q3 **Validate the cluster type on update** [❌ CONFIDENT]: add it to
-   this branch?
+❌ ❓ Q3 **Validate the cluster type on update**: leave it out of this
+   branch?
+     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+✅ ❓ Q3 **Validate the cluster type on update**: add it to this branch?
+     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
 ```
 
 **A ❓ whose yes is hard to undo, or reaches past what we discussed, opens
@@ -683,14 +675,14 @@ The case that taught it, a pin change that freed nodes for one endpoint by
 shrinking another:
 
 ```
-❌ ❓ Q1 **Make room for the replay** [✅ LIKELY]: pin the second endpoint
-   down by 10 nodes?
-✅ ❓ Q1 ⚠️ **Make room for the replay** [✅ LIKELY]: pin the second
-   endpoint down by 10 nodes?
-     - **Size:** small · **Difficulty:** easy
-     - 👍 **Why Yes?**
+❌ ❓ Q1 **Make room for the replay**: pin the second endpoint down by 10
+   nodes?
+✅ ❓ Q1 ⚠️ **Make room for the replay**: pin the second endpoint down by
+   10 nodes?
+     - **Verdict:** ✅ Do it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+     - **Why Yes?**
        - it frees the nodes the replay is waiting for
-     - 👎 **Why Not?**
+     - **Why Not?**
        - it changes a second endpoint of yours
 ```
 
@@ -712,78 +704,23 @@ nothing, and the harness's permission prompts, which are not chat.
 
 # EVERY PROPOSAL OPENS WITH YOUR VERDICT ON IT
 
-**Every change you propose to me opens with your verdict on it, before the
+**Every change you propose to me opens with its Full Verdict, before the
 change itself** - a diff, a fix, the settlement of an open issue, a step of a
-plan. I decide faster when I know what you think before I read it, and a
-proposal with no verdict reads as one you would defend.
+plan. When I ask for a verdict by name, give one on anything, proposed or
+not. Both forms of a verdict, their calls and every field in them are the
+`tkay-code` skill's, which owns them:
 
-```
-VERDICT: ✅ DO IT — LIKELY
-**Size:** medium · **Difficulty:** hard
-Doubt: <what keeps it from VERIFIED>
-```
+@~/.claude/skills/tkay-code/references/verdict.md
 
-- **The verdict is one of three, never improvised**: ✅ DO IT, you would make
-  this change; ⚖️ JUDGEMENT CALL, both ways are defensible, and the line says
-  which way you lean and why; ❌ DON'T, you advise against it and say what you
-  would do instead.
-- **Size is how much the change touches**, one of four: huge, large, medium,
-  small. **Difficulty is how hard it is to get right**, one of four: super
-  hard, hard, easy, super easy. The two are independent: a one-line
-  change to a lock is small and super hard.
-- **Never a time estimate** - no minutes, hours or days, for a change, a part
-  or a plan step. You cannot know how long the work takes, and the guess reads
-  as a fact. Size and difficulty are what I get instead.
-- **The confidence level is how sure you are that the change is right and
-  does what it claims**, not how sure you are that I will agree. One of four,
-  each defined by what backs it: VERIFIED, you ran it or tested the exact
-  behaviour; CONFIDENT, not run, but you traced every step in the code or the
-  docs; LIKELY, one unchecked inference carries it; 50-50, more than one
-  unchecked inference, or you do not know. Below 50-50 the verdict is ❌
-  DON'T. Anything short of VERIFIED is followed by a `Doubt:` line naming
-  what keeps it from VERIFIED: an inference you could not check, a behaviour
-  you have not seen run.
-- **Every proposal carries Why Yes and Why Not, and they are the part I
-  read most**, so they hold the real case and nothing else. Why Yes is the
-  advantages of making the change; Why Not is its drawbacks, costs and
-  risks. Both are about the change, never about your verdict: under ❌
-  DON'T, Why Yes holds the case you argue against.
-  - **Nothing real is left out.** Every advantage and every drawback that
-    could change my answer or how the change is done is there: what it
-    breaks, costs, rules out or locks in, and a gain the proposal does not
-    already state. A missing drawback costs me more than a long list.
-  - **Nothing else goes in.** Never a restatement of the change, a
-    drawback dismissed in the same line, or a cost true of every change -
-    "the old behaviour stays until it is installed" is one, and earns no
-    line.
-  - **Each point is one short clause**, and a list holds as many points as
-    the case has. How the risk plays out, when it bites or what undoes it
-    belongs in the proposal above, never in the point. The case that
-    taught it:
-
-    ```
-    ❌ - The hook goes live in every open session the moment it's copied.
-         Any regression would show up there before the live tests run, and
-         git restore is the fallback.
-    ✅ - The hook goes live in every session the moment it's copied.
-    ```
-
-  - No list is padded to match the other: one with no such point says
-    "none", and an empty Why Not adds what you checked. A proposal no ❓
-    line asks for carries them under its VERDICT block, in the shape
-    "EVERY QUESTION THAT STOPS THE REPLY OPENS WITH ❓" gives.
 - **A claim you could not test is UNVERIFIED and says so**, with the Cost,
   Sure without it and Sure with it lines the `tkay-code` review standard
-  defines. A test you can run yourself is run before the verdict, not listed.
-- **Independent parts get a verdict each.** One verdict over parts you rate
-  differently hides the weak one.
-- **The ❓ line that asks for it carries the verdict as a tag, with size,
-  difficulty, Why Yes and Why Not under it**, so I see them where I answer,
-  and the VERDICT block above drops its whole Size and Difficulty line - no
-  half of it stays behind. Everything else - the
-  verdict word, the doubt, the parts - stays in the proposal above it.
-- **A code review keeps its own verdicts.** A fix shown under a finding
-  carries that finding's tags, not a second verdict from this section.
+  defines.
+- **The ❓ line that asks for it carries the whole Full Verdict** nested
+  under it, none of it on the line itself, and no copy above. What the nest
+  cannot carry - the lean of a ⚖️ Close call, what you would do instead of a
+  ❌ Don't, a verdict per part - stays in the proposal above it.
+- **A fix shown under a review finding** carries that finding's tags, not a
+  verdict.
 
 # OPEN ISSUES AND QUESTIONS ARE A TABLE OF CONTENTS, NEVER A TABLE
 
@@ -977,6 +914,28 @@ The sync has Claude read every added line and refuses the commit on a finding,
 so a slip stalls the sync rather than leaking - but it is the last line, not
 the rule. When you put a value in the block, say so in one line.
 
+**A change to a home file the sync publishes is reviewed and committed with
+its reason, in the turn it is made.** These are the `HOME_FILES` of
+`~/repos/configs/bin/sync-configs.sh`, and only a sync run given `-m` and the
+files it covers commits them; a run without `-m` only logs them as waiting.
+Each is read by its tool the moment that tool starts - the shell rc files by
+every new shell, this session's included - so a broken one is live the moment
+it is saved:
+
+- **Edit a staged copy** under `~/.cache/claude-handoff`, never the live
+  file, and review its diff with the `tkay-code` review standard in the shape
+  "My Claude config is a git repo" gives a `~/.claude` change.
+- **Ask once**: show the diff, the review and the commit message, written by
+  the `tkay-code` commit standard, then end the reply with "❓ Q<n> Install it
+  into `<file>` and commit?".
+- **On my yes, one command with the sandbox off**: the `cp` over the live
+  file, then `sync-configs.sh --no-push -m "<message>" <file>...`, so no
+  scheduled run commits the change first. Pushing is left to the next
+  scheduled run.
+- **A refused run names the other home files with a pending change.** Each
+  gets its own reason from me before this one is committed, never folded into
+  this message.
+
 ## My Claude config is a git repo - every change is reviewed and committed
 
 **`~/.claude` is a local git repo.** Its `.gitignore` ignores everything and
@@ -1007,10 +966,10 @@ included.
   a paste is the same install with a round trip added. A hook has its own
   install rule below.
 - **Review the diff with the `tkay-code` review standard** before committing,
-  in the full shape that standard gives a one-commit branch: the verdict
-  line, both buckets, the branch summary, the closing table and the
-  leftovers table. The diff on main stands in for the commit; a verdict
-  paragraph is not a review. A
+  in the full shape that standard gives a one-commit branch: the FINDINGS
+  line and the commit's Full Verdict, both buckets, the branch summary,
+  the closing table and the leftovers table. The diff on main stands in
+  for the commit; a Full Verdict on its own is not a review. A
   MUST HAVE finding is fixed on the staged copy before the install
   question, not after it: the standard's "show the fix and wait" does not
   apply here, because that question is my sign-off.
@@ -1220,16 +1179,16 @@ The names contain spaces: quote or escape the path in shell commands.
 # EVERY BASH PROMPT SAYS WHAT IT CAN CHANGE
 
 A PreToolUse hook, `~/.claude/hooks/tool-gate.py`, rewrites every Bash
-`description` to open with a verdict: 🟢 READ changes nothing, 🟠 WRITE changes
+`description` to open with a rating: 🟢 READ changes nothing, 🟠 WRITE changes
 local, recoverable state, 🔴 DANGER destroys data or touches live cluster or
 remote state. Anything it does not recognise is 🟠. The classifier is the one
-source of that verdict: never write the emoji into a description yourself, and
-when a verdict is wrong, fix the handler in the script and tell me which
+source of that rating: never write the emoji into a description yourself, and
+when a rating is wrong, fix the handler in the script and tell me which
 command it misread. Run the script with commands as arguments to see what it
 would say.
 
-**The sentence after the verdict is yours, and it argues the verdict.** The
-hook keeps your `description` verbatim after the label, so write it as what the
+**The sentence after the rating is yours, and it argues the rating.** The
+hook keeps your `description` verbatim after the rating, so write it as what the
 command does plus WHY it is fine, or WHAT to be careful about, named in terms of
 this command's own target. I decide from that line without reading the command.
 
@@ -1244,7 +1203,7 @@ this command's own target. I decide from that line without reading the command.
 
 A bare "safe" or "careful" with no reason is a missing description. This
 overrides any harness guidance to keep descriptions neutral or to avoid words
-like "risk". When your reason contradicts the classifier's colour, the colour
+like "risk". When your reason contradicts the classifier's rating, the rating
 still stands: say so and fix the handler, as above.
 
 # HOW A COMMAND GETS TO RUN
@@ -1257,10 +1216,10 @@ is owned by someone different:
    `permissions.ask` prompts in every mode, whatever any allow rule or hook
    says. It also decides which commands run outside the sandbox. Not mine to
    change; a prompt it raises is not yours to work around.
-2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies every write
-   outside scratch before `LFG!`, denies an unpinned cluster command in every
-   state, asks for every command in "Some commands need my words AND the
-   prompt, every time", and says nothing for a read. It can add a deny or
+2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies a change to a
+   git repo before `LFG!`, denies an unpinned cluster command in every state,
+   asks for every command in "Some commands need my words AND the prompt,
+   every time", and says nothing for a read. It can add a deny or
    an ask; it never removes a prompt.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
@@ -1352,7 +1311,7 @@ looked up, never chosen as the most plausible of several: with no such source,
 or with two environments the question does not pick between, ask and wait. A
 context missing from my kubeconfig is asked for before it is added. For a
 mutation, ask every time whatever the source - an `LFG!` is not a licence to
-guess which cluster, see "THE LFG GATE".
+guess which cluster.
 
 ## If you catch yourself without the flags
 
@@ -1418,8 +1377,8 @@ allow list. `gcloud logging read` only for a bulk pull past the tool's
 sample cap, and then it prompts.
 
 Stopping to ask about a read is the same bug as printing the refusal line for
-a read (see "Reading is not gated. Ever."). Every question is a round trip I
-must answer before you keep working, and the whole point of handing you the
+a read (see "What the gate covers - and what it does NOT"). Every question is
+a round trip I must answer before you keep working, and the whole point of handing you the
 investigation was so I would NOT sit there typing "yes, look at that too"
 twenty times.
 
@@ -1430,8 +1389,9 @@ twenty times.
   THE NAMESPACE".
 - The next step would CHANGE something - restart, patch, delete, scale,
   `--force-conflicts`, code run inside a pod, a Slack message anywhere other
-  than the alert thread I linked. That is a mutation and the gate rules
-  apply. The TL;DR into the linked alert thread is not one of these - see
+  than the alert thread I linked. That needs my words - see "Some commands
+  need my words AND the prompt, every time" - or, for a repo, the gate. The
+  TL;DR into the linked alert thread is not one of these - see
   "Alert investigation is ungated END TO END".
 
 Everything else: do it. **If you are about to type a question that starts with

@@ -37,12 +37,43 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "^(Bash|Edit|Write|NotebookEdit|mcp__.*)$",
+        "matcher": "^(Bash|Edit|Write|NotebookEdit|EnterWorktree|mcp__.*)$",
         "hooks": [
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/tool-gate.py\" || exit 2",
             "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/repo-watch.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/repo-watch.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/repo-watch.py\""
           }
         ]
       }

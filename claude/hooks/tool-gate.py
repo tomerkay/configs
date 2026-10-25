@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/DANGER label on Bash commands.
+"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/DANGER rating on Bash commands.
 
 For Bash it classifies what the command can change and rewrites the tool's `description`
-so a permission dialog opens with the verdict:
+so a permission dialog opens with the rating:
 
     🟢 READ    changes nothing
     🟠 WRITE   changes local, recoverable state (files, commits, installs, helm releases)
@@ -11,10 +11,13 @@ so a permission dialog opens with the verdict:
 Anything the classifier does not recognise is WRITE: a wrong orange costs a glance, a
 wrong green is the failure this hook exists to prevent.
 
-For Bash, Edit, Write, NotebookEdit and every MCP tool it then decides, from the gate
-state lfg-state.py records per session: a write before `LFG!` is denied with the refusal
-line, every command that needs the user's words for that one command asks in every
-state, and the pin rules for kubectl and helm are enforced. A program the classifier does not know asks instead of denying, so a read it
+For Bash, Edit, Write, NotebookEdit, EnterWorktree and every MCP tool it then decides,
+from the gate state lfg-state.py records per session: a change to a git repo before
+`LFG!` is denied with the refusal line, while opaque code - an interpreter, a container,
+a script - passes and repo-watch.py reports a repo change it makes; every command that
+needs the user's words for that one command asks in every state, and so does, once per
+run, a script whose text holds one; and the pin rules for kubectl, helm and helmfile are
+enforced. A program the classifier does not know asks instead of denying, so a read it
 has not met never gets the refusal line. A commit, merge, cherry-pick, revert or am that
 lands on a repo's default branch is denied in every state, outside the repos in
 DEFAULT_BRANCH_EXEMPT, which are committed on main by design.
@@ -27,7 +30,7 @@ alongside anything outside the scratch root is forced to prompt instead, so that
 `rm -rf /private/tmp/claude/x ~/repos` or `rm -rf /private/tmp/claude/../..` never
 passes as scratch cleanup.
 
-CLI: `tool-gate.py [--open] <command>...` prints the label and the decision for each
+CLI: `tool-gate.py [--open] <command>...` prints the rating and the decision for each
 Bash command with the gate closed (default) or open; `--tool <name> <field>=<value>...`
 does the same for another tool; `--selftest` runs the decision table's cases.
 """
@@ -53,7 +56,7 @@ SCRATCH_PREFIXES = ("/tmp/claude/", "/private/tmp/claude/")
 SCRATCH_ROOTS = tuple(os.path.realpath(p.rstrip("/")) + "/" for p in SCRATCH_PREFIXES)
 ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
-# Shell words that precede the real program on a segment and carry no verdict of their own.
+# Shell words that precede the real program on a segment and carry no rating of their own.
 TRANSPARENT = {"do", "then", "else", "elif", "!", "{", "}", "if", "while", "until", "time",
                "exec", "command", "builtin", "nohup", "nice", "env", "stdbuf", "caffeinate"}
 # A segment made only of one of these is loop/branch syntax.
@@ -78,7 +81,7 @@ READ_PROGRAMS = {
     "yamllint", "hadolint", "glow", "bat", "fzf", "tldr", "man", "info", "cksum", "iconv",
     "look", "join", "split", "fmt", "pr", "tac", "expr", "let", "arch", "nproc", "sysctl",
     "ifconfig", "ip", "route", "arp", "ioreg", "system_profiler", "pbpaste", "mdfind",
-    "gofmt", "helmfile", "glab-ci-view", "wrenchmark-report", "gpg",
+    "gofmt", "glab-ci-view", "wrenchmark-report", "gpg",
 }
 # `split`, `gpg`, `iconv` write files only with explicit output options the handlers below catch.
 
@@ -120,7 +123,7 @@ GENERIC_DANGER_WORDS = {"delete", "destroy", "remove", "rm", "rb", "terminate", 
 REFUSAL = 'YOU MUST WRITE "LFG!" for me to actually start implementing.'
 STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 OPEN_STATES = {"open", "one-turn"}
-GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit"}
+GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
 PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebook_path"}
 
 # Writes here never need the gate: scratch, plan mode and memory are harness bookkeeping.
@@ -184,6 +187,15 @@ HELM_GLOBAL_VALUE_FLAGS = {
     "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config",
     "--repository-cache", "--repository-config", "--burst-limit", "--qps",
 }
+HELMFILE_GLOBAL_VALUE_FLAGS = {
+    "--kube-context", "-e", "--environment", "-f", "--file", "-n", "--namespace", "-l",
+    "--selector", "--state-values-set", "--state-values-file", "-b", "--helm-binary",
+    "--log-level", "-c", "--chart",
+}
+HELMFILE_RELEASE_WRITES = {"apply", "sync", "destroy", "delete"}
+# Subcommands that reach the cluster, so the context pin applies; the rest render or fetch
+# locally. A helmfile spreads its releases over namespaces, so -n is not required.
+HELMFILE_CLUSTER = HELMFILE_RELEASE_WRITES | {"diff", "status", "test"}
 
 # The TL;DR into a fired alert's thread and the reaction marking the alert as under investigation
 # are ungated; these are the alert channels, one ID per line in ALERT_CHANNELS_FILE. A file and
@@ -205,7 +217,7 @@ def read_alert_channels():
 ALERT_CHANNEL_IDS = read_alert_channels()
 
 # MCP tools match on the name after the last `__`: connectors show up under two server-name
-# forms. Anything in neither set asks while the gate is closed.
+# forms. A tool outside this set may write, so one that names an MR or a review thread asks.
 MCP_READ_PREFIXES = (
     "read", "get", "search", "list", "fetch", "lookup", "browse", "resolve", "describe",
     "compare", "verify", "live_", "dbt_", "metric_", "grafana_", "sigma_", "entity_", "cells_",
@@ -216,13 +228,6 @@ MCP_READ_PREFIXES = (
     "agent_browser_tools", "agent_browser_open", "agent_browser_back", "agent_browser_forward",
     "agent_browser_reload", "agent_browser_scroll", "agent_browser_tab_new",
     "agent_browser_tab_switch", "agent_browser_tab_close", "agent_browser_close",
-)
-MCP_WRITE_PREFIXES = (
-    "create", "update", "edit", "add", "delete", "remove", "transition", "send", "schedule",
-    "write", "post", "put", "dispatch", "slack_send", "slack_create", "slack_update",
-    "slack_add", "slack_schedule", "plumber_dispatch", "agent_browser_click",
-    "agent_browser_fill", "agent_browser_type", "agent_browser_press", "agent_browser_select",
-    "agent_browser_check", "agent_browser_uncheck", "agent_browser_eval",
 )
 SLACK_SEND = "slack_send_message"
 SLACK_REACT = "slack_add_reaction"
@@ -465,6 +470,18 @@ def classify_helm(args):
     return WRITE
 
 
+def classify_helmfile(args):
+    rest, _ = split_globals(args, HELMFILE_GLOBAL_VALUE_FLAGS)
+    pos = positionals(rest)
+    sub = pos[0] if pos else ""
+    if sub in {"diff", "template", "lint", "status", "list", "build", "version", "help",
+               "show-dag"}:
+        return READ
+    if sub in ("destroy", "delete"):
+        return DANGER
+    return WRITE
+
+
 def http_method(args, short, long):
     for i, a in enumerate(args):
         if a in (short, long) and i + 1 < len(args):
@@ -491,20 +508,42 @@ def curl_output_targets(args):
     return targets
 
 
+SAFE_HTTP_METHODS = {"GET", "HEAD", "OPTIONS"}
+CURL_BODY_FLAGS = ("-T", "--upload-file", "-F", "--form", "--form-string", "-d", "--data",
+                   "--data-raw", "--data-binary", "--data-urlencode", "--data-ascii", "--json")
+
+
+def curl_sends_body(args):
+    return has_flag(args, *CURL_BODY_FLAGS) or any(
+        a.startswith(("-d", "-F", "-T")) and len(a) > 2 and not a.startswith("--") for a in args)
+
+
+def curl_request(args):
+    """The method curl sends and its URL: a body makes a POST unless -G turns it into a query."""
+    explicit = has_flag(args, "-X", "--request") or any(
+        a.startswith("-X") and len(a) > 2 for a in args)
+    if explicit:
+        method = http_method(args, "-X", "--request")
+    elif curl_sends_body(args) and not has_flag(args, "-G", "--get"):
+        method = "POST"
+    else:
+        method = "GET"
+    url = next((args[i + 1] for i, a in enumerate(args[:-1]) if a == "--url"), None)
+    if url is None:
+        url = next((a for a in args if SCHEME_URL_RE.match(a) or LOOPBACK_BARE_RE.match(a)),
+                   "")
+    return method, url
+
+
 def classify_curl(args):
     method = http_method(args, "-X", "--request")
     if method == "DELETE":
         return DANGER
-    if method not in ("GET", "HEAD", "OPTIONS"):
+    if method not in SAFE_HTTP_METHODS:
         return WRITE
     if any(t not in STDOUT_SINKS for t in curl_output_targets(args)):
         return WRITE
-    if has_flag(args, "-O", "--remote-name", "--remote-name-all", "-T",
-                "--upload-file", "-F", "--form", "--form-string", "-d", "--data", "--data-raw",
-                "--data-binary", "--data-urlencode", "--data-ascii", "--json"):
-        return WRITE
-    if any(a.startswith(("-d", "-F", "-T")) and len(a) > 2 and not a.startswith("--")
-           for a in args):
+    if has_flag(args, "-O", "--remote-name", "--remote-name-all") or curl_sends_body(args):
         return WRITE
     return READ
 
@@ -518,22 +557,82 @@ XH_VALUE_FLAGS = {"-a", "--auth", "-A", "--auth-type", "-o", "--output", "--raw"
                   "--unix-socket", "--generate"}
 
 
-def classify_xh(args):
+def xh_request(args):
     """httpie syntax: an optional method in any case, the URL, then items; a `key=value`,
     `key:=json` or `key@file` item, or `--raw`, implies POST."""
     rest, _ = split_globals(args, XH_VALUE_FLAGS)
     pos = positionals(rest)
     method = pos[0].upper() if pos and pos[0].upper() in HTTP_METHODS else None
+    url = (pos[1:2] if method else pos[:1]) or [""]
     items = pos[2:] if method else pos[1:]
-    if method == "DELETE":
-        return DANGER
     body = (any(("=" in a and "==" not in a) or "@" in a for a in items)
             or has_flag(args, "--raw"))
-    if method not in (None, "GET", "HEAD", "OPTIONS") or (method is None and body):
+    return method or ("POST" if body else "GET"), url[0]
+
+
+def classify_xh(args):
+    method, _ = xh_request(args)
+    if method == "DELETE":
+        return DANGER
+    if method not in SAFE_HTTP_METHODS:
         return WRITE
     if has_flag(args, "-d", "--download", "-o", "--output"):
         return WRITE
     return READ
+
+
+WGET_BODY_FLAGS = ("--post-data", "--post-file", "--body-data", "--body-file")
+
+
+def wget_request(args):
+    method = next((a.split("=", 1)[1].upper() for a in args if a.startswith("--method=")), None)
+    if method is None and "--method" in args[:-1]:
+        method = args[args.index("--method") + 1].upper()
+    if method is None:
+        method = "POST" if has_flag(args, *WGET_BODY_FLAGS) else "GET"
+    url = next((a for a in args if SCHEME_URL_RE.match(a)), None)
+    if url is None:
+        pos = positionals(args)
+        url = pos[-1] if pos else ""
+    return method, url
+
+
+# A URL, as opposed to a header or a field whose value merely holds one.
+SCHEME_URL_RE = re.compile(r"^[A-Za-z][\w+.-]*://")
+# xh's `:<port>/path` shorthand, and a bare loopback host curl accepts without a scheme.
+LOOPBACK_BARE_RE = re.compile(r"^(?::\d+|localhost|[\w.-]+\.localhost|127\.\d+\.\d+\.\d+"
+                              r"|\[::1\])(?::\d+)?(?:/|$)")
+
+
+def url_is_loopback(url):
+    """Loopback per RFC 6761 section 6.3 and RFC 1122: a URL built at run time is not."""
+    if "$" in url or not url:
+        return False
+    if url.startswith(":"):
+        return True
+    host = url.split("://", 1)[-1].split("/", 1)[0].rsplit("@", 1)[-1]
+    if host.startswith("["):
+        return host.split("]", 1)[0] == "[::1"
+    host = host.split(":", 1)[0].lower()
+    return (host == "localhost" or host.endswith(".localhost")
+            or bool(re.fullmatch(r"127\.\d+\.\d+\.\d+", host)))
+
+
+def remote_http_write(prog, args):
+    """The URL of an HTTP write this invocation sends to a host that is not loopback, or None."""
+    if prog == "curl":
+        method, url = curl_request(args)
+    elif prog in ("xh", "http", "https"):
+        if has_flag(args, "--offline"):
+            return None
+        method, url = xh_request(args)
+    elif prog == "wget":
+        method, url = wget_request(args)
+    else:
+        return None
+    if method in SAFE_HTTP_METHODS or url_is_loopback(url):
+        return None
+    return url or "a URL the hook cannot read"
 
 
 GH_GLOBAL_VALUE_FLAGS = {"-R", "--repo"}
@@ -802,17 +901,23 @@ def classify_pip(args):
     return WRITE
 
 
+def uv_run_tail(args):
+    """The command `uv run` runs, with uv's own options removed."""
+    tail = list(args)
+    tail = tail[tail.index("run") + 1:]
+    while tail and tail[0].startswith("-"):
+        tail = tail[2:] if tail[0] in ("--with", "--python", "-p", "--package",
+                                      "--directory", "--project", "--extra") else tail[1:]
+    return tail
+
+
 def classify_uv(args):
     pos = positionals(args)
     if not pos or has_flag(args, "--version", "-V"):
         return READ
     sub = pos[0]
     if sub == "run":
-        tail = list(args)
-        tail = tail[tail.index("run") + 1:]
-        while tail and tail[0].startswith("-"):
-            tail = tail[2:] if tail[0] in ("--with", "--python", "-p", "--package",
-                                          "--directory", "--project", "--extra") else tail[1:]
+        tail = uv_run_tail(args)
         return classify_words(tail) if tail else WRITE
     if sub == "pip":
         return classify_pip(args[args.index("pip") + 1:])
@@ -1125,6 +1230,7 @@ HANDLERS = {
     "git": classify_git,
     "kubectl": classify_kubectl, "k": classify_kubectl, "oc": classify_kubectl,
     "helm": classify_helm,
+    "helmfile": classify_helmfile,
     "stern": classify_stern,
     "curl": classify_curl, "http": classify_xh, "https": classify_xh, "xh": classify_xh,
     "wget": classify_wget,
@@ -1587,8 +1693,76 @@ def invocations_in(words):
             yield from invocations_in(sub)
 
 
-def bash_scratch_exempt(command):
-    """True when every write in the command lands in a gate scratch root."""
+PYTHON_RE = re.compile(r"python(?:3(?:\.\d+)?)?")
+INTERPRETERS = {"node", "deno", "bun", "npx", "bunx"}
+KNOWN_PYTHON_SCRIPTS = {"board.py"} | PUBLISHING_SCRIPTS
+CONTAINER_ENGINES = {"docker", "podman", "nerdctl"}
+
+
+def runs_opaque_code(words):
+    """True for an interpreter, a container or a script: what it writes is not in its text.
+
+    The gate lets these run, and the repo watch reports a repo change one makes. A known
+    in-place editor such as `perl -i` or `sed -i` is not one: its target is in its text.
+    """
+    prog, args = program_of(words), words[1:]
+    pos = positionals(args)
+    if PYTHON_RE.fullmatch(prog):
+        # A script the hook has its own handler for writes where its arguments say.
+        return not (args and os.path.basename(args[0]) in KNOWN_PYTHON_SCRIPTS)
+    if prog in INTERPRETERS:
+        return True
+    if prog == "uv":
+        return pos[:1] == ["run"]
+    if prog in ("go", "cargo"):
+        return pos[:1] == ["run"]
+    if prog in CONTAINER_ENGINES:
+        return pos[:1] == ["run"] or pos[:2] == ["container", "run"]
+    if prog in ("bash", "sh", "zsh", "dash"):
+        return script_of(words) is not None
+    # A known program called by its path, such as /bin/cp, keeps its own rating.
+    return "/" in words[0] and not known_program(prog)
+
+
+def known_program(prog):
+    return (prog in HANDLERS or prog in READ_PROGRAMS or prog in WRITE_PROGRAMS
+            or prog in DANGER_PROGRAMS)
+
+
+GIT_CLONE_VALUE_FLAGS = {"--depth", "-b", "--branch", "-o", "--origin", "--filter",
+                         "--reference", "-c", "--config", "--separate-git-dir", "-j", "--jobs",
+                         "--shallow-since", "--shallow-exclude", "-u", "--upload-pack",
+                         "--template", "--bundle-uri"}
+
+
+def git_target_dir(here, args):
+    """The directory a git invocation changes: the clone's destination for `clone`, the
+    `-C` directory or the working directory otherwise, or None when built at run time."""
+    repo_dir, rest = here, list(args)
+    while rest and rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P"):
+        if rest[0] == "-C" and len(rest) > 1:
+            repo_dir = resolved_dir(repo_dir, rest[1])
+        rest = rest[2:] if rest[0] in ("-C", "-c", "--git-dir", "--work-tree") else rest[1:]
+    if rest[:1] != ["clone"] or repo_dir is None:
+        return repo_dir
+    clone_args, _ = split_globals(rest[1:], GIT_CLONE_VALUE_FLAGS)
+    pos = positionals(clone_args)
+    if not pos:
+        return None
+    dest = pos[1] if len(pos) > 1 else pos[0].rstrip("/").rsplit("/", 1)[-1]
+    dest = re.sub(r"\.git$", "", dest) if len(pos) == 1 else dest
+    return resolved_dir(repo_dir, dest)
+
+
+def passes_gate(command, cwd):
+    """True when nothing in the command changes a repo by a route its text shows.
+
+    A read, a command that needs the user's words, opaque code, a write that lands in a
+    gate scratch root and git run in one all pass; any other write is held to scratch, as
+    the gate held every write before it narrowed to repos. The working directory follows
+    every `cd`, as for commits.
+    """
+    here = cwd
     for line in command_lines(command):
         try:
             segments, targets = split_line(line)
@@ -1604,8 +1778,24 @@ def bash_scratch_exempt(command):
             if not words or program_of(words) in LOOP_HEADERS:
                 continue
             prog, args = program_of(words), words[1:]
+            if prog == "cd":
+                pos = positionals(args)
+                here = resolved_dir(here, pos[0] if pos else "~")
+                continue
             if classify_program(prog, args) == READ:
                 continue
+            # A command that needs the user's words is the words rule's, never the gate's.
+            if any(decision == ASK for decision, _ in pin_decisions(prog, args)):
+                continue
+            if runs_opaque_code(words):
+                continue
+            if prog == "git":
+                target = git_target_dir(here, args)
+                # The directory itself may be a scratch root, so it counts as inside one.
+                if target is not None and (os.path.realpath(target) + "/").startswith(
+                        GATE_SCRATCH_ROOTS):
+                    continue
+                return False
             if prog in SCRATCH_WRITERS:
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
                 if paths and all(inside_gate_scratch(p) for p in paths):
@@ -1614,6 +1804,20 @@ def bash_scratch_exempt(command):
                 continue
             return False
     return True
+
+
+def inside_repo(path):
+    """True when path lies in a git work tree outside the gate scratch roots."""
+    if not isinstance(path, str) or not os.path.isabs(path) or inside_gate_scratch(path):
+        return False
+    here = os.path.dirname(os.path.realpath(path))
+    while True:
+        if os.path.exists(os.path.join(here, ".git")):
+            return True
+        parent = os.path.dirname(here)
+        if parent == here:
+            return False
+        here = parent
 
 
 def tar_extracts_into_scratch(args):
@@ -1665,6 +1869,10 @@ def pin_decisions(prog, args):
                          f"{ON_WORDS}"))
     if moves_branch_or_mr(prog, args):
         out.append((ASK, MR_MOVE_REASON))
+    url = remote_http_write(prog, args)
+    if url:
+        out.append((ASK, f"an HTTP write to {url} changes state on a remote server: "
+                         f"{ON_WORDS}"))
     if prog in ("kubectx", "kubens"):
         out.append((ASK, f"{CONTEXT_SETTER_REASON}: {ON_WORDS}"))
     elif prog in ("kubectl", "k", "oc", "stern"):
@@ -1709,6 +1917,8 @@ def pin_decisions(prog, args):
                              f"other manager: {ON_WORDS}"))
         if sub in HELM_RELEASE_MOVES:
             out.append((ASK, f"helm {sub} deletes or rewinds a live release: {ON_WORDS}"))
+        if sub in ("install", "upgrade") and not dry_run(rest):
+            out.append((ASK, f"helm {sub} changes what runs on the cluster: {ON_WORDS}"))
         if sub in ("install", "upgrade") and has_flag(rest, "--reuse-values"):
             out.append((ASK, "--reuse-values replays the previous values onto the new chart: "
                              f"{ON_WORDS}"))
@@ -1716,6 +1926,17 @@ def pin_decisions(prog, args):
             out.append((DENY, "pin the context: every helm command carries --kube-context <ctx>"))
         if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")):
             out.append((DENY, "pin the namespace: every helm command carries -n <ns>"))
+    elif prog == "helmfile":
+        rest, seen = split_globals(args, HELMFILE_GLOBAL_VALUE_FLAGS)
+        pos = positionals(rest)
+        sub = pos[0] if pos else ""
+        if "$" in sub:
+            out.append((ASK, f"helmfile {RUNTIME_VERB_REASON}: {ON_WORDS}"))
+        if sub in HELMFILE_RELEASE_WRITES:
+            out.append((ASK, f"helmfile {sub} changes what runs on the cluster: {ON_WORDS}"))
+        if (sub in HELMFILE_CLUSTER or "$" in sub) and not seen.get("--kube-context"):
+            out.append((DENY, "pin the context: every helmfile command that reaches a cluster "
+                              "carries --kube-context <ctx>"))
     elif prog == "crusoe":
         rest, _ = split_globals(args, CRUSOE_GET_CREDENTIALS_VALUE_FLAGS)
         pos = positionals(rest)
@@ -1837,13 +2058,142 @@ def default_branch_commits(command, cwd):
     return out
 
 
-def mcp_kind(tool_name):
-    tool = tool_name.rsplit("__", 1)[-1].lower()
-    if tool.startswith(MCP_WRITE_PREFIXES):
-        return "write"
-    if tool.startswith(MCP_READ_PREFIXES):
-        return "read"
-    return None
+def mcp_reads(tool_name):
+    return tool_name.rsplit("__", 1)[-1].lower().startswith(MCP_READ_PREFIXES)
+
+
+# What a script's text can hold that needs the user's words when typed as a command. Plain
+# text over any language: the separator also covers a Python or JSON argument list.
+WORD_SEP = r"""[\s"',\[\]]+"""
+SCRIPT_WORDS_RES = (
+    re.compile(rf"\bhelm{WORD_SEP}(?:install|upgrade|uninstall|delete|del|rollback)(?![\w-])"),
+    re.compile(r"\bhelmfile\b.*\b(?:apply|sync|destroy|delete)\b"),
+    re.compile(rf"\bkubectl\b.*?{WORD_SEP}(?:apply|delete|create|patch|scale|edit|replace"
+               rf"|label|annotate|taint|cordon|uncordon|drain|evict|expose|autoscale|exec"
+               rf"|attach|cp|rollout{WORD_SEP}(?:restart|undo))(?![\w-])"),
+    re.compile(rf"\bgit{WORD_SEP}push\b"),
+    re.compile(rf"\b(?:docker|podman|buildah){WORD_SEP}push\b|\bbuildx\b.*--push\b"),
+    re.compile(rf"\bglab{WORD_SEP}(?:release{WORD_SEP}create"
+               rf"|mr{WORD_SEP}(?:create|merge|approve|note))\b"),
+    re.compile(rf"\bgh{WORD_SEP}pr{WORD_SEP}(?:create|merge|review|comment)\b"),
+)
+SCRIPT_HTTP_WRITE_RES = (
+    re.compile(r"(?:-X|--request)[\s=]*['\"]?(?:POST|PUT|PATCH|DELETE)\b"),
+    re.compile(rf"\b(?:xh|http|https){WORD_SEP}(?:POST|PUT|PATCH|DELETE)\b"),
+    re.compile(r"\bcurl\b.*\s(?:-d|--data(?:-raw|-binary|-urlencode)?|--json|-F|--form)\b"),
+    re.compile(r"--post-data\b|--method[\s=]+['\"]?(?:POST|PUT|PATCH|DELETE)\b"),
+    re.compile(r"\b(?:requests|httpx|session|client)\.(?:post|put|patch|delete)\("),
+)
+LOOPBACK_IN_TEXT_RE = re.compile(r"\b(?:localhost|127\.\d+\.\d+\.\d+)\b|\[::1\]")
+URL_IN_TEXT_RE = re.compile(r"[A-Za-z][\w+.-]*://[^\s'\"]+")
+SCRIPT_SCAN_LIMIT = 2 * 1024 * 1024
+
+
+def script_of(words):
+    """The script file an invocation runs, as typed, or None when it runs no script file."""
+    words = strip_prefix(words)
+    if not words:
+        return None
+    prog, args = program_of(words), words[1:]
+    if prog in ("bash", "sh", "zsh", "dash"):
+        if shell_body(args) is not None:
+            return None
+        pos = positionals(args)
+        return pos[0] if pos else None
+    if PYTHON_RE.fullmatch(prog):
+        return args[0] if args and not args[0].startswith("-") else None
+    if prog == "uv" and positionals(args)[:1] == ["run"]:
+        tail = uv_run_tail(args)
+        if tail and tail[0].endswith(".py"):
+            return tail[0]
+        return script_of(tail) if tail else None
+    return words[0] if "/" in words[0] else None
+
+
+def script_lines_needing_words(path):
+    """The lines of a script that hold a command needing the user's words, numbered."""
+    try:
+        with open(path, "rb") as f:
+            data = f.read(SCRIPT_SCAN_LIMIT)
+    except OSError:
+        return []
+    if b"\0" in data[:1024]:
+        return []
+    found = []
+    for number, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
+        # Loopback only when the line names no other URL: a loopback header beside a
+        # remote target is still a remote write.
+        loopback_only = (LOOPBACK_IN_TEXT_RE.search(line) is not None and all(
+            url_is_loopback(u) for u in URL_IN_TEXT_RE.findall(line)))
+        http_write = (any(r.search(line) for r in SCRIPT_HTTP_WRITE_RES)
+                      and not loopback_only)
+        if http_write or any(r.search(line) for r in SCRIPT_WORDS_RES):
+            found.append(f"{number}: {line.strip()[:120]}")
+    return found
+
+
+def script_decisions(command, cwd):
+    """One ask per script the command runs whose text holds a command that needs words.
+
+    The working directory follows every `cd` in the command, as for commits; a script
+    whose path is built at run time cannot be read, so it is not scanned.
+    """
+    out = []
+    here = cwd
+    for line in command_lines(command):
+        try:
+            segments, _ = split_line(line)
+        except ValueError:
+            continue
+        for segment in segments:
+            words = strip_prefix(segment)
+            if words and program_of(words) == "cd":
+                pos = positionals(words[1:])
+                here = resolved_dir(here, pos[0] if pos else "~")
+                continue
+            script = script_of(words)
+            if not script:
+                continue
+            path = resolved_dir(here, script)
+            # This script's own CLI only classifies text; its selftest holds every pattern.
+            if path is None or os.path.realpath(path) == os.path.realpath(__file__):
+                continue
+            found = script_lines_needing_words(path)
+            if found:
+                shown = "; ".join(found[:5]) + ("; ..." if len(found) > 5 else "")
+                out.append((ASK, f"runs {script}, whose text holds commands that change live "
+                                 f"or remote state - {shown}. One prompt covers the whole "
+                                 "run; no words needed"))
+    return out
+
+
+CARGO_VALUE_FLAGS = {"-p", "--package", "--features", "-F", "--target", "-j", "--jobs",
+                     "--manifest-path", "--profile", "--test", "--bench", "--bin", "--example"}
+SUITE_REASON = ("runs a whole test suite: ask before it starts, and run the tests the change "
+                "touches unless the user asked for the suite")
+
+
+def runs_whole_suite(prog, args):
+    """True for a test runner with nothing narrowing it to a file, a test or a filter."""
+    pos = positionals(args)
+    if prog == "uv" and pos[:1] == ["run"]:
+        tail = uv_run_tail(args)
+        return bool(tail) and runs_whole_suite(program_of(tail), tail[1:])
+    if PYTHON_RE.fullmatch(prog) and args[:2] == ["-m", "pytest"]:
+        return runs_whole_suite("pytest", args[2:])
+    if prog == "pytest":
+        return not (has_flag(args, "-k") or any(".py" in a or "::" in a for a in pos))
+    if prog == "go":
+        return pos[:1] == ["test"] and any("..." in a for a in pos) and not has_flag(args, "-run")
+    if prog == "cargo":
+        rest, _ = split_globals(args, CARGO_VALUE_FLAGS)
+        rest = rest[:rest.index("--")] if "--" in rest else rest
+        return positionals(rest) == ["test"]
+    if prog in ("make", "gmake"):
+        return "test" in pos
+    if prog in ("npm", "pnpm", "yarn"):
+        return pos[:1] in (["test"], ["t"]) or pos[:2] == ["run", "test"]
+    return False
 
 
 def decide_bash(tool_input, gate_open, cwd):
@@ -1853,8 +2203,11 @@ def decide_bash(tool_input, gate_open, cwd):
     out = []
     for prog, args in invocations(command):
         out.extend(pin_decisions(prog, args))
+        if runs_whole_suite(prog, args):
+            out.append((ASK, SUITE_REASON))
     out.extend(default_branch_commits(command, cwd))
-    if not gate_open and classify_command(command) != READ and not bash_scratch_exempt(command):
+    out.extend(script_decisions(command, cwd))
+    if not gate_open and classify_command(command) != READ and not passes_gate(command, cwd):
         if only_unknown_writes(command):
             out.append((ASK, "unclassified - fix the handler in tool-gate.py"))
         else:
@@ -1875,21 +2228,21 @@ def decide_mcp(tool_name, tool_input, gate_open):
     if (tool == SLACK_REACT and tool_input.get("channel_id") in ALERT_CHANNEL_IDS
             and tool_input.get("emoji") == ALERT_REACTION):
         return []
-    kind = mcp_kind(tool_name)
+    reads = mcp_reads(tool_name)
     lower = tool.lower()
     server = tool_name.split("__")[1].lower() if tool_name.count("__") >= 2 else ""
     # `resolve` is a read prefix elsewhere, but on a code host it resolves a review thread.
     thread_move = (any(h in server for h in MCP_CODE_HOSTS)
-                   and (kind != "read" or lower.startswith("resolve"))
+                   and (not reads or lower.startswith("resolve"))
                    and any(w in lower for w in MCP_THREAD_WORDS))
-    if thread_move or (kind != "read" and any(w in lower for w in MCP_MR_MOVE_WORDS)):
-        return [(ASK, MR_MOVE_REASON) if gate_open else (DENY, REFUSAL)]
-    if gate_open:
+    if thread_move or (not reads and any(w in lower for w in MCP_MR_MOVE_WORDS)):
+        return [(ASK, MR_MOVE_REASON)]
+    # The server name carries the environment under both forms a connector shows up as.
+    if lower == "api_call" and "backoffice" in server:
+        if "prod" in server:
+            return [(ASK, "a write to the prod backoffice changes live deployments and "
+                          f"scaling: {ON_WORDS}")]
         return []
-    if kind == "write":
-        return [(DENY, REFUSAL)]
-    if kind is None:
-        return [(ASK, "unclassified - fix the handler in tool-gate.py")]
     return []
 
 
@@ -1902,8 +2255,10 @@ def decide(tool_name, tool_input, gate_open, cwd=None):
         out = decide_bash(tool_input, gate_open, cwd or os.getcwd())
     elif tool_name in PATH_FIELD:
         out = []
-        if not gate_open and not inside_gate_scratch(tool_input.get(PATH_FIELD[tool_name])):
+        if not gate_open and inside_repo(tool_input.get(PATH_FIELD[tool_name])):
             out.append((DENY, REFUSAL))
+    elif tool_name == "EnterWorktree":
+        out = [] if gate_open else [(DENY, REFUSAL)]
     elif tool_name.startswith("mcp__"):
         out = decide_mcp(tool_name, tool_input, gate_open)
     else:
@@ -1937,8 +2292,8 @@ def hook_output(payload):
             if dropped:
                 description = f"{description} (scratch rm dropped)".strip()
             updated = dict(tool_input)
-            label = classify_command(tool_input["command"])
-            updated["description"] = f"{label} · {description}" if description else label
+            rating = classify_command(tool_input["command"])
+            updated["description"] = f"{rating} · {description}" if description else rating
             output["updatedInput"] = updated
         decision = decide(tool_name, tool_input, gate_is_open(payload.get("session_id")),
                           payload.get("cwd"))
@@ -1964,13 +2319,14 @@ def describe(tool_name, tool_input, gate_open):
         tool_input, dropped = stripped_bash_input(tool_input)
         note = "  (scratch rm dropped)" if dropped else ""
     decision = decide(tool_name, tool_input, gate_open)
-    verdict = f"{decision[0]}: {decision[1]}" if decision else "-"
+    gate_decision = f"{decision[0]}: {decision[1]}" if decision else "-"
     if tool_name == "Bash":
-        return f"{classify_command(tool_input['command'])}  {verdict}{note}"
-    return verdict
+        return f"{classify_command(tool_input['command'])}  {gate_decision}{note}"
+    return gate_decision
 
 
 def selftest():
+    global GATE_SCRATCH_ROOTS
     home = os.path.expanduser("~")
     scratch = GATE_SCRATCH_ROOTS[0]
     alert = "C0ALERT"
@@ -1982,7 +2338,7 @@ def selftest():
         (False, "Bash", "kubectl get pods -nY --context X", None),
         (False, "Bash", "kubectl --context X -n Y get pods", None),
         (True, "Bash", "kubectl --context X -n Y delete pod p", ASK),
-        (False, "Bash", "kubectl --context X -n Y delete pod p", DENY),
+        (False, "Bash", "kubectl --context X -n Y delete pod p", ASK),
         (True, "Bash", "kubectl delete pod p -n Y", DENY),
         # An empty kubeconfig is no pin: inside a pod client-go falls back to its service account.
         (True, "Bash", "kubectl create secret generic t --kubeconfig=/dev/null --dry-run=client "
@@ -1994,11 +2350,11 @@ def selftest():
         (True, "Bash", "helm $(echo uninstall) r --kube-context X -n Y", ASK),
         (True, "Bash", "kubectl get pods -l app=$(echo x) --context X -n Y", None),
         (True, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
-        (False, "Bash", "helm --kube-context X -n Y uninstall r", DENY),
+        (False, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
         (True, "Bash", "helm del r --kube-context X -n Y", ASK),
         (True, "Bash", "helm uninstall r", DENY),
         (True, "Bash", "helm rollback r 1 --kube-context X -n Y", ASK),
-        (False, "Bash", "helm rollback r 1 --kube-context X -n Y", DENY),
+        (False, "Bash", "helm rollback r 1 --kube-context X -n Y", ASK),
         (True, "Bash", "helm rollback r 1 --kube-context X -n Y --force-conflicts", ASK),
         (False, "Bash", "helm list --kube-context X -n Y", None),
         (False, "Bash", "helm list -n Y", DENY),
@@ -2030,8 +2386,8 @@ def selftest():
         (False, "Bash", "bash -c 'kubectl get pods'", DENY),
         (False, "Bash", "kubectl get pods -o name --context X -n Y | xargs kubectl delete", DENY),
         (False, "Bash", "kubectl exec p --context X -n Y -- curl localhost:8000/health", None),
-        (False, "Bash", "kubectl exec p --context X -n Y -- rm -rf /data", DENY),
-        (False, "Bash", "kubectl exec -it p --context X -n Y -- sh", DENY),
+        (False, "Bash", "kubectl exec p --context X -n Y -- rm -rf /data", ASK),
+        (False, "Bash", "kubectl exec -it p --context X -n Y -- sh", ASK),
         (False, "Bash", "kubectl cp p:/x /tmp/y --context X -n Y", DENY),
         (True, "Bash", "kubectl cp p:/x /tmp/y --context X -n Y", None),
         (True, "Bash", "kubectl cp ./f p:/x --context X -n Y", ASK),
@@ -2041,14 +2397,14 @@ def selftest():
         (True, "Bash", "kubectl exec -it p --context X -n Y -- sh", ASK),
         (True, "Bash", "kubectl exec p --context X -n Y -- curl localhost:8000/health", None),
         (True, "Bash", "kubectl attach p -it --context X -n Y", ASK),
-        (False, "Bash", "kubectl attach p -it --context X -n Y", DENY),
+        (False, "Bash", "kubectl attach p -it --context X -n Y", ASK),
         (False, "Bash", f"git log -1 --output={home}/.claude/lfg-state/abc", DENY),
         (False, "Bash", "git log -1", None),
         (False, "Bash", "git stash", DENY),
         (False, "Bash", "git restore .", DENY),
         (False, "Bash", "git checkout -- .", DENY),
-        (False, "Bash", "make test", None),
-        (False, "Bash", "make test 2>&1", None),
+        (False, "Bash", "make test", ASK),
+        (False, "Bash", "make test 2>&1", ASK),
         (False, "Bash", "crusoe kubernetes clusters get-credentials --help 2>/dev/null | head", None),
         (False, "Bash", "ls; 2>&1 ls", None),
         (False, "Bash", "(ls)2>&1", None),
@@ -2108,18 +2464,63 @@ def selftest():
         (False, "Bash", f"touch {scratch}../x", DENY),
         (True, "Bash", f"rm -rf {scratch}x {home}/.cache/x", ASK),
         (True, "Bash", f"rm -rf {scratch}x", None),
-        (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", DENY),
+        (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", ASK),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", ASK),
-        (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", DENY),
+        (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
         (True, "Bash", "CRUSOE_PROFILE=p crusoe kubernetes clusters get-credentials --project-name j -y c", ASK),
         (True, "Bash", "crusoe kubernetes clusters get-credentials c --project-name j", ASK),
-        (False, "Bash", "crusoe kubernetes clusters get-credentials --project-name j c", DENY),
+        (False, "Bash", "crusoe kubernetes clusters get-credentials --project-name j c", ASK),
         (True, "Bash", "crusoe kubernetes clusters list --project-name j", None),
-        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y", None),
+        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y", ASK),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --dry-run", None),
+        (False, "Bash", "helm install r ./c --kube-context X -n Y", ASK),
+        (False, "Bash", "helm install r ./c -n Y", DENY),
+        (True, "Bash", "helmfile --kube-context X apply", ASK),
+        (False, "Bash", "helmfile --kube-context X sync", ASK),
+        (True, "Bash", "helmfile -e dev --kube-context X destroy", ASK),
+        (True, "Bash", "helmfile apply", DENY),
+        (True, "Bash", "helmfile --kube-context X diff", None),
+        (False, "Bash", "helmfile template", None),
+        (True, "Bash", "pytest", ASK),
+        (False, "Bash", "pytest tests/", ASK),
+        (True, "Bash", "uv run pytest -q", ASK),
+        (True, "Bash", "python3 -m pytest tests", ASK),
+        (True, "Bash", "go test ./...", ASK),
+        (True, "Bash", "cargo test", ASK),
+        (True, "Bash", "cargo test -p mycrate", ASK),
+        (True, "Bash", "make test", ASK),
+        (False, "Bash", "npm test", ASK),
+        (True, "Bash", "pytest tests/test_x.py", None),
+        (True, "Bash", "pytest -k name", None),
+        (True, "Bash", "pytest x.py::test_y", None),
+        (True, "Bash", "uv run pytest tests/test_x.py -q", None),
+        (True, "Bash", "go test ./pkg/foo -run TestX", None),
+        (True, "Bash", "go test ./pkg/foo", None),
+        (True, "Bash", "cargo test name", None),
+        (True, "Bash", "./scripts/run-tests.sh", None),
+        (True, "Bash", "xh PUT https://example.com/x a:=1", ASK),
+        (True, "Bash", "xh https://example.com/x a=1", ASK),
+        (True, "Bash", "curl -X DELETE https://example.com/x", ASK),
+        (True, "Bash", "curl -d x https://example.com/x", ASK),
+        (True, "Bash", "curl -sS -H 'Accept: x' --json '{}' https://example.com/x", ASK),
+        (True, "Bash", 'xh PUT "$URL" a:=1', ASK),
+        (False, "Bash", "xh PUT https://example.com/x a:=1", ASK),
+        (True, "Bash", "wget --post-data=a=1 https://example.com/x", ASK),
+        (True, "Bash", "xh PUT :8081/x a:=1", None),
+        (True, "Bash", "xh PUT http://localhost:8081/x a:=1", None),
+        (True, "Bash", "xh PUT http://127.0.0.1:8081/x a:=1", None),
+        (True, "Bash", "curl -X PUT localhost:8081/x -d a", None),
+        (True, "Bash", "curl -H 'Origin: http://localhost' -X POST https://example.com/x", ASK),
+        (True, "Bash", "wget --header='Referer: http://localhost' --post-data=a https://e.com/x",
+         ASK),
+        (True, "Bash", "curl -X PUT 'http://[::1]:8081/x' -d a", None),
+        (True, "Bash", "xh --offline PUT https://example.com/x a:=1", None),
+        (True, "Bash", "curl -G -d q=1 https://example.com/x", None),
+        (False, "Bash", "xh GET https://example.com/x", None),
+        (False, "Bash", "curl https://example.com/x", None),
         (True, "Bash", "git push origin main", ASK),
-        (False, "Bash", "git push origin main", DENY),
+        (False, "Bash", "git push origin main", ASK),
         (True, "Bash", "git push --dry-run", ASK),
         (True, "Bash", "git -C /x push origin main", ASK),
         (True, "Bash", "git -c user.name=x --no-pager push", ASK),
@@ -2128,7 +2529,7 @@ def selftest():
         (True, "Bash", "git commit -m 'push it' && git push -f", ASK),
         (True, "Bash", "git commit -m 'git push later'", None),
         (True, "Bash", "glab mr create --fill", ASK),
-        (False, "Bash", "glab mr create --fill", DENY),
+        (False, "Bash", "glab mr create --fill", ASK),
         (True, "Bash", "glab -R g/p mr merge 3", ASK),
         (True, "Bash", "glab mr approve 3", ASK),
         (True, "Bash", "glab mr close 3", ASK),
@@ -2146,10 +2547,10 @@ def selftest():
         (True, "Bash", "gh pr review 3 --comment -b x", ASK),
         (True, "Bash", "gh pr review 3 -r -b x", ASK),
         (True, "Bash", "gh pr comment 3 -b x", ASK),
-        (False, "Bash", "gh pr comment 3 -b x", DENY),
+        (False, "Bash", "gh pr comment 3 -b x", ASK),
         (True, "Bash", "glab mr update 3 --description-file d.md", None),
         (True, "Bash", "glab mr note 3 -m x", ASK),
-        (False, "Bash", "glab mr note 3 -m x", DENY),
+        (False, "Bash", "glab mr note 3 -m x", ASK),
         (True, "Bash", "glab mr note 3 --resolve abc", ASK),
         (True, "Bash", "glab mr note create 3 -m x", ASK),
         (True, "Bash", "glab mr note resolve abc 3", ASK),
@@ -2200,7 +2601,7 @@ def selftest():
         (True, "Bash", "git tag v1.2.3", None),
         (True, "Bash", "glab release create v1.2.3", ASK),
         (True, "Bash", "glab -R g/p release create dev-x", ASK),
-        (False, "Bash", "glab release create v1.2.3", DENY),
+        (False, "Bash", "glab release create v1.2.3", ASK),
         (True, "Bash", "glab api -X POST projects/1/repository/tags -f tag_name=v1 -f ref=main", ASK),
         (True, "Bash", "glab api projects/1/releases -f tag_name=v1", ASK),
         (True, "Bash", "glab api projects/1/repository/tags", None),
@@ -2212,7 +2613,7 @@ def selftest():
         (True, "Bash", "docker build -t registry.example/x:t --push .", ASK),
         (True, "Bash", "podman push registry.example/x:t", ASK),
         (True, "Bash", "buildah push registry.example/x:t", ASK),
-        (False, "Bash", "docker push registry.example/x:t", DENY),
+        (False, "Bash", "docker push registry.example/x:t", ASK),
         (True, "Bash", "docker compose push", ASK),
         (True, "Bash", "docker buildx imagetools create -t registry.example/x:t registry.example/x:a", ASK),
         (True, "Bash", "docker buildx imagetools create --dry-run -t registry.example/x:t registry.example/x:a", None),
@@ -2229,7 +2630,7 @@ def selftest():
         (True, "Bash", "uv run python3 /x/scripts/build_vllm_overlay.py --branch b", ASK),
         (True, "Bash", "/x/scripts/build_vllm_overlay.py --branch b --context c --namespace n", ASK),
         (False, "Bash", "kubectl exec p -- sh -c 'rm -rf /data' --help", DENY),
-        (False, "Bash", "python3 /x/deploy.py --help", DENY),
+        (False, "Bash", "python3 /x/deploy.py --help", None),
         (False, "Bash", "python3 /x/board.py fetch garbled-output --org 2", None),
         (False, "Bash", f"python3 /x/board.py fetch g --org 2 --out {scratch}g.json", None),
         (False, "Bash", "python3 /x/board.py fetch g --org 2 --out /x/g.json", DENY),
@@ -2275,9 +2676,9 @@ def selftest():
         (False, "Bash", "gh api graphql -f query='{viewer{login}}'", None),
         (False, "Bash", "gh api graphql -f query='mutation{x}'", DENY),
         (True, "Bash", "kubectl config use-context x", ASK),
-        (False, "Bash", "kubectl config use-context x", DENY),
+        (False, "Bash", "kubectl config use-context x", ASK),
         (True, "Bash", "kubectx x", ASK),
-        (False, "Bash", "kubectx x", DENY),
+        (False, "Bash", "kubectx x", ASK),
         (True, "Bash", "kubens x", ASK),
         (True, "Bash", "kubectl label node n atero/user=x --context X", ASK),
         (True, "Bash", "kubectl label node n atero/user=x", DENY),
@@ -2288,17 +2689,17 @@ def selftest():
         (False, "Bash", "kubectl rollout status deploy/x --context X -n Y", None),
         (True, "Bash", "kubectl rollout restart deploy/x --context X -n Y", ASK),
         (True, "Bash", "kubectl apply -f x.yaml --context X -n Y", ASK),
-        (False, "Bash", "kubectl apply -f x.yaml --context X -n Y", DENY),
+        (False, "Bash", "kubectl apply -f x.yaml --context X -n Y", ASK),
         (False, "Bash", "kubectl apply -f x.yaml --dry-run=server --context X -n Y", None),
         (True, "Bash", "kubectl drain n --context X --ignore-daemonsets", ASK),
-        (False, "Bash", "kubectl drain n --context X --ignore-daemonsets", DENY),
+        (False, "Bash", "kubectl drain n --context X --ignore-daemonsets", ASK),
         (False, "Bash", "frobnicate --flag", ASK),
         (False, "Bash", "frobnicate | grep x", ASK),
         (False, "Bash", "frobnicate && touch /etc/x", DENY),
         (False, "Bash", "stern x --context X -n Y", None),
         (False, "Bash", "stern x", DENY),
         (False, "Bash", "kubectl --help", None),
-        (False, "Bash", "python3 -m pytest tests/", None),
+        (False, "Bash", "python3 -m pytest tests/", ASK),
         (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
         (False, "Bash", 'which claude; stat -f "%Sm %N" "$(readlink -f "$(which claude)")" 2>&1', None),
         (False, "Bash", "claude auth status", None),
@@ -2324,22 +2725,22 @@ def selftest():
         (False, "Bash", "xh --form localhost:8081/upload f@/etc/hosts", DENY),
         (False, "Bash", "xh 'localhost:8081/api/clusters?name=x'", None),
         (False, "Bash", "xh -a u:p http://user@host/x", None),
-        (False, "Bash", "xh -a u:p http://host/x k=v", DENY),
+        (False, "Bash", "xh -a u:p http://host/x k=v", ASK),
         (False, "Bash", "xh --verify no 'host/x?y=1'", None),
         (False, "Bash", "kubectl get pods --context X -n 123 > /private/tmp/claude/p", None),
         (False, "Bash", "bash -lc 'touch /etc/x'", DENY),
-        (False, "Bash", f"bash {scratch}check.sh", DENY),
-        (False, "Bash", f"python3 {scratch}check.py", DENY),
+        (False, "Bash", f"bash {scratch}check.sh", None),
+        (False, "Bash", f"python3 {scratch}check.py", None),
         (True, "Bash", f"python3 {scratch}check.py", None),
         (False, "Bash", f"python3 {os.path.realpath(__file__)} --selftest", None),
         (False, "Write", {"file_path": f"{scratch}a.md"}, None),
-        (False, "Write", {"file_path": "/tmp/a.md"}, DENY),
+        (False, "Write", {"file_path": "/tmp/a.md"}, None),
         (False, "Write", {"file_path": f"{home}/.claude/lfg-state/x"}, DENY),
-        (False, "Edit", {"file_path": f"{home}/repos/x.py"}, DENY),
+        (False, "Edit", {"file_path": f"{home}/repos/x.py"}, None),
         (True, "Edit", {"file_path": f"{home}/repos/x.py"}, None),
         (False, "NotebookEdit", {"notebook_path": f"{scratch}n.ipynb"}, None),
-        (False, "NotebookEdit", {"notebook_path": f"{home}/repos/n.ipynb"}, DENY),
-        (False, "Write", {}, DENY),
+        (False, "NotebookEdit", {"notebook_path": f"{home}/repos/n.ipynb"}, None),
+        (False, "Write", {}, None),
         (False, "mcp__claude_ai_Slack__slack_send_message",
          {"channel_id": alert, "thread_ts": "1.2", "message": "tl;dr"}, None),
         (False, "mcp__claude_ai_Slack__slack_send_message",
@@ -2349,22 +2750,22 @@ def selftest():
         (False, "mcp__claude_ai_Slack__slack_add_reaction",
          {"channel_id": alert, "message_ts": "1.2", "emoji": "claude"}, None),
         (False, "mcp__claude_ai_Slack__slack_add_reaction",
-         {"channel_id": alert, "message_ts": "1.2", "emoji": "eyes"}, DENY),
+         {"channel_id": alert, "message_ts": "1.2", "emoji": "eyes"}, None),
         (False, "mcp__claude_ai_Slack__slack_add_reaction",
-         {"channel_id": "C0OTHER", "message_ts": "1.2", "emoji": "claude"}, DENY),
+         {"channel_id": "C0OTHER", "message_ts": "1.2", "emoji": "claude"}, None),
         (True, "mcp__claude_ai_Slack__slack_add_reaction",
          {"channel_id": "C0OTHER", "message_ts": "1.2", "emoji": "eyes"}, None),
         (False, "mcp__claude_ai_Slack__slack_read_thread", {"channel_id": alert}, None),
         (False, "mcp__Slack__slack_read_thread", {"channel_id": alert}, None),
         (False, "mcp__claude_ai_Atlassian_Rovo__getConfluencePage", {"pageId": "1"}, None),
         (False, "mcp__data-mcp__live_promql_query", {"query": "up"}, None),
-        (False, "mcp__claude_ai_Atlassian_Rovo__createJiraIssue", {}, DENY),
+        (False, "mcp__claude_ai_Atlassian_Rovo__createJiraIssue", {}, None),
         (True, "mcp__claude_ai_Atlassian_Rovo__createJiraIssue", {}, None),
-        (False, "mcp__plugin_plumber-claude_plumber__plumber_dispatch", {}, DENY),
-        (False, "mcp__x__frob", {}, ASK),
+        (False, "mcp__plugin_plumber-claude_plumber__plumber_dispatch", {}, None),
+        (False, "mcp__x__frob", {}, None),
         (True, "mcp__x__frob", {}, None),
         (True, "mcp__claude_ai_gitlab__merge_merge_request", {}, ASK),
-        (False, "mcp__claude_ai_gitlab__merge_merge_request", {}, DENY),
+        (False, "mcp__claude_ai_gitlab__merge_merge_request", {}, ASK),
         (True, "mcp__claude_ai_gitlab__create_merge_request", {}, ASK),
         (True, "mcp__github__create_pull_request_review", {}, ASK),
         (True, "mcp__github__push_files", {}, ASK),
@@ -2372,7 +2773,13 @@ def selftest():
         (True, "mcp__claude_ai_gitlab__create_note", {}, ASK),
         (True, "mcp__github__add_comment_to_pending_review", {}, ASK),
         (True, "mcp__github__resolve_review_thread", {}, ASK),
-        (False, "mcp__github__resolve_review_thread", {}, DENY),
+        (False, "mcp__github__resolve_review_thread", {}, ASK),
+        (True, "mcp__backoffice-prod__api_call", {"method": "PUT"}, ASK),
+        (False, "mcp__backoffice-prod__api_call", {"method": "PUT"}, ASK),
+        (True, "mcp__claude_ai_backoffice_prod__api_call", {}, ASK),
+        (True, "mcp__backoffice-dev__api_call", {"method": "PUT"}, None),
+        (False, "mcp__backoffice-dev__api_call", {"method": "PUT"}, None),
+        (False, "mcp__backoffice-prod__scaling_get", {}, None),
         (True, "mcp__github__unresolve_review_thread", {}, ASK),
         (False, "mcp__github__get_review_comments", {}, None),
         (True, "mcp__claude_ai_Atlassian_Rovo__addCommentToJiraIssue", {}, None),
@@ -2386,7 +2793,8 @@ def selftest():
         got_kind = got[0] if got else None
         ok = got_kind == expected
         failures += not ok
-        shown = tool_input["command"] if tool_name == "Bash" else f"{tool_name} {tool_input}"
+        shown = (tool_input["command"].replace("\n", "\\n") if tool_name == "Bash"
+                 else f"{tool_name} {tool_input}")
         print(f"{'ok  ' if ok else 'FAIL'} [{'open' if gate_open else 'closed'}] "
               f"{shown} -> {got_kind}" + ("" if ok else f" (want {expected})"))
     payload_cases = [
@@ -2453,7 +2861,7 @@ def selftest():
         print(f"{'ok  ' if ok else 'FAIL'} strip {command!r} -> {got!r}"
               + ("" if ok else f" (want {expected!r})"))
     label_cases = [
-        # (command, expected label): heredoc bodies are data, never programs
+        # (command, expected rating): heredoc bodies are data, never programs
         (f"git commit -q -F - <<'EOF'\nfix: drop; rm -rf {s}x\nEOF", WRITE),
         ("cat <<EOF\nrm -rf /\nEOF", READ),
         ("cat <<EOF\nhello\nEOF\nrm -rf /", DANGER),
@@ -2519,7 +2927,7 @@ def selftest():
         got = classify_command(command)
         ok = got == expected
         failures += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} label {command!r} -> {got}"
+        print(f"{'ok  ' if ok else 'FAIL'} rating {command!r} -> {got}"
               + ("" if ok else f" (want {expected})"))
     # A commit on a repo's default branch is denied in every gate state; throwaway repos
     # stand in for the real ones, and one is exempted the way ~/.claude is.
@@ -2580,7 +2988,91 @@ def selftest():
                       f"-> {got}" + ("" if ok else f" (want {expected})"))
         finally:
             DEFAULT_BRANCH_EXEMPT = saved_exempt
-    total = len(cases) + len(payload_cases) + len(strip_cases) + len(label_cases) + len(branch_cases)
+        # The gate holds repo changes only: the throwaway repos stand in for real ones, and
+        # the scratch roots narrow to one directory so the repos sit outside them.
+        saved_roots = GATE_SCRATCH_ROOTS
+        scratch_dir = os.path.join(root, "scratch")
+        os.makedirs(scratch_dir)
+        GATE_SCRATCH_ROOTS = (os.path.realpath(scratch_dir) + "/",)
+        gate_cases = [
+            # (tool, input, expected decision with the gate closed), run from on_main
+            ("Bash", {"command": "python3 -c 'print(1)'"}, None),
+            ("Bash", {"command": "uv run --with pyyaml python3 -c 'print(1)'"}, None),
+            ("Bash", {"command": "docker run --rm img amtool template render"}, None),
+            ("Bash", {"command": f"echo x > {scratch_dir}/out"}, None),
+            ("Bash", {"command": f"echo x > {on_main}/out"}, DENY),
+            ("Bash", {"command": f"sed -i '' s/a/b/ {on_main}/README.md"}, DENY),
+            ("Bash", {"command": "git commit -m x"}, DENY),
+            ("Bash", {"command": f"git -C {on_main} stash"}, DENY),
+            ("Bash", {"command": f"git -C {scratch_dir} init -q"}, None),
+            ("Bash", {"command": f"git clone https://example.com/r.git {scratch_dir}/r"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && git clone https://example.com/r.git"},
+             None),
+            ("Bash", {"command": f"git clone https://example.com/r.git {root}/r"}, DENY),
+            ("Bash", {"command": f"git clone --depth 1 -b v1 https://example.com/r.git "
+                                 f"{scratch_dir}/r2"}, None),
+            ("Bash", {"command": f"/bin/cp a {on_main}/x"}, DENY),
+            ("Bash", {"command": f"/usr/bin/sed -i '' s/a/b/ {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"{not_repo}/tool.sh"}, None),
+            ("Edit", {"file_path": f"{on_main}/README.md"}, DENY),
+            ("Write", {"file_path": f"{on_main}/sub/new.py"}, DENY),
+            ("Write", {"file_path": f"{scratch_dir}/note.md"}, None),
+            ("Write", {"file_path": f"{not_repo}/note.md"}, None),
+            ("EnterWorktree", {}, DENY),
+        ]
+        try:
+            for tool, tool_input, expected in gate_cases:
+                got = decide(tool, tool_input, False, on_main)
+                got = got[0] if got else None
+                ok = got == expected
+                failures += not ok
+                print(f"{'ok  ' if ok else 'FAIL'} gate {tool} {tool_input} -> {got}"
+                      + ("" if ok else f" (want {expected})"))
+            got = decide("EnterWorktree", {}, True, on_main)
+            ok = got is None
+            failures += not ok
+            print(f"{'ok  ' if ok else 'FAIL'} gate EnterWorktree, gate open -> {got}")
+        finally:
+            GATE_SCRATCH_ROOTS = saved_roots
+        # A script whose text holds a command that needs words asks once, in every state.
+        scripts = {
+            "deploy.sh": "#!/bin/sh\nhelm upgrade r ./c --kube-context X -n Y\n",
+            "cleanup.py": 'import subprocess\nsubprocess.run(["kubectl", "delete", "pod", "p"])\n',
+            "mock.sh": "curl -X PUT http://localhost:8081/x -d a\n",
+            "remote.sh": 'curl -X POST "$URL" -d a\n',
+            "read.sh": "kubectl get pods --context X -n Y\n",
+            "built.sh": 'helm "$1" r ./c\n',
+            "kubeconfig.sh": 'kubectl config --kubeconfig="$kc" delete-context x\n',
+            "mixed.sh": "curl -H 'Origin: http://localhost' -X POST https://example.com/x\n",
+        }
+        for name, text in scripts.items():
+            with open(os.path.join(not_repo, name), "w") as f:
+                f.write(text)
+        script_cases = [
+            # (command, expected decision with the gate open), run from the scripts' directory
+            ("./deploy.sh", ASK),
+            ("bash deploy.sh", ASK),
+            ("python3 cleanup.py", ASK),
+            ("uv run --with x python cleanup.py", ASK),
+            ("./mock.sh", None),
+            ("sh remote.sh", ASK),
+            ("./read.sh", None),
+            ("./built.sh", None),
+            ("./kubeconfig.sh", None),
+            ("./mixed.sh", ASK),
+            (f"cd {root} && ./plain/deploy.sh", ASK),
+            ("bash -c 'echo deploy.sh'", None),
+            ("./missing.sh", None),
+        ]
+        for command, expected in script_cases:
+            got = decide("Bash", {"command": command}, True, not_repo)
+            got = got[0] if got else None
+            ok = got == expected
+            failures += not ok
+            print(f"{'ok  ' if ok else 'FAIL'} script {command!r} -> {got}"
+                  + ("" if ok else f" (want {expected})"))
+    total = (len(cases) + len(payload_cases) + len(strip_cases) + len(label_cases)
+             + len(branch_cases) + len(script_cases) + len(gate_cases) + 1)
     print(f"\n{total - failures}/{total} passed")
     return failures == 0
 
