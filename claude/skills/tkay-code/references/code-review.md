@@ -133,8 +133,8 @@ would follow. Under its own heading:
 
 ```
 - <one thing the branch does, in plain words>
-  VERDICT: ✅ DO IT — 90% sure
-  Doubt: <what the missing 10% rests on>
+  VERDICT: ✅ DO IT — LIKELY
+  Doubt: <what keeps it from VERIFIED>
 ```
 
 - **One bullet per distinct thing the branch does.** A branch that does one
@@ -145,9 +145,14 @@ would follow. Under its own heading:
   claims; `⚖️ JUDGEMENT CALL` - defensible both ways, and the line says which
   way you lean and why; `❌ DON'T` - the branch is better without it, and the
   line says what you would do instead.
-- **The percentage is how sure you are that the change is right and works at
-  HEAD**, not how sure you are that I will agree. Anything below 100 is
-  followed by a `Doubt:` line naming what the rest rests on.
+- **The confidence level is how sure you are that the change is right and
+  works at HEAD**, not how sure you are that I will agree. One of four, each
+  defined by what backs it: `VERIFIED` - you ran it or tested the exact
+  behaviour; `CONFIDENT` - not run, but you traced every step in the code or
+  the docs; `LIKELY` - one unchecked inference carries it; `50-50` - more
+  than one unchecked inference, or you do not know. Anything short of
+  `VERIFIED` is followed by a `Doubt:` line naming what keeps it from
+  `VERIFIED`.
 - **These verdicts judge the outcome, so a broken branch shows up here.** A
   `❌ DON'T`, or a doubt that the change works at HEAD, under a closing table
   of nothing but `✅ SHIP IT` means the commits above are missing a finding or
@@ -176,7 +181,7 @@ of the last commit's review.
 |---|---|
 | `✅ SHIP IT` | 0 MUST HAVE |
 | `🔧 NEEDS CHANGE` | at least one MUST HAVE, and amending this commit fixes it |
-| `🔀 SQUASH INTO <short-sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md` |
+| `🔀 SQUASH INTO <short-sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
 | `🗑 DROP` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
 The verdict agrees with that commit's VERDICT line: never `✅ SHIP IT` while its
@@ -220,9 +225,9 @@ When nothing came up, the heading stays and the table is one line instead:
   **Every test you can run yourself, you run - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED) · MUST HAVE** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks SHIP IT until it is run or I accept it as untested. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
   Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
-  - **Sure without it** - a percentage and the reason: which parts of the claim are already proven and what rests on reasoning alone.
-  - **Sure with it** - a percentage, and what would still be unproven after the test passes.
-- **State confidence when you're unsure.** "🟠 RISK · MUST HAVE (high confidence)" vs "🟠 RISK · MUST HAVE (speculative - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently become NICE TO HAVE.
+  - **Sure without it** - a confidence level (one of the four under "The branch summary") and the reason: which parts of the claim are already proven and what rests on reasoning alone.
+  - **Sure with it** - a confidence level, and what would still be unproven after the test passes.
+- **State confidence when you're unsure**, as one of the four levels under "The branch summary" and what backs it: "🟠 RISK · MUST HAVE (CONFIDENT)" vs "🟠 RISK · MUST HAVE (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently become NICE TO HAVE.
 - **Where the borderline cases land:**
   - Weak/vague commit message → 🟡 · NICE TO HAVE. Commit message making a FALSE CLAIM about behavior → still 🟡 on severity (the code works) but **MUST HAVE** on policy - it lies to whoever bisects this later, and history is permanent. This is the textbook case for why the two axes exist.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).

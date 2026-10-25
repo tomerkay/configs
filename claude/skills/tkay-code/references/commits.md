@@ -28,7 +28,8 @@ line.** Do not default to a new commit.
   anything wrong: apart they hide what the branch does - one is broken or
   meaningless until the other lands, or the reader has to assemble the change
   from both. The version bump keeps its own commit regardless; see "A Version
-  Bump Is Its Own Commit, at the Top of the Branch".
+  Bump Is Its Own Commit, at the Top of the Branch". A fix for a shipped bug
+  is never one of the two; see "A Fix for a Shipped Bug Stands Alone".
 - **Make it a new commit** when it stands on its own: a different change for a
   different reason, one that would still make sense if the earlier commit were
   reverted.
@@ -85,6 +86,51 @@ reason to leave a bad message standing. **A branch someone else also pushes to
 or builds on is different**: rewriting what is already on its remote breaks
 their copy, so ask before touching any commit that is there. When you cannot
 tell which kind the branch is, ask once.
+
+## A Fix for a Shipped Bug Stands Alone
+
+**A fix for a bug that reached the default branch or a release is its own
+commit, and nothing is ever squashed into it or it into anything** - not a
+feature, not a refactor, not another fix. It must revert on its own,
+cherry-pick to a release branch without dragging anything along, and be the
+one commit a bisect lands on. Check where the bug came from before the first
+line of the fix: `git merge-base --is-ancestor <introducing-sha>
+<default-branch>` exits 0 when it shipped - against the remote copy of the
+default branch whenever the repo has a remote.
+
+- **One bug per commit.** No cleanup, no refactor, no second fix, no test
+  for anything else.
+- **The smallest diff that removes the root cause**, not one that hides the
+  symptom.
+- **The test that fails without the fix lands in the same commit.**
+- **Before names the trigger, the symptom and the root cause. Why says why
+  this is the root and not the symptom, and how it was verified.**
+- **A `Fixes: <sha> ("<subject>")` footer names the commit that introduced
+  the bug**, when it can be found.
+
+**A bug introduced earlier on this unmerged branch is not a shipped-bug
+fix.** It never ran anywhere, so its fix squashes into the commit that
+introduced it, as the first bullet of "Squash or New Commit" says. A
+follow-up to a shipped-bug fix while that fix is still unmerged squashes
+into the fix the same way.
+
+The case that taught it: one fix commit to a shipped hook carried a second,
+unrelated selftest with it.
+
+```
+❌ fix(gate): expand a bare ~ in the scratch exemption
+   Change: a leading bare ~ is expanded for the scratch exemption only ...
+   A selftest case pins the denial of an unpinned kubectl that passes an
+   empty kubeconfig.
+
+✅ fix(gate): expand a bare ~ in the scratch exemption
+   Change: a leading bare ~ is expanded for the scratch exemption only ...
+   Fixes: <sha> ("<subject of the commit that added the exemption>")
+✅ test(gate): deny an unpinned kubectl with an empty kubeconfig
+```
+
+Reverting the ❌ commit to undo a bad `~` expansion also drops a guard
+nobody meant to touch.
 
 ## Branch Names
 

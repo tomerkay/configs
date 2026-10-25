@@ -87,6 +87,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/question-shape.py\""
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {

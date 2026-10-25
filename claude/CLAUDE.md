@@ -309,7 +309,7 @@ not a plan I approved, not my yes to the previous one:
 1. **My message says, in plain words, that you may run that command this
    time** - "push it, I allow you this time", "go ahead and merge !42",
    "uninstall that release", "yes, use `--reuse-values`", "post it". My answer
-   to your ⚠️ question naming that command counts. There is no token for it.
+   to your ❓ question naming that command counts. There is no token for it.
    It covers the command it names, in the message it is in: not the next one,
    not a `--force` I did not mention, not a different MR, release, thread or
    message. Anything short of that is a request to prepare it: say it is ready
@@ -346,7 +346,7 @@ same switch by another route, and its registration in the repo's `.git` keeps
 that branch undeletable after the session is gone.
 
 **If you think the work does not belong on the current branch**, say why in
-one sentence and end the reply with the ⚠️ question whether to check out a new
+one sentence and end the reply with the ❓ question whether to check out a new
 branch for it. The work waits for my answer.
 
 **When I ask for a new branch, you name it.** Pick the name by the `tkay-code`
@@ -560,33 +560,141 @@ showing me, a TL;DR you are about to post yourself, an illustrative snippet of m
 own code. Bracketing those buries the real ones. Two blocks I am meant to copy get
 two bracketed blocks, never one bracket around both.
 
-# EVERY QUESTION THAT STOPS THE REPLY OPENS WITH ⚠️
+# EVERY QUESTION THAT STOPS THE REPLY OPENS WITH ❓
 
 **A reply that stops because the next step is gated on my answer ends with
-the question, one dedicated line per decision, each opening with ⚠️.** The
+the questions, one dedicated line per decision, each opening with
+`❓ Q<n>`.** The
 test is the stop: a tool call or a change you would make the moment I reply
 and cannot make before. A question you could settle by reading the code is
 settled, not asked. A question you would proceed past under an assumption is
 stated as the assumption, in prose, and the reply goes on. Anything else is
-not a ⚠️.
+not a ❓.
+
+**Questions are numbered Q1, Q2, Q3 afresh in each reply**, so I answer one
+by its number; the Q keeps it apart from the labels of the open-issues tree.
+When a question rests on material above it - a diff, a doubt, a risk, the
+steps it would take - that part of the reply is headed `Q<n>. <the decision>`
+with the same number, and the shared number is the whole reference: the
+question line never says "see above". Those numbered parts are the
+elaboration; no separate section repeats them.
 
 The shape is mine, so it binds every stop whoever told you to stop: a rule
 in this file, a `tkay-*` or team skill, a repo's `CLAUDE.md`, or your own
 judgement that a step needs my sign-off. A skill that says "ask" and nothing
 about shape gets this shape. A skill or repo that prescribes its
-own shape for a question wins on the parts it prescribes; the ⚠️ marker and
+own shape for a question wins on the parts it prescribes; the ❓ marker and
 the end-of-reply position still apply wherever that shape does not contradict
 them.
 
-The line is `⚠️ **<the decision>**: <what you propose or need>. <the
+The line is `❓ Q<n> **<the decision>**: <what you propose or need>. <the
 question>?` Never a clause inside a paragraph, where I cannot see that the
 reply stopped for it. Everything that does not depend on the answer is done
 above the lines, and what does waits.
 
-When the decision is a proposal of yours, its verdict follows the decision
-as a tag, the mark and the percentage only: `⚠️ **<the decision>** [✅ 85%]:`.
+**The question line is the cleanest line in the reply.** The decision in a
+few plain words, then a question I answer with yes, no or a pick - nothing
+else. How the change would be carried out - the branch, the order of steps,
+a test to run first, a file, a flag, a version - lives in its `Q<n>` part
+above, never on the line.
 
-**A reply ends with at most one ⚠️ block.** Its lines are independent
+```
+❌ ❓ Q1 **Drop Unique Labels from multi-alert posts** [✅ CONFIDENT]: apply
+   the diff above on a new tkay/... branch, then render both post shapes
+   with amtool 0.32.1 before the commit. Do you want this change?
+✅ ❓ Q1 **Drop Unique Labels from multi-alert posts** [✅ CONFIDENT]: make
+   this change?
+```
+
+When the decision is a proposal of yours, its verdict follows the decision
+as a tag, the mark and the confidence level only, and its size, difficulty,
+Why Yes and Why Not nest under the line:
+
+```
+❓ Q1 **<the decision>** [✅ LIKELY]: <what you propose>. <the question>?
+  - **Size:** small · **Difficulty:** easy
+  - 👍 **Why Yes?**
+    - <an advantage of making the change>
+  - 👎 **Why Not?**
+    - <a drawback, a cost or a risk of making it>
+```
+
+**A ❓ whose yes changes something - a mutation, or a draft that lands in a
+file or a message - is a proposal, whatever its wording** - "is that the
+line you want?", "does this split work for you?", "keep it this way?".
+Phrasing it as a preference question never drops the tag or what nests
+under it. **A ❓ whose yes changes nothing - a fact you need, a pick
+between two reads - is not one and carries no tag**, even when you lean
+one way. The case that taught the first half, a commit rule drafted for my
+sign-off:
+
+```
+❌ ❓ Q1 **Split bug fixes into shipped and in-branch**: is that the line
+   you want, instead of "bug-fix commits are never squashed"?
+✅ ❓ Q1 **Split bug fixes into shipped and in-branch** [✅ CONFIDENT]: is
+   that the line you want?
+     - **Size:** small · **Difficulty:** easy
+     - 👍 **Why Yes?**
+       - a shipped fix reverts and backports alone
+     - 👎 **Why Not?**
+       - a squash-on-merge repo erases the separate commit anyway
+```
+
+They are list items, never bare indented lines: markdown folds an indented
+line under a paragraph into that paragraph, and every point runs together on
+the ❓ line. **A blank line goes between two ❓ lines**, or the second folds
+into the last point of the first and the reply shows one question where it
+asked two. The case that taught it, two proposals in one block:
+
+```
+❌ ❓ Q1 **Refuse a deleting cell on update** [✅ CONFIDENT]: add it to
+   this branch?
+     - 👎 **Why Not?**
+       - it lands in an unrelated MR
+   ❓ Q2 **Scope the cell to its cluster** [✅ CONFIDENT]: fix it in a
+   separate MR?
+✅ ❓ Q1 **Refuse a deleting cell on update** [✅ CONFIDENT]: add it to
+   this branch?
+     - 👎 **Why Not?**
+       - it lands in an unrelated MR
+
+   ❓ Q2 **Scope the cell to its cluster** [✅ CONFIDENT]: fix it in a
+   separate MR?
+```
+
+**The question asks whether to make the change, even under ❌ DON'T**: yes
+always means "make it", and the tag carries your advice against it. A
+question that asks whether to leave the change out flips what yes means,
+and the ❌ tag on it reads as a double negative:
+
+```
+❌ ❓ Q3 **Validate the cluster type on update** [❌ CONFIDENT]: leave it
+   out of this branch?
+✅ ❓ Q3 **Validate the cluster type on update** [❌ CONFIDENT]: add it to
+   this branch?
+```
+
+**A ❓ whose yes is hard to undo, or reaches past what we discussed, opens
+its decision with ⚠️** - another endpoint, a shared resource, someone
+else's cell, remote state, data git does not hold. Only a proposal carries
+it, since a yes that changes nothing cannot hurt, and its Why Not names
+what the ⚠️ is about. A ⚠️ on a line with no ❓ warns and stops nothing.
+The case that taught it, a pin change that freed nodes for one endpoint by
+shrinking another:
+
+```
+❌ ❓ Q1 **Make room for the replay** [✅ LIKELY]: pin the second endpoint
+   down by 10 nodes?
+✅ ❓ Q1 ⚠️ **Make room for the replay** [✅ LIKELY]: pin the second
+   endpoint down by 10 nodes?
+     - **Size:** small · **Difficulty:** easy
+     - 👍 **Why Yes?**
+       - it frees the nodes the replay is waiting for
+     - 👎 **Why Not?**
+       - it changes a second endpoint of yours
+```
+
+**A reply ends with at most one ❓ block.** Its lines are independent
 decisions, ordered by what you would do first once answered. A decision
 whose answer changes the next question makes the block exactly one line, and
 every other question waits for a later reply.
@@ -599,8 +707,8 @@ staged-copy install and the handoff cleanup offer have their own wording,
 written where each lives, in this shape.
 
 Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
-note under a tmp file's path, which is information and stops nothing, and the
-harness's permission prompts, which are not chat.
+note under a tmp file's path, which keeps its ⚠️ because it warns and stops
+nothing, and the harness's permission prompts, which are not chat.
 
 # EVERY PROPOSAL OPENS WITH YOUR VERDICT ON IT
 
@@ -610,9 +718,9 @@ plan. I decide faster when I know what you think before I read it, and a
 proposal with no verdict reads as one you would defend.
 
 ```
-VERDICT: ✅ DO IT — 90% sure
-Size: medium · Difficulty: hard
-Doubt: <what the missing 10% rests on>
+VERDICT: ✅ DO IT — LIKELY
+**Size:** medium · **Difficulty:** hard
+Doubt: <what keeps it from VERIFIED>
 ```
 
 - **The verdict is one of three, never improvised**: ✅ DO IT, you would make
@@ -626,18 +734,54 @@ Doubt: <what the missing 10% rests on>
 - **Never a time estimate** - no minutes, hours or days, for a change, a part
   or a plan step. You cannot know how long the work takes, and the guess reads
   as a fact. Size and difficulty are what I get instead.
-- **The percentage is how sure you are that the change is right and does what
-  it claims**, not how sure you are that I will agree. Anything below 100 is
-  followed by a `Doubt:` line naming what the rest rests on: an inference you
-  could not check, a behaviour you have not seen run.
+- **The confidence level is how sure you are that the change is right and
+  does what it claims**, not how sure you are that I will agree. One of four,
+  each defined by what backs it: VERIFIED, you ran it or tested the exact
+  behaviour; CONFIDENT, not run, but you traced every step in the code or the
+  docs; LIKELY, one unchecked inference carries it; 50-50, more than one
+  unchecked inference, or you do not know. Below 50-50 the verdict is ❌
+  DON'T. Anything short of VERIFIED is followed by a `Doubt:` line naming
+  what keeps it from VERIFIED: an inference you could not check, a behaviour
+  you have not seen run.
+- **Every proposal carries Why Yes and Why Not, and they are the part I
+  read most**, so they hold the real case and nothing else. Why Yes is the
+  advantages of making the change; Why Not is its drawbacks, costs and
+  risks. Both are about the change, never about your verdict: under ❌
+  DON'T, Why Yes holds the case you argue against.
+  - **Nothing real is left out.** Every advantage and every drawback that
+    could change my answer or how the change is done is there: what it
+    breaks, costs, rules out or locks in, and a gain the proposal does not
+    already state. A missing drawback costs me more than a long list.
+  - **Nothing else goes in.** Never a restatement of the change, a
+    drawback dismissed in the same line, or a cost true of every change -
+    "the old behaviour stays until it is installed" is one, and earns no
+    line.
+  - **Each point is one short clause**, and a list holds as many points as
+    the case has. How the risk plays out, when it bites or what undoes it
+    belongs in the proposal above, never in the point. The case that
+    taught it:
+
+    ```
+    ❌ - The hook goes live in every open session the moment it's copied.
+         Any regression would show up there before the live tests run, and
+         git restore is the fallback.
+    ✅ - The hook goes live in every session the moment it's copied.
+    ```
+
+  - No list is padded to match the other: one with no such point says
+    "none", and an empty Why Not adds what you checked. A proposal no ❓
+    line asks for carries them under its VERDICT block, in the shape
+    "EVERY QUESTION THAT STOPS THE REPLY OPENS WITH ❓" gives.
 - **A claim you could not test is UNVERIFIED and says so**, with the Cost,
   Sure without it and Sure with it lines the `tkay-code` review standard
   defines. A test you can run yourself is run before the verdict, not listed.
 - **Independent parts get a verdict each.** One verdict over parts you rate
   differently hides the weak one.
-- **The ⚠️ line that asks for it carries the verdict as a tag**, so I see it
-  where I answer. Everything else - the verdict word, the doubt, the parts -
-  stays in the proposal above it.
+- **The ❓ line that asks for it carries the verdict as a tag, with size,
+  difficulty, Why Yes and Why Not under it**, so I see them where I answer,
+  and the VERDICT block above drops its whole Size and Difficulty line - no
+  half of it stays behind. Everything else - the
+  verdict word, the doubt, the parts - stays in the proposal above it.
 - **A code review keeps its own verdicts.** A fix shown under a finding
   carries that finding's tags, not a second verdict from this section.
 
@@ -691,7 +835,7 @@ clarification, another round on it - the reply has no tree.
 - **A branch whose items are all decided collapses** into one ✅ line, and the
   tree stops appearing once nothing in it is open.
 - **It is navigation, not a recap.** No reasoning, no repeated findings, no
-  question text: the questions still end the reply as ⚠️ lines. A code review
+  question text: the questions still end the reply as ❓ lines. A code review
   in the same reply keeps its own shape below the tree.
 
 # CODE RULES THAT ARE ALWAYS IN FORCE
@@ -855,8 +999,8 @@ included.
   to a `tkay-*` skill is made on a copy under `~/.cache/claude-handoff`,
   reviewed there, and reaches `~/.claude` only after one question from
   you: show me the diff and the verdict, then end the reply with the
-  ⚠️ question naming the file -
-  "⚠️ Install it into `<file>` and commit?" - and on my yes run the `cp`
+  ❓ question naming the file -
+  "❓ Q<n> Install it into `<file>` and commit?" - and on my yes run the `cp`
   and the commit yourself, as plain commands with the sandbox off - it
   denies this file and the skills directory, and gpg cannot sign inside
   it. Never hand me the `cp` to paste: the question is the safeguard, and
@@ -904,8 +1048,8 @@ next, which is exactly how that state arises.
    put every case the change is about through the copy before the live file
    is touched.
 3. **Ask once, then install it in one step.** Show me the diff and the
-   verdict, then end the reply with the ⚠️ question naming
-   the hook - "⚠️ Install it into `<file>` and commit?". On my yes, one `cp`
+   verdict, then end the reply with the ❓ question naming
+   the hook - "❓ Q<n> Install it into `<file>` and commit?". On my yes, one `cp`
    of the tested copy over the live file, run with the sandbox off because
    the sandbox denies the hooks directory, and passed by the `cp` allow rule
    in `settings.json`; then the same tests against the live file, then the
@@ -1044,7 +1188,7 @@ I decide whether it moves there before the directory goes.
 **Other sessions' directories are not yours.** Never list them, never say what
 they hold, never offer to delete them.
 
-**The offer is a ⚠️ question**, so it is the last thing in the reply. It
+**The offer is a ❓ question**, so it is the last thing in the reply. It
 comes only once the work leaves nothing open: while a leftover of it, a
 pending step or a drawback still waits on me, the reply carries those and the
 offer waits for a later one. An item I have answered - accepted, waved off,
