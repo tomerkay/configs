@@ -47,7 +47,8 @@ REVIEW_MODEL='haiku'
 REVIEW_SYSTEM_PROMPT='Unattended pre-commit review of a diff for a public dotfiles repo. An added line is UNSAFE if it holds a credential (key, token, password, private key, webhook URL), a non-public hostname or IP, a cluster, context, node or namespace name, or a personal e-mail address. The owner handle, work e-mail, employer name (Atero, in any form or role: `atero` as a word, a namespace, a label prefix or a repo name is public), GPG fingerprint, home-directory paths, test fixtures and placeholders such as <ctx>, $NS or C0OTHER are fine; flag only values that are evidently real. Reply with one line per finding (file, the added line, why), then a final line that is exactly CLEAN or UNSAFE. Nothing after the verdict.'
 
 push=true
-message="chore: sync configs from $(hostname -s)"
+message=""
+named=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-push) push=false; shift ;;
@@ -55,9 +56,23 @@ while [ $# -gt 0 ]; do
             [ -n "${2:-}" ] || { echo "-m needs a message" >&2; exit 2; }
             message="$2"
             shift 2 ;;
-        *) echo "unknown argument: $1" >&2; exit 2 ;;
+        -*) echo "unknown argument: $1" >&2; exit 2 ;;
+        *) named+=("$1"); shift ;;
     esac
 done
+
+# macOS ships bash 3.2, where expanding an empty array under set -u is an
+# unbound-variable error, so named is expanded only once it is known non-empty.
+if [ -n "$message" ]; then
+    [ "${#named[@]}" -gt 0 ] || { echo "-m needs the home files its message covers" >&2; exit 2; }
+    for f in "${named[@]}"; do
+        printf '%s\n' "${HOME_FILES[@]}" | grep -qxF -- "$f" \
+            || { echo "not a synced home file: $f" >&2; exit 2; }
+    done
+elif [ "${#named[@]}" -gt 0 ]; then
+    echo "home files are named only with -m" >&2
+    exit 2
+fi
 
 # The script appends to the log itself so a manual run is recorded like a
 # scheduled one; launchd captures only stderr, for failures nothing here logged.
@@ -165,13 +180,51 @@ fi
 
 cd "$REPO"
 
-if [ -z "$(git status --porcelain)" ]; then
-    log "no changes"
-else
-    git add -A
+# A run refused after staging leaves its files in the index, and the next
+# commit would carry them under a message that does not describe them.
+git reset -q
+
+pending_home="$(git status --porcelain -- home | cut -c4- | sed 's|^home/||')"
+
+# A home file is committed only by an -m run that names it, so every dotfile
+# change reaches history with its reason. The claude/ mirror carries none of
+# its own: each change there was already committed with one in ~/.claude.
+if [ -n "$message" ]; then
+    uncovered="$(printf '%s\n' "$pending_home" \
+        | grep -vxF -f <(printf '%s\n' "${named[@]}") || true)"
+    if [ -n "$uncovered" ]; then
+        log "pending home files the message does not cover, nothing committed:"
+        printf '%s\n' "$uncovered" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+    for f in "${named[@]}"; do
+        git add -- "home/$f"
+    done
+    if git diff --cached --quiet; then
+        log "no change in the named files to commit (a change inside a private block is stripped)"
+        exit 0
+    fi
     review_staged
     git commit -q -m "$message"
     log "committed $(git rev-parse --short HEAD)"
+else
+    if [ -n "$pending_home" ]; then
+        log "home files waiting for an -m run:"
+        printf '%s\n' "$pending_home" | tee -a "$LOG_FILE"
+    fi
+    pending_repo="$(git status --porcelain -- . ':!home' ':!claude' | cut -c4-)"
+    if [ -n "$pending_repo" ]; then
+        log "repo files waiting for a commit by hand:"
+        printf '%s\n' "$pending_repo" | tee -a "$LOG_FILE"
+    fi
+    git add -A -- claude
+    if git diff --cached --quiet; then
+        log "no changes"
+    else
+        review_staged
+        git commit -q -m "chore: sync claude config from $(hostname -s)"
+        log "committed $(git rev-parse --short HEAD)"
+    fi
 fi
 
 # Checked separately from the commit above: a commit left behind by --no-push,

@@ -19,9 +19,19 @@ Restore by copying a file back to the matching path.
 has Claude review the staged diff, commits and pushes. It holds the list of home
 files it syncs. The Claude files are whatever the `~/.claude` git repo tracks,
 so that repo's `.gitignore` allowlist decides them. Pass `--no-push` to leave
-the commit local, and `-m <message>` to commit with that message instead of the
-generic sync one, so a change made by hand keeps its reason. The commit takes
-every change the run finds, so the message must cover all of them.
+the commit local.
+
+A dotfile change is committed only by a run that gives its reason:
+
+```
+bin/sync-configs.sh --no-push -m "<message>" .zshrc .tmux.conf
+```
+
+That run commits exactly the home files it names, and refuses to commit if any
+other home file has a pending change, since the message does not describe it. A
+run without `-m` commits only `claude/`, whose changes already carry their
+reasons in the `~/.claude` history. It logs the home files still waiting for an
+`-m` run, and any other file in this repo with a change nobody has committed.
 
 Every run, scheduled or manual, appends to `sync-configs.log` in this directory,
 which is gitignored. `bin/install-launchd.sh` registers the script with launchd
