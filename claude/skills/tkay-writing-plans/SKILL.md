@@ -24,16 +24,54 @@ Structure:
    code would mix up go here first: two layers with similar names, a count that has
    two sources, a word the codebase uses loosely.
 3. One section per problem, with the evidence for it
-4. The fix, opening with the known architecture it follows - see below
-5. **Known incidents** - see below
-6. The commits
-7. **Questions and answers** - see below
-8. **TBD** - see below
-9. **A divider, then reference material** - how to reproduce the numbers, decisions
-   already settled, branch state, things found but not chased
+4. **The contract: the API, the constraints and invariants, the black-box tests** -
+   the most important section of the plan, see below
+5. The fix, opening with the known architecture it follows, and saying what an
+   auditor would find in it and how it survives a failure - see below
+6. **Known incidents** - see below
+7. The commits
+8. **Questions and answers** - see below
+9. **TBD** - see below
+10. **A divider, then reference material** - how to reproduce the numbers, decisions
+    already settled, branch state, things found but not chased
 
 Anything I would read once goes below the divider. Say at the top which sections are the
 plan and which are reference, so I know where to stop.
+
+## The contract is the most important section
+
+**The API, the constraints and invariants, and the black-box tests are the
+component's interface: what it stands for to everyone outside it.** A reader who
+reads only this section knows what the component promises and why they can rely on
+it, whatever the code inside looks like. Everything else in the plan is how that
+promise is kept. It is never folded into the fix, never below the divider, and
+never left for the code to tell.
+
+Three parts, each its own subsection:
+
+- **The API**: every way in and out that someone outside depends on - an
+  endpoint, a function, a CLI, a CRD, a message, a metric another team alerts on.
+  For each, its inputs, its outputs and its errors. What this plan adds, changes
+  or removes is marked as such, and a breaking change is named as breaking.
+- **Constraints and invariants**: what is always true, stated as a property, never
+  as one example - "at most one replica writes the scaling decision", "a request
+  never reaches a pod outside its cell", "every failure reason is counted from
+  zero". Constraints sit beside them: limits, ordering, idempotency, timing bounds.
+  Each one names what enforces it - a type, a check at the boundary, a test.
+- **The black-box tests**: the tests that pin the contract through the public
+  interface alone - an input, and what a caller observes. Every API behaviour and
+  every invariant names the test that pins it, by a name that states the
+  behaviour. One with no test is written as unpinned, never left silent. They
+  cover the failures the API promises, not only its happy behaviours. How a test
+  reaches a failure path - a fake that fails at the boundary, a failpoint compiled
+  out of production, faults at the network or process level, deterministic
+  simulation - depends on the language and the component, so the plan lays out
+  the ones that fit, with their cost here, and the choice is mine.
+
+**The contract is written and agreed before the internals.** A design that cannot
+state its invariants is not ready to be designed further, and the tests can be
+written from this section before any code exists. Once agreed, a change to it is
+a decision like any other (see "Executing a plan").
 
 ## Start from a known architecture
 
@@ -78,6 +116,79 @@ Once it is chosen, the plan carries it:
   this one skips.
 - **The same holds for a decision taken while implementing** (see "Executing a
   plan"): a fix that changes the design names the known design it moves toward.
+
+## Check security
+
+**Read the design as an outside auditor would, writing a report about the company.**
+Anything they could write down that makes us look careless is a finding, whether or
+not anyone has exploited it. Ask these of the design and of the component it lands
+in, and write each answer into the fix - "not exposed, because <reason>" included:
+
+- **Does anything cross a network in plaintext?** HTTP where HTTPS exists, an
+  insecure gRPC channel, TLS verification switched off. Inside the cluster counts
+  too.
+- **Where does each secret live, and can it leak?** It comes from a secret store at
+  run time, never from source, a values file, an image layer, a URL, a log line or
+  a metric label.
+- **Does customer data go where the customer did not send it?** Prompts,
+  completions, request bodies or user identifiers in logs, traces, metrics or a
+  third-party service.
+- **Can one tenant reach another?** A shared cache, queue, volume or namespace, or a
+  lookup keyed on something the caller controls.
+- **Who can reach each endpoint, and how is it authenticated?** An admin, debug or
+  metrics endpoint exposed past its users, a default credential, a firewall rule
+  open to the world, a LoadBalancer where a ClusterIP would do.
+- **Does it run with more than it needs?** Root in the container, privileged, host
+  network, a wildcard RBAC rule, a cloud role broader than its one job.
+- **Can input reach a shell, a query or a path?** A command, SQL or file path built
+  from anything the caller sends.
+- **Is what it pulls in trusted?** An unpinned image or dependency, a `curl | sh`, a
+  dependency with a known CVE, home-grown crypto.
+
+Closing an exposure the report would name is part of the fix, not extra scope.
+
+## Check high availability
+
+**Read the design as the on-call engineer would on the night a piece of it dies.**
+A plan that says nothing about failure reads as one that never asked. Ask these of
+the design and of the component it lands in, and write each answer into the fix -
+"not needed, because <reason>" included:
+
+- **What happens when one replica, pod or node dies?** Whether the work stops,
+  slows down or carries on elsewhere, and what brings it back.
+- **Is there a single point of failure?** One replica, one node, one zone, or one
+  dependency every request goes through.
+- **What happens when a dependency is down or slow** - the database, the API it
+  calls, the cluster it reads? Whether the component fails, serves stale data or
+  hangs.
+- **Is the state safe when a process dies mid-step?** Whether a restart redoes the
+  step safely or finds a half-done write.
+- **Does a rollout or a node drain keep it serving?** More than one replica, a
+  PodDisruptionBudget, readiness that gates traffic.
+
+### A leader for work that must run once
+
+**Replicas give availability; a leader keeps work that must run once from running
+on every replica.** A reconcile loop, a scaling decision, a scheduled job, anything
+that writes shared state from a loop: give it more than one replica and every
+replica acts. Kubernetes runs its own controller manager and scheduler this way -
+one instance holds a [Lease](https://kubernetes.io/docs/concepts/architecture/leases/)
+and acts, the others stand by. Wherever the design has such work, the plan says:
+
+- **Which mechanism elects the leader**: a Lease through client-go's
+  [leaderelection](https://pkg.go.dev/k8s.io/client-go/tools/leaderelection) or
+  its equivalent in the component's language, never a hand-made lock.
+- **What happens when two replicas both act as leader.** Election is not fencing:
+  client-go's own docs say it "does not guarantee that only one client is acting
+  as a leader", and a paused process can wake up still believing it leads. The
+  writes are idempotent, carry a [fencing
+  token](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+  the store checks, or the leader stops acting the moment it loses the lease.
+- **How long the work stands still when the leader dies**, named by the setting
+  that bounds it - the lease duration - and whether that gap is acceptable.
+- **When one replica is enough**: the work tolerates the gap a restart leaves.
+  Then say so and leave the election out - it is a mechanism to justify like any
+  other.
 
 ## Known incidents, each with a status
 
@@ -131,6 +242,8 @@ Not a pile of edits. One section per commit, each independently correct and leav
 tests passing - so any prefix of the list is correct on its own. Where the repo requires a
 version bump, the bump is the last commit and the one that releases. For each one:
 the subject line, the files, the tests, and **what the commit body has to say**.
+Each black-box test of the contract lands in the commit that delivers the behaviour
+it pins, so no prefix of the list claims a promise nothing tests.
 
 Call out whatever a commit touches that is easy to miss: a doc whose wording it
 invalidates, a rule it deliberately reverses, a config list it has to join.
@@ -231,7 +344,8 @@ handle the same case first, and anchor each option in one where one fits, as "St
 from a known architecture" says.
 
 That stop is for what needs a discussion: a flaw in the design, a fix that changes how
-components interact, adds state or a read, or reverses a decision the plan settled.
+components interact, adds state or a read, changes the contract, or reverses a
+decision the plan settled.
 A bug you can fix inside the agreed design - a wrong comparator, a missed condition, an
 off-by-one - in the code this plan's commits write is not a stop: fix it and name it in
 your next message. A bug in code the plan does not touch is a finding: report it, do not

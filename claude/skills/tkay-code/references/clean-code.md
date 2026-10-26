@@ -378,6 +378,12 @@ it wrong ships the bug.
 - **One fact per name.** Two facts are two names. A compound condition
   that readers need goes into its own named state, never into the belly of
   one of the facts it is built from.
+- **One record, one fact.** A row, a file or a flag whose mere presence is
+  read as a fact follows the same rule. A row written for one reason - to
+  carry a status - cannot also stand as proof of another - that some step
+  happened - because the code that writes it for the first reason knows
+  nothing of the reader relying on the second. Read each fact from the
+  record that only that fact writes.
 - **A state is named for what it means, not for what causes it.** `frozen`
   means "held as it is this pass"; why it is frozen is decided once, where
   it is set, and the readers act on the state alone. The next cause is one
@@ -390,6 +396,13 @@ it wrong ships the bug.
   log key or a status word must be literally true for every case that
   produces it. A `cluster_unread` count that also counts reads of something
   else on a cluster that was read is false data on a dashboard.
+- **A word that sounds final is written only when the state is final.**
+  `failed`, `done`, `deleted`, `succeeded` tell every reader the state will
+  never change again, and readers act on it: stop retrying, alert, clean
+  up, tell the customer. A state that can still move gets a word that says
+  so - `retrying`, `pending`, `attempt_failed` - and the final word is
+  written once, by the one place that decides nothing else can happen. A
+  transition out of a final state is the sign the word was written early.
 - **One word, one meaning, everywhere.** The code, its comments, the docs,
   the metrics and the chat use the codebase's word for a thing. A new
   synonym in a doc or a review ("dark" for what the code calls "serves no
@@ -442,6 +455,31 @@ SkipClusterUnread = "cluster_unread" // ❌ also counted a deploy check that fai
 SkipFrozen        = "frozen"         // ✅ says what the endpoint is, whatever made it so
 ```
 
+**The same flaw in a row.** The loop held its first split of an endpoint
+while a deploy ran, and took "the endpoint has no target row" to mean "it
+was never split". But a pass that skips an endpoint still writes that row,
+to carry the endpoint's status, so after one skipped pass the next one
+split it in the middle of the deploy:
+
+```go
+// ❌ the target row is also written by a pass that splits nothing
+_, exists := targets[id]
+if !exists && deployInFlight(e) {
+	waitForTheDeploy(e)
+}
+```
+
+Only a split writes a deployment's share row, so the share rows are the
+record of that one fact:
+
+```go
+// ✅ "never split" read from the record only a split writes
+neverSplit := !slices.ContainsFunc(e.members, func(d *member) bool { return d.hasShareRow })
+if neverSplit && deployInFlight(e) {
+	waitForTheDeploy(e)
+}
+```
+
 ---
 
 # EVERY BAD PATH IS COUNTED, THEN LOGGED
@@ -462,6 +500,15 @@ counter is what lets someone write the alert the day it matters.
   model name, whatever identifies the thing that went wrong). Metric first, so
   the count survives a logging failure. A bad path with no metric is invisible
   to an alert; one with no log is undebuggable when the alert fires.
+- **What a transaction did is counted after it commits.** Inside the
+  transaction, collect the outcomes; once it commits, count and log them. A
+  counter bumped inside a transaction that a later write rolls back counts
+  an event that never happened, and the retry counts it again, so one
+  failure reads as two on the dashboard and in the log.
+- **Only what a write changed is counted.** A write guarded by a state
+  (`WHERE status = 'pending'`) reports whether it changed a row. Count the
+  outcome only when it did: a result thrown away with `_` counts every
+  attempt, including one that found the work already done.
 - **The happy path is counted per unit of work, not per step.** One counter at
   the level the service is judged on - a request, a validation, a job run -
   either total attempts or outcomes labelled by result. It is the denominator
@@ -486,6 +533,52 @@ counter is what lets someone write the alert the day it matters.
   cut - it is the signal at any volume. The log line is what gets raised: see
   the rate-limiting bullet in "OVER-ENGINEERING", raise it with me, build
   nothing.
+
+**Worked example.** One pass of a loop settled its verdicts and filed new
+requests in one transaction, counting each verdict as it settled it:
+
+```go
+// ❌ counted inside the transaction, and the "changed" result thrown away
+err := dbh.Transaction(func(tx *gorm.DB) error {
+	for _, v := range verdicts {
+		if _, err := settle(tx, v); err != nil {
+			return err
+		}
+		verdictsTotal.WithLabelValues(v.Status).Inc()
+		log.Warn().Str("verdict", v.Status).Msg("request failed")
+	}
+	return fileRequests(tx, requests) // fails: the verdicts roll back
+})
+```
+
+A request that failed to file rolled the pass back, the next pass settled
+the same verdict and counted it again, and the alert on failed verdicts
+saw two failures for one. The counting moves after the commit, and counts
+only a settle that changed a row:
+
+```go
+// ✅ collected inside, counted and logged once it commits
+var settled []Verdict
+err := dbh.Transaction(func(tx *gorm.DB) error {
+	for _, v := range verdicts {
+		changed, err := settle(tx, v)
+		if err != nil {
+			return err
+		}
+		if changed {
+			settled = append(settled, v)
+		}
+	}
+	return fileRequests(tx, requests)
+})
+if err != nil {
+	return err
+}
+for _, v := range settled {
+	verdictsTotal.WithLabelValues(v.Status).Inc()
+	log.Warn().Str("verdict", v.Status).Msg("request failed")
+}
+```
 
 ---
 
@@ -543,6 +636,72 @@ refactor that keeps it.
   called with these arguments, tests the wiring - it breaks on every refactor
   and passes through every bug.
 - **A bug fix carries the test that reproduces it**, red before the fix.
+
+## Black box by default: the code may pick the inputs, never the assertions
+
+- **A black-box test knows only the contract**: the public interface, what it
+  documents, and the invariants it promises. It could be written from the spec
+  before the code exists, and it survives every refactor that keeps the
+  contract. Every test starts as one.
+- **A white-box test knows the internals**: it asserts on private state, on
+  which internal calls ran, or on the path the code took. It breaks on a
+  refactor that keeps the behaviour, and it agrees with whatever the code does,
+  bug included.
+- **Reading the code to choose inputs is allowed.** A boundary the
+  implementation has, a branch no obvious input reaches, the input that hit
+  the bug: knowing the code finds them. The test still calls the public
+  interface and asserts what a caller observes.
+- **A behaviour no input from outside can reach means the unit is too big.**
+  Split that part into its own unit with its own public interface, and test it
+  black-box there - never by reaching inside the bigger one.
+- **The check, in a review: could the assertions be written from the contract
+  alone?** If they need the code to be written, the test is white-box.
+
+```python
+# ❌ white box: asserts how the window is stored
+assert validator._recent_results["pod-a"].maxlen == 5
+
+# ✅ black box: asserts what a caller observes
+for _ in range(6):
+    validator.record("pod-a", ValidationResult.FAILED)
+assert validator.failure_count("pod-a") == 5
+```
+
+## Reaching the failure paths: weigh it, then ask me
+
+A black-box test reaches only the paths its inputs reach, and against
+dependencies that never fail that is the happy path. How a test reaches the
+failure paths has no default: it depends on the language, the component and
+what it has to survive. Before writing the failure tests, weigh the options
+for the case in hand and raise it with me - what each would cost here and
+which you lean to. Once a component's way is settled - by its existing
+tests, its plan or my answer - follow it and do not raise it again. The ones
+known out there:
+
+- **A fake that fails, at the boundary.** The dependencies - store, HTTP
+  client, cluster client, clock - are injected, and the test's fake can be
+  told to fail one call: client-go's fake clientset with a reactor that
+  returns an error, respx for httpx, an in-memory store that fails the nth
+  write. The test stays black-box: the failure comes from outside, and the
+  assertion is what a caller observes. It costs a fake per dependency, and
+  it cannot express a crash between two of the component's own steps.
+- **Named failpoints compiled out of production.** A marker in the code that
+  a test build can make fail, panic or pause: fail-rs in Rust behind its
+  `failpoints` feature, pingcap/failpoint or gofail in Go, which rewrite the
+  markers into checks only for a test build. It reaches a crash or a pause
+  between two steps. The markers live in the production source, and Python
+  has no compile-out, so a hook there runs in production.
+- **Faults at the network or process level.** Toxiproxy between real
+  processes, Chaos Mesh on a cluster: latency, resets, a killed pod, a
+  partition. No code changes, and it tests the deployed whole - slowly, and
+  not on every commit.
+- **Deterministic simulation.** Network, disk and clock simulated, faults
+  injected from a seed, every failure replayable: FoundationDB, TigerBeetle,
+  turmoil for tokio. The strongest coverage for distributed logic, and an
+  investment in how the component is built.
+- **A test-only branch inside the logic** - an `if TESTING`, a private method
+  patched out - is the option to argue against: the code under test is no
+  longer the code that ships.
 
 **Banned, because they mirror the implementation instead of checking it:**
 - asserting a private attribute or an intermediate state
