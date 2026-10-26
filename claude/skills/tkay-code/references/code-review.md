@@ -331,6 +331,54 @@ locally and its findings come back in chat:
   review tool's commenting mode. Each of those runs only when my message
   asks for that one in plain words.
 
+### A repeat CR in the same session
+
+**A commit this session already reviewed keeps that review while its code is
+unchanged - even when I ask for the CR "from scratch".** Its code is
+unchanged when its tree and its parent's tree are the ones the earlier review
+saw: together they pin its diff and everything below it, so a fresh read has
+nothing new to find. Carry its section over as it was written, with one line
+naming the review it comes from, and spend the effort on what changed.
+Compare `git rev-parse <sha>^{tree} <sha>~1^{tree}` for each commit with the
+same for the commit in its place in the earlier closing table.
+
+- **The same SHA is carried as it is.**
+- **A new SHA over the same trees changed only commit messages** - a reword
+  of it or of a commit below it, a rebase that moved nothing else. Its code
+  review is carried; a message that changed is reviewed again, and its
+  findings and verdict follow the new message.
+- **A new tree is a new commit**: an amend that changed content, a fixup
+  folded into it or below it, a rebase onto a moved base. It gets a full
+  review, tests included, even when its own diff reads the same as before.
+- **Only a review still in the context is carried.** One that was
+  summarised away, or that came from another session, has lost the findings
+  it would carry; review that commit again.
+- **The outcome is judged afresh every time.** Each new or rewritten commit
+  is read against the carried ones, and a carried commit that a later change
+  breaks gets the finding. The branch summary, the closing table and the
+  leftovers table are rebuilt for the branch as it now stands.
+
+The case that taught it: a second CR of a five-commit branch, after a
+fixup was folded into the third commit and a sixth was added.
+
+```
+❌ every commit read again and every test rerun, for a branch where two
+   commits kept their SHAs
+✅ 1st, 2nd: carried from the first CR (same SHA)
+   3rd-5th: new trees from the autosquash, reviewed in full
+   6th: new, reviewed in full
+```
+
+And a third CR of the same branch, after a rebase that only reworded the
+second commit's message:
+
+```
+❌ 2nd-6th reviewed in full because every SHA from the 2nd up moved
+✅ 1st: carried (same SHA)
+   2nd: code carried (same trees), new message reviewed
+   3rd-6th: carried (same trees, same messages)
+```
+
 ### Review Process
 
 **DO:**
