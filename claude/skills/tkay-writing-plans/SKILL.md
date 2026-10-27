@@ -163,6 +163,11 @@ the design and of the component it lands in, and write each answer into the fix 
   hangs.
 - **Is the state safe when a process dies mid-step?** Whether a restart redoes the
   step safely or finds a half-done write.
+- **Does any result rest on two writes that cannot commit together?** Two
+  stores, or a row and a cluster object, behind one result. The plan splits
+  what need not hold together, puts what must into one transaction of one
+  store or records the intent and reconciles it across systems, and names
+  any rollback it cannot avoid.
 - **Does a rollout or a node drain keep it serving?** More than one replica, a
   PodDisruptionBudget, readiness that gates traffic.
 

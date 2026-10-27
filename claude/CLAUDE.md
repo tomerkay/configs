@@ -239,13 +239,11 @@ While the gate is open:
   own on top of it, and do not re-ask for something the mode already approved. The
   exceptions are not "confirmations": a cluster or namespace I did not name
   is asked about every time, and everything in "Some commands need my words
-  AND the prompt, every time" needs both, every time.
+  AND the prompt, every time" needs both, every time, one command at a time -
+  an open gate widens how often the token applies, never what it can unlock.
 - **You still print the `Implementing: <change> - files: <files>` line before every
   change.** That line is how I catch a misread, and an open session is exactly
   when I need it most.
-- **What needs my words does not move.** Everything in "Some commands need my
-  words AND the prompt, every time" stays one command at a time. An open gate
-  widens how often the token applies, never what it can unlock.
 - **An open gate is not a licence to invent work.** The gate decides whether you
   may act AT ALL. It says nothing about WHAT to act on, and it never has - that
   comes from what I asked for. A change we have not discussed gets proposed and
@@ -391,6 +389,7 @@ action of that kind.**
 | When I ask for, or you are about to do | Invoke |
 |---|---|
 | a code review / CR / "review my branch, my PR, my commits", or a CR I ask for on an MR or PR link | `tkay-code` |
+| write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | read a GitLab MR, its review threads or its CI through `glab` | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
 | write an MR or PR description | `tkay-code` |
@@ -459,10 +458,8 @@ in the plugin cache.
 
 # Instructions for you
 
-0) **NEVER IMPLEMENT ANYTHING UNTIL THE GATE IS OPEN.** See "THE LFG GATE" above.
-   The opening `LFG!` unlocks the whole session; it closes again only when I spend
-   it. While it is closed, if I ask you to implement in any other words, reply
-   exactly `YOU MUST WRITE "LFG!" for me to actually start implementing.` and stop.
+0) **NEVER IMPLEMENT ANYTHING UNTIL THE GATE IS OPEN.** "THE LFG GATE" above is
+   the rule, and "What you say when the gate is closed" is the exact reply.
 
 1) Don't be nice - if I ask the wrong questions be harsh and tell me why and where I am wrong. NEVER AGREE JUST TO BE NICE!!! THINK!!!
    **Pressure is not evidence - not even when I curse at you.** Swearing,
@@ -715,10 +712,9 @@ not. Both forms of a verdict, their calls and every field in them are the
 - **A claim you could not test is UNVERIFIED and says so**, with the Cost,
   Sure without it and Sure with it lines the `tkay-code` review standard
   defines.
-- **The ❓ line that asks for it carries the whole Full Verdict** nested
-  under it, none of it on the line itself, and no copy above. What the nest
-  cannot carry - the lean of a ⚖️ Close call, what you would do instead of a
-  ❌ Don't, a verdict per part - stays in the proposal above it.
+- **The Full Verdict nested under a ❓ line has no copy above it.** What the
+  nest cannot carry - the lean of a ⚖️ Close call, what you would do instead
+  of a ❌ Don't, a verdict per part - stays in the proposal above it.
 - **A fix shown under a review finding** carries that finding's tags, not a
   verdict.
 
@@ -779,10 +775,46 @@ clarification, another round on it - the reply has no tree.
 
 These apply to every line you write for me - code, chart, dashboard or doc - in
 every session, whether or not any skill is loaded, because "write some code" has
-no trigger phrase to catch. The clean code rules are imported here from the
-`tkay-code` skill, which owns them:
+no trigger phrase to catch. Each is one line here. The `tkay-code` skill owns the
+clean code rules in full, with the worked examples behind each one, in its
+`references/clean-code.md`: read it before the first line of code you write or
+change (see the skill router), and before deciding whether a comment, mechanism,
+default or config key is acceptable.
 
-@~/.claude/skills/tkay-code/references/clean-code.md
+- **Security:** read every change as an outside auditor would - plaintext on the
+  wire, a secret that can leak, customer data in logs, one tenant reaching
+  another, an endpoint open past its users, more privilege than the job needs,
+  input reaching a shell, query or path, a dependency nobody pinned.
+- **Comments:** only a WHY, a GOTCHA or a TODO with a ticket - never one that
+  restates the code, and never one that makes sense only after our conversation.
+- **Over-engineering:** the smallest change that fixes the actual problem. No
+  mechanism without the failure it prevents today, and effort in proportion to
+  the change. One you believe is needed is one sentence to me, never built
+  first.
+- **YAGNI:** no defensive code for a state the system rules out; validate at the
+  boundary only.
+- **One source of truth:** a value or a piece of logic lives in one place.
+  Binaries carry no config defaults, values.yaml holds only what is meant to
+  change, and a limit that can be lifted has a stated off value - never a huge
+  number, never `null`.
+- **One reason to change:** what changes together lives together, what changes
+  for different reasons lives apart, and one request reads from entry to exit.
+- **The plain version wins:** the code a reader follows on the first pass;
+  complexity for performance only with a measurement.
+- **A name means one thing, literally:** every name, label and state is true for
+  every case it covers, and a change in its meaning renames it.
+- **One result, all or nothing:** two writes behind one result commit together
+  or become two steps.
+- **Every bad path is counted, then logged:** a counter labelled by a reason
+  enum, every reason started at zero, incremented before the log line - and for
+  work inside a transaction, only once it commits.
+- **Parse at the boundary:** raw input becomes a typed value once, where it
+  enters.
+- **Asyncio:** every task has an owner, and nothing blocks the loop.
+- **Tests check the contract:** black box through the public interface, mocks
+  only at the boundary, and a bug fix carries the test that reproduces it. How a
+  test reaches the failure paths is raised with me before it is written.
+- **Enums over strings** for any fixed set of values.
 
 The docs half of the one-source-of-truth rule lives in the `tkay-writing-mds`
 skill.
@@ -870,6 +902,32 @@ namespace".
 A commit body that records where a change was verified is the one exception,
 for the same reason stale values are allowed there: it describes a frozen fact.
 
+## A staged change, installed on one question
+
+**A file that is live the moment it is saved is never edited in place** - this
+file, a `tkay-*` skill, a hook, a home file the sync publishes. The sections
+below name what each kind adds; the procedure itself is this one:
+
+1. **Stage it.** Copy the file into this session's handoff directory and make
+   every edit to the copy.
+2. **Review the staged diff with the `tkay-code` review standard**, in the
+   full shape that standard gives a one-commit branch: the FINDINGS line and
+   the commit's Full Verdict, both buckets, the branch summary, the closing
+   table and the leftovers table. The diff stands in for the commit; a Full
+   Verdict on its own is not a review. A MUST HAVE finding is fixed on the
+   staged copy before the question, not after it: the standard's "show the
+   fix and wait" does not apply here, because the question is my sign-off.
+3. **Ask once**: show the diff, the review and the commit message, written by
+   the `tkay-code` commit standard, then end the reply with "❓ Q<n> Install
+   it into `<file>` and commit?".
+4. **On my yes, install and commit it yourself**, as plain commands with the
+   sandbox off - it denies these paths, and gpg cannot sign inside it. Never
+   hand me the `cp` to paste while that route is open: the question is the
+   safeguard, and a paste is the same install with a round trip added.
+5. **If the install or the commit is refused**, confirm the staged copy still
+   exists, print the exact command for me as a `! <command>` and stop. Never
+   reach the same change by another route.
+
 ## My home files are published - private values go in the PRIVATE block
 
 **My dotfiles, this file, my Claude settings, my hooks and my `tkay-*` skills
@@ -920,15 +978,10 @@ its reason, in the turn it is made.** These are the `HOME_FILES` of
 files it covers commits them; a run without `-m` only logs them as waiting.
 Each is read by its tool the moment that tool starts - the shell rc files by
 every new shell, this session's included - so a broken one is live the moment
-it is saved:
+it is saved. It goes through "A staged change, installed on one question",
+and two things are its own:
 
-- **Edit a staged copy** under `~/.cache/claude-handoff`, never the live
-  file, and review its diff with the `tkay-code` review standard in the shape
-  "My Claude config is a git repo" gives a `~/.claude` change.
-- **Ask once**: show the diff, the review and the commit message, written by
-  the `tkay-code` commit standard, then end the reply with "❓ Q<n> Install it
-  into `<file>` and commit?".
-- **On my yes, one command with the sandbox off**: the `cp` over the live
+- **The install and the commit are one command**: the `cp` over the live
   file, then `sync-configs.sh --no-push -m "<message>" <file>...`, so no
   scheduled run commits the change first. Pushing is left to the next
   scheduled run.
@@ -954,29 +1007,10 @@ lists a file until a commit records that it is gone, and the sync stops on a
 tracked file that is missing at home and publishes nothing, dotfiles
 included.
 
-- **Edit a staged copy, never the live file.** A change to this file or
-  to a `tkay-*` skill is made on a copy under `~/.cache/claude-handoff`,
-  reviewed there, and reaches `~/.claude` only after one question from
-  you: show me the diff and the verdict, then end the reply with the
-  ❓ question naming the file -
-  "❓ Q<n> Install it into `<file>` and commit?" - and on my yes run the `cp`
-  and the commit yourself, as plain commands with the sandbox off - it
-  denies this file and the skills directory, and gpg cannot sign inside
-  it. Never hand me the `cp` to paste: the question is the safeguard, and
-  a paste is the same install with a round trip added. A hook has its own
-  install rule below.
-- **Review the diff with the `tkay-code` review standard** before committing,
-  in the full shape that standard gives a one-commit branch: the FINDINGS
-  line and the commit's Full Verdict, both buckets, the branch summary,
-  the closing table and the leftovers table. The diff on main stands in
-  for the commit; a Full Verdict on its own is not a review. A
-  MUST HAVE finding is fixed on the staged copy before the install
-  question, not after it: the standard's "show the fix and wait" does not
-  apply here, because that question is my sign-off.
-- **Commit with the `tkay-code` commit standard**, signed, deciding squash or
-  new commit like anywhere else.
-- **If the commit is refused**, print the exact command as a `! <command>`
-  suggestion and do not work around the refusal.
+- **A change to this file or to a `tkay-*` skill goes through "A staged
+  change, installed on one question"**, and its commit follows the
+  `tkay-code` commit standard, signed, deciding squash or new commit like
+  anywhere else. A hook adds its own steps below.
 - **A turn that changed anything in `~/.claude` ends with
   `git -C ~/.claude status --short` printing nothing.** Run it before the last message. Anything it
   lists is reviewed and committed before you reply, including a change you
@@ -1001,24 +1035,18 @@ command it touches, in every session, including the commands that would undo
 the edit. A permission layer can refuse one edit of a change and allow the
 next, which is exactly how that state arises.
 
-1. **Stage it.** Copy the hook into `~/.cache/claude-handoff` and make every
-   edit to the copy.
-2. **Test the staged copy.** Run its `--selftest` where it has one, and
-   put every case the change is about through the copy before the live file
-   is touched.
-3. **Ask once, then install it in one step.** Show me the diff and the
-   verdict, then end the reply with the ❓ question naming
-   the hook - "❓ Q<n> Install it into `<file>` and commit?". On my yes, one `cp`
-   of the tested copy over the live file, run with the sandbox off because
-   the sandbox denies the hooks directory, and passed by the `cp` allow rule
-   in `settings.json`; then the same tests against the live file, then the
-   commit. Never hand me the `cp` to paste while that route is open: the
-   question is the safeguard. A failure in the live tests is undone with
-   `git -C ~/.claude restore <file>` before anything else; when the broken
-   hook denies that, print it for me as a `! <command>` and stop.
-4. **If the install is refused**, confirm the staged copy still exists, print
-   the `cp` for me as a `! <command>` and stop. Never retry the install by
-   another route.
+It goes through "A staged change, installed on one question", with three
+steps of its own:
+
+- **Test the staged copy before the question.** Run its `--selftest` where it
+  has one, and put every case the change is about through the copy before
+  the live file is touched.
+- **Install it in one `cp`**, passed by the `cp` allow rule in
+  `settings.json`, then run the same tests against the live file before the
+  commit.
+- **A failure in the live tests is undone with `git -C ~/.claude restore
+  <file>` before anything else**; when the broken hook denies that, print it
+  for me as a `! <command>` and stop.
 
 **If a hook is already broken**, the first line of your reply says so, names
 what it now denies, and gives the `! git -C ~/.claude restore <file>` that
@@ -1031,9 +1059,8 @@ task, work out which of its steps this session cannot do itself:
 
 - a write the sandbox denies - its config, shown at session start, lists the
   protected paths, `~/.claude/hooks` and the settings among them; this file,
-  the `tkay-*` skills and the hooks are the exception, each installed by its
-  staged-copy rule in "My Claude config is a git repo" and "A hook is live
-  the moment it is saved";
+  the `tkay-*` skills, the hooks and the published home files are the
+  exception, each installed by "A staged change, installed on one question";
 - an edit auto mode refuses as self-modification - the settings, the
   permission rules, and a hook by any route other than the `cp` its install
   rule names;
@@ -1049,10 +1076,9 @@ task, work out which of its steps this session cannot do itself:
 
 Then say up front which steps are mine, do everything else first, and hand me
 the rest once, at the end, in the order it must run - one bracketed block per
-command. What I am to apply is staged under `~/.cache/claude-handoff`, not
-`/private/tmp/claude`, which can vanish mid-session; check it exists right
-before the handoff. When what you staged there is cleared is in "EVERY FILE
-YOU WRITE GOES UNDER ~/.cache/claude-handoff".
+command. What I am to apply is staged in the session's handoff directory -
+"EVERY FILE YOU WRITE GOES UNDER ~/.cache/claude-handoff" says why there and
+when it is cleared - and you check it exists right before the handoff.
 
 ## Blocked on me under a `/goal`
 
@@ -1227,7 +1253,16 @@ is owned by someone different:
 
 An allow rule in my settings only matters at layer 3: it skips the classifier
 or the prompt for what it names, never overrides a managed ask rule, and
-never silences the hook.
+never silences the hook. A rule matches a command prefix and nothing else,
+which is why the pin section demands verb-first, flat commands.
+
+**A read runs without a prompt** because the hook says nothing about it and
+the mode passes it: the read-only kubectl/helm verbs, and every MCP read tool
+under BOTH server-name forms the claude.ai connectors show up as, in every
+repo. A read that is denied, or prompts for a reason other than a managed ask
+rule, is a classifier gap, not a reason to ask: name the command the hook
+misread and the handler fix, and apply the fix once the gate is open. Never
+pre-empt a harness prompt by asking me in chat.
 
 **Sandbox network access is auto-approved on purpose.** My settings allow
 `SandboxNetworkAccess` and a `PermissionRequest` hook approves every request,
@@ -1398,19 +1433,6 @@ Everything else: do it. **If you are about to type a question that starts with
 "should I", "shall I" or "do you want me to" and the answer would be a read,
 delete the question and run the command.**
 
-Harness permission prompts are not this rule - the hook is. A read runs
-without a prompt because `tool-gate.py` says nothing about it and the mode
-passes it: the read-only kubectl/helm verbs, and every MCP read tool under
-BOTH server-name forms the claude.ai connectors show up as, in every repo.
-The managed policy's own `permissions.ask` rules still prompt, and they are
-not yours to change. A rule matches a command prefix and nothing else, which
-is why the pin section demands verb-first, flat commands - a loop or a `$VAR`
-prompts no matter what is allowlisted. If a read is denied, or prompts for a
-reason other than a managed ask rule, that is a classifier gap, not a reason
-to ask: name the command the hook misread and the handler fix, and apply the
-fix once the gate is open. Never pre-empt a harness prompt by asking me in
-chat.
-
 **A refused command does not mean access is gone.** A denied mutation can black
 out reads to the same host for a moment afterwards. Re-test with one cheap read
 before telling me you have lost the cluster - it clears on its own, and
@@ -1432,10 +1454,9 @@ investigation and the report lives in it and nowhere in this file.
 
 ## Posting
 
-"Alert investigation is ungated END TO END" in the gate section is the rule:
-the TL;DR goes into the thread I linked without a token and without asking.
-Post it, then give me the permalink to the post - the link only, never the
-text again.
+Post the TL;DR into the thread I linked, as "Alert investigation is ungated
+END TO END" allows, then give me the permalink to the post - the link only,
+never the text again.
 
 # Git Configuration
 

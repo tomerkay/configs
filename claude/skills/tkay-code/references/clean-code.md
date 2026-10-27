@@ -482,6 +482,80 @@ if neverSplit && deployInFlight(e) {
 
 ---
 
+# ONE RESULT, ALL OR NOTHING
+
+**A step that returns one result never leaves half of it done.** Two
+writes behind one result - two tables, a row and a cluster object, a row
+and a message - either commit together or are not one step. A caller that
+gets an error cannot tell which half landed, and every reader in between
+sees a state nobody meant to write.
+
+Ask of every pair of writes behind one result, in this order:
+
+- **Must they be true together?** When not, split them: each its own step,
+  its own error, its own counter, so one failing neither undoes nor blocks
+  the other.
+- **Same store?** Then one transaction, and nothing outside the store
+  inside it - no HTTP call, no cluster write, no message, no counter, no
+  log line. A rollback undoes the transaction's own writes, never a call
+  made from inside it.
+- **Different systems?** No transaction spans them, so one request never
+  writes both. Record the intent in one atomic write and let an idempotent
+  loop carry out the other side until it matches - the [reconcile
+  loop](https://kubernetes.io/docs/concepts/architecture/controller/)
+  Kubernetes is built on, or a [transactional
+  outbox](https://microservices.io/patterns/data/transactional-outbox.html)
+  for a message. A crash then leaves a pending record the loop picks up,
+  never an effect nobody recorded.
+- **A rollback is the last resort, not the plan.** Undoing the first write
+  when the second fails - by hand or as a
+  [saga](https://microservices.io/patterns/data/saga.html)'s compensation -
+  can itself fail, and the half state was visible until it ran. Design so
+  no step needs undoing; when one truly does, raise it with me.
+
+**Read before you write, and keep the read a step of its own where the step
+is retried.** A write that first reads whether its work is already done -
+the row settled, the object at the wanted spec - finds a repeat and skips
+it. The read alone is not the guard: two callers can both read "not done",
+so the write carries its own condition (`WHERE status = 'pending'`, a
+create that fails on an existing key) and the read only saves the attempt.
+Where something re-runs a failed step - a workflow engine, a queue that
+redelivers, a reconcile loop - the read and the write are separate steps,
+so a failed read retries alone and never re-runs a write. Temporal re-runs
+a whole Activity when any step in it fails, and suggests splitting it so
+only the failed step retries, at the cost of a longer event history
+([error handling](https://docs.temporal.io/develop/python/best-practices/error-handling),
+[Activities](https://docs.temporal.io/activities)).
+
+In a review, a function that makes two writes to two places and returns
+one error is a finding.
+
+**Worked example.** The verdict loop under "EVERY BAD PATH IS COUNTED,
+THEN LOGGED" settled verdicts and filed new requests in one transaction.
+A verdict is settled whether or not the next request files, and filing
+reads nothing the settle writes, so a request that failed to file rolled
+back verdicts with nothing wrong with them, and the next pass settled them
+again:
+
+```go
+// ❌ one result for two independent jobs
+err := dbh.Transaction(func(tx *gorm.DB) error {
+	if err := settleAll(tx, verdicts); err != nil {
+		return err
+	}
+	return fileRequests(tx, requests)
+})
+```
+
+```go
+// ✅ each job commits and fails on its own
+settleErr := dbh.Transaction(func(tx *gorm.DB) error { return settleAll(tx, verdicts) })
+fileErr := dbh.Transaction(func(tx *gorm.DB) error { return fileRequests(tx, requests) })
+return errors.Join(settleErr, fileErr)
+```
+
+---
+
 # EVERY BAD PATH IS COUNTED, THEN LOGGED
 
 A bad path I cannot alert on is one I find out about from a customer. The
@@ -572,6 +646,8 @@ err := dbh.Transaction(func(tx *gorm.DB) error {
 	return fileRequests(tx, requests)
 })
 if err != nil {
+	passRollbacksTotal.Inc()
+	log.Error().Err(err).Msg("verdict pass rolled back")
 	return err
 }
 for _, v := range settled {
@@ -579,6 +655,9 @@ for _, v := range settled {
 	log.Warn().Str("verdict", v.Status).Msg("request failed")
 }
 ```
+
+Counting after the commit fixes the count; two independent jobs sharing
+one transaction is a bug of its own - see "ONE RESULT, ALL OR NOTHING".
 
 ---
 
