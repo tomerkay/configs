@@ -134,7 +134,8 @@
     "pyright-lsp@claude-plugins-official": true,
     "plumber-claude@crusoe-plumber": true,
     "wrenchmark@wrenchmark": true,
-    "atero-skills@atero-skills": true
+    "atero-skills@atero-skills": true,
+    "kube-pods@crusoe": true
   },
   "extraKnownMarketplaces": {
     "crusoe-plumber": {
