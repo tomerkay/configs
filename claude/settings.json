@@ -33,7 +33,7 @@
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "opus",
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
@@ -135,7 +135,8 @@
     "plumber-claude@crusoe-plumber": true,
     "wrenchmark@wrenchmark": true,
     "atero-skills@atero-skills": true,
-    "kube-pods@crusoe": true
+    "kube-pods@crusoe": true,
+    "mcp-probe@mp-mcp": true
   },
   "extraKnownMarketplaces": {
     "crusoe-plumber": {
@@ -155,6 +156,12 @@
       "source": {
         "source": "git",
         "url": "https://gitlab.com/crusoeenergy/atero/wrenchmark.git"
+      }
+    },
+    "mp-mcp": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/tkay/.cache/claude-handoff/2026-10-22-cr-wrenchmark-pointer/mp-mcp"
       }
     }
   },
@@ -181,5 +188,12 @@
   },
   "tui": "default",
   "autoMemoryEnabled": false,
-  "skipWorkflowUsageWarning": true
+  "skipWorkflowUsageWarning": true,
+  "pluginConfigs": {
+    "mcp-probe@mp-mcp": {
+      "options": {
+        "login": "tkay@crusoe.ai"
+      }
+    }
+  }
 }

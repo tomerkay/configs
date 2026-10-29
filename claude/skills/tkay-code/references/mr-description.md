@@ -4,9 +4,9 @@
 here.** See "The repo's conventions win" in `SKILL.md`. Keep the spirit below
 inside its sections.
 
-**Pushing the branch and opening the MR are mine.** Never offer, suggest or
-do either unless I ask for it in so many words. A description is written
-only after I said yes to one.
+**Pushing the branch and opening the MR are mine.** Never offer or suggest
+either. Never run a push; open the MR only when I ask for it in so many
+words. A description is written only when I ask for one.
 
 ## Finding the MR
 
@@ -44,9 +44,9 @@ and a description written now describes work it does not have: stop and
 tell me the remote is behind HEAD. The push is mine, so it is not offered
 or asked about. Nothing is written until the remote tip matches HEAD.
 
-My yes to a description is the ask `references/gitlab.md` requires before a
-write to the MR, so do not ask again: show me the text and write it from a
-file with `glab mr update <iid> --description-file <file>` (`gh pr edit <n>
---body-file <file>` on GitHub). **An MR that already has a description is
-not overwritten without asking**: show me the current one next to the new one
-and let me choose. Finish with the MR link.
+My request for a description is the ask `references/gitlab.md` requires
+before a write to the MR, so do not ask again: show me the text and write
+it from a file with `glab mr update <iid> --description-file <file>`
+(`gh pr edit <n> --body-file <file>` on GitHub). **An MR that already has
+a description is not overwritten without asking**: show me the current one
+next to the new one and let me choose. Finish with the MR link.

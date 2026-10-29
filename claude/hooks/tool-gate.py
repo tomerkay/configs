@@ -16,11 +16,12 @@ from the gate state lfg-state.py records per session: a change to a git repo bef
 `LFG!` is denied with the refusal line, while opaque code - an interpreter, a container,
 a script - passes and repo-watch.py reports a repo change it makes; every command that
 needs the user's words for that one command asks in every state, and so does, once per
-run, a script whose text holds one; and the pin rules for kubectl, helm and helmfile are
-enforced. A program the classifier does not know asks instead of denying, so a read it
-has not met never gets the refusal line. A commit, merge, cherry-pick, revert or am that
-lands on a repo's default branch is denied in every state, outside the repos in
-DEFAULT_BRANCH_EXEMPT, which are committed on main by design.
+run, a script whose text holds one; a push is denied in every state, since the user runs
+it; and the pin rules for kubectl, helm and helmfile are enforced. A program the
+classifier does not know asks instead of denying, so a read it has not met never gets the
+refusal line. A commit, merge, cherry-pick, revert or am that lands on a repo's default
+branch is denied in every state, outside the repos in DEFAULT_BRANCH_EXEMPT, which are
+committed on main by design.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -63,6 +64,10 @@ TRANSPARENT = {"do", "then", "else", "elif", "!", "{", "}", "if", "while", "unti
 SYNTAX_ONLY = {"done", "fi", "esac", "in", "function", "then", "do", "else", "}", "{"}
 # `for p in a b` names variables, not a program: the body is its own segment after `do`.
 LOOP_HEADERS = {"for", "case", "select"}
+# The words that open and close a compound command, whose body a pipe runs apart.
+COMPOUND_OPENERS = {"if", "while", "until", "for", "case", "select", "{"}
+COMPOUND_CLOSERS = {"fi", "done", "esac", "}"}
+CHDIR_PROGRAMS = {"cd", "pushd", "popd"}
 
 READ_PROGRAMS = {
     "cat", "head", "tail", "less", "more", "wc", "grep", "egrep", "fgrep", "zgrep", "rg", "ag",
@@ -90,7 +95,7 @@ WRITE_PROGRAMS = {
     "chgrp", "zip", "gzip", "gunzip", "bzip2", "xz", "open", "osascript", "code", "vim", "nvim",
     "vi", "nano", "emacs", "ssh", "scp", "sftp", "source", ".", "eval", "uvx", "pipx",
     "psql", "mysql", "sqlite3", "redis-cli", "mongosh", "perl", "ruby", "node", "deno", "bun",
-    "pre-commit", "kubectx", "kubens", "k9s", "git-lfs", "pbcopy", "say", "afplay", "xattr",
+    "pre-commit", "kubectx", "kubens", "k9s", "pbcopy", "say", "afplay", "xattr",
     "defaults", "crontab", "ollama",
 }
 
@@ -137,6 +142,9 @@ MEMORY_ROOT_RE = re.compile(
 NO_HOME_EXPANSION_RE = re.compile(r"""['"\\]~|HOME""")
 # Bash writers whose every positional path the script can read without path-sniffing.
 SCRATCH_WRITERS = {"mkdir", "touch", "cp", "mv", "tee", "rm"}
+# GOTCHA: brace expansion, a variable or a substitution can turn a relative word into an
+# absolute path, so such a word is never joined to the working directory.
+SHELL_EXPANSION_CHARS = set("${`")
 # GOTCHA: an allowlist, because other tar options write outside -C (-P, --index-file, -c with
 # -f) or run a program (--to-command, --use-compress-program). -C stays out of the short
 # set so a clustered -xC never hides an extract target from the scratch check.
@@ -163,6 +171,10 @@ HELM_RELEASE_MOVES = {"uninstall", "delete", "del", "rollback"}
 GIT_CONFIG_VALUE_FLAGS = {"-f", "--file", "--blob", "--default", "--type"}
 GIT_CONFIG_READ_SUBCOMMANDS = {"get", "list"}
 GIT_CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "edit", "rename-section", "remove-section"}
+# GOTCHA: `clean` stores the object under .git/lfs/objects the way `fetch` fills .git/objects:
+# no ref and no work-tree file moves, so it reads like the rest.
+GIT_LFS_READ_SUBCOMMANDS = {"ls-files", "env", "status", "version", "help", "clean", "pointer",
+                            "fsck", "locks"}
 # Cluster-scoped commands where kubectl ignores -n; `get --raw` carries an API path instead.
 NAMESPACE_FREE = {("get", "node"), ("get", "nodes"), ("describe", "node"), ("describe", "nodes"),
                   ("top", "node"), ("top", "nodes"), ("get", "crd"), ("get", "crds"),
@@ -382,9 +394,17 @@ def classify_git(args):
         return DANGER
     if sub in {"filter-branch", "filter-repo", "update-ref", "prune", "gc", "replace"}:
         return DANGER
+    if sub == "lfs":
+        if not pos:
+            return READ
+        if pos[0] == "logs":
+            return WRITE if pos[1:2] in (["clear"], ["boomtown"]) else READ
+        if pos[0] in ("push", "lock", "unlock"):
+            return DANGER
+        return READ if pos[0] in GIT_LFS_READ_SUBCOMMANDS else WRITE
     if sub in {"rebase", "cherry-pick", "merge", "am", "revert", "rm", "mv", "submodule",
                "add", "commit", "pull", "init", "clone", "apply", "notes", "bisect",
-               "tag", "rerere", "sparse-checkout", "lfs"}:
+               "tag", "rerere", "sparse-checkout"}:
         return DANGER if force and sub in ("rebase", "rm", "clone", "pull") else WRITE
     return WRITE
 
@@ -696,10 +716,10 @@ def creates_remote_tag(args):
             and any(re.search(r"/(repository/tags|releases)\b", a) for a in pos[1:]))
 
 
-# What the user alone decides to run: a push; opening, closing, merging or approving an
-# MR/PR; and posting to, resolving or reopening its review threads. A rebase or branch update
-# of an MR pushes to its branch, so it counts as a push. `new` and glab's `for` create an MR,
-# and glab's `accept` merges one.
+# What the user alone decides to run: opening, closing, merging or approving an MR/PR, and
+# posting to, resolving or reopening its review threads. A rebase or branch update of an MR
+# pushes to its branch, so it counts too. `new` and glab's `for` create an MR, and glab's
+# `accept` merges one.
 MR_MOVES = {"create", "new", "for", "reopen", "close", "merge", "accept", "approve", "rebase",
             "update-branch", "comment", "review"}
 # The user's words for this one command AND this prompt, every time: CLAUDE.md's
@@ -708,8 +728,12 @@ ON_WORDS = ("run it only when the user's message allowed this command in words, 
             "print it as `! <command>`")
 CONTEXT_SETTER_REASON = ("sets the current context or namespace, which every command that "
                          "relies on it then hits; it never replaces --context and -n")
-MR_MOVE_REASON = ("pushes, opens, closes, merges or approves an MR/PR, or posts to, resolves "
-                  f"or reopens its review threads: {ON_WORDS}")
+MR_MOVE_REASON = ("opens, closes, merges or approves an MR/PR, writes to its branch, or posts "
+                  f"to, resolves or reopens its review threads: {ON_WORDS}")
+# A push is never Claude's to run, whatever the user's words: CLAUDE.md's rule that a
+# branch never ends in an offer to push.
+PUSH_REASON = ("a push is the user's to run: print the exact command for them as a bracketed "
+               "`! <command>` and attempt nothing else - no remote lookup, no other route")
 MCP_MR_MOVE_WORDS = ("merge_request", "pull_request", "push")
 MCP_CODE_HOSTS = ("gitlab", "github")
 MCP_THREAD_WORDS = ("comment", "note", "discussion", "review", "thread")
@@ -747,9 +771,14 @@ def mr_api_moves(args, pos):
             and (has_flag(args, "--input") or any(MR_STATE_FIELD_RE.match(a) for a in args)))
 
 
-def moves_branch_or_mr(prog, args):
+def pushes_branch(prog, args):
     if prog == "git":
-        return git_subcommand_args(args)[:1] == ["push"]
+        sub = git_subcommand_args(args)
+        return sub[:1] == ["push"] or sub[:2] == ["lfs", "push"]
+    return prog == "git-lfs" and positionals(args)[:1] == ["push"]
+
+
+def moves_mr(prog, args):
     if prog not in ("gh", "glab"):
         return False
     rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
@@ -1227,7 +1256,7 @@ def classify_stern(_):
 
 
 HANDLERS = {
-    "git": classify_git,
+    "git": classify_git, "git-lfs": lambda args: classify_git(["lfs", *args]),
     "kubectl": classify_kubectl, "k": classify_kubectl, "oc": classify_kubectl,
     "helm": classify_helm,
     "helmfile": classify_helmfile,
@@ -1356,15 +1385,24 @@ def worst(*levels):
 
 def split_line(line):
     """Split one shell line into its command segments and its output-redirect targets."""
+    segments, targets, _ = parse_line(line)
+    return segments, targets
+
+
+def parse_line(line):
+    """split_line's segments and targets, and for each segment whether it runs apart from
+    the line's shell: inside parentheses or a substitution, in a pipeline or in the
+    background, where the shell may give it a process of its own."""
     lexer = shlex.shlex(DESCRIPTOR_RE.sub("", line), posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     tokens = list(lexer)
-    segments, targets, segment = [], [], []
+    segments, targets, apart, segment = [], [], [], []
     # One entry per open `(`: the command a `$(` interrupts, resumed at its `)` so text
     # glued after the `)` stays that command's argument, or None for a subshell or a
     # process substitution, whose `)` ends a segment like any separator. shlex splits
     # `$(` into a token ending in `$` and a `(`.
     opened = []
+    piped = False
     i = 0
     while i < len(tokens):
         tok = tokens[i]
@@ -1374,20 +1412,24 @@ def split_line(line):
         elif tok == ")" and opened and opened[-1] is not None:
             if segment:
                 segments.append(segment)
+                apart.append(True)
             segment = opened.pop()
         elif tok in SEPARATORS:
+            if segment:
+                segments.append(segment)
+                apart.append(bool(opened) or piped or tok in ("|", "|&", "&"))
             if tok == "(":
                 opened.append(None)
             elif tok == ")" and opened:
                 opened.pop()
-            if segment:
-                segments.append(segment)
+            piped = tok in ("|", "|&")
             segment = []
         elif tok in ("<(", ">("):
             # Process substitution runs a command of its own; `)` closes it like a subshell.
-            opened.append(None)
             if segment:
                 segments.append(segment)
+                apart.append(bool(opened) or piped)
+            opened.append(None)
             segment = []
         elif tok in REDIRECT_OUT or tok in (">&", "<", "<<", "<<<", "<&", "<>"):
             if tok in REDIRECT_OUT:
@@ -1400,7 +1442,49 @@ def split_line(line):
         i += 1
     if segment:
         segments.append(segment)
-    return segments, targets
+        apart.append(bool(opened) or piped)
+    # GOTCHA: an escaped backtick opens a `$(` that never closes; the command it
+    # interrupted still runs, so it is still a segment.
+    for held in opened:
+        if held:
+            segments.append(held)
+            apart.append(True)
+    return segments, targets, apart
+
+
+def cd_sticks(segments, apart):
+    """For each segment, whether a `cd` in it moves the rest of the line.
+
+    Only a `cd` the line's own shell runs does: not one apart from it, and not one inside
+    a compound command, which the shell runs in a process of its own when it is piped or
+    sent to the background.
+    """
+    sticks, depth = [], 0
+    for segment, alone in zip(segments, apart):
+        for word in segment:
+            if word in COMPOUND_OPENERS:
+                depth += 1
+            elif word in COMPOUND_CLOSERS:
+                depth = max(depth - 1, 0)
+            elif word not in TRANSPARENT:
+                break
+        sticks.append(not alone and depth == 0)
+    return sticks
+
+
+def cd_target(here, prog, args):
+    """The directory a `cd`, `pushd` or `popd` with these args moves to, or None when it is
+    known only at run time.
+
+    A `popd`, and a `pushd` with no directory or with +N / -N, land on a directory stack
+    entry, which may predate this command.
+    """
+    pos = positionals(args)
+    if prog == "cd":
+        return resolved_dir(here, pos[0] if pos else "~")
+    if prog == "pushd" and pos and not pos[0].startswith("+"):
+        return resolved_dir(here, pos[0])
+    return None
 
 
 def classify_line(line):
@@ -1412,7 +1496,11 @@ def classify_line(line):
 
 
 def command_lines(command):
-    for line in without_heredoc_bodies(command).replace("`", " ; ").splitlines():
+    # A backtick pair is a substitution: turned into `$(...)`, its commands run apart.
+    text = without_heredoc_bodies(command).split("`")
+    text = "".join(part + ("$(" if n % 2 == 0 else ")") for n, part in enumerate(text[:-1])) \
+        + text[-1]
+    for line in text.splitlines():
         if line.strip() and not line.strip().startswith("#"):
             yield line
 
@@ -1661,13 +1749,21 @@ def expand_home(word):
 
 def invocations(command):
     """Every program invocation in a command, nested ones included, as (program, args)."""
+    for prog, args, _ in invocations_with_moves(command):
+        yield prog, args
+
+
+def invocations_with_moves(command):
+    """invocations(command), each with whether it is a `cd` that moves the rest of the
+    command: a nested one, run by `bash -c`, `xargs` or `find -exec`, never does."""
     for line in command_lines(command):
         try:
-            segments, _ = split_line(line)
+            segments, _, apart = parse_line(line)
         except ValueError:
             continue
-        for segment in segments:
-            yield from invocations_in(segment)
+        for segment, sticks in zip(segments, cd_sticks(segments, apart)):
+            for n, (prog, args) in enumerate(invocations_in(segment)):
+                yield prog, args, sticks and n == 0
 
 
 def invocations_in(words):
@@ -1754,33 +1850,53 @@ def git_target_dir(here, args):
     return resolved_dir(repo_dir, dest)
 
 
+def git_archive_outputs(args):
+    """The files a `git archive` invocation writes with -o / --output, or [] for any other git."""
+    rest = git_subcommand_args(args)
+    if rest[:1] != ["archive"]:
+        return []
+    outputs, i = [], 1
+    while i < len(rest):
+        arg = rest[i]
+        if arg in ("-o", "--output"):
+            outputs.append(rest[i + 1] if i + 1 < len(rest) else "")
+            i += 2
+            continue
+        if arg.startswith("--output="):
+            outputs.append(arg.partition("=")[2])
+        elif arg.startswith("-o"):
+            outputs.append(arg[2:])
+        i += 1
+    return outputs
+
+
 def passes_gate(command, cwd):
     """True when nothing in the command changes a repo by a route its text shows.
 
     A read, a command that needs the user's words, opaque code, a write that lands in a
     gate scratch root and git run in one all pass; any other write is held to scratch, as
     the gate held every write before it narrowed to repos. The working directory follows
-    every `cd`, as for commits.
+    every `cd`, as for commits, and is unknown after one that may not stick.
     """
     here = cwd
     for line in command_lines(command):
         try:
-            segments, targets = split_line(line)
+            segments, targets, apart = parse_line(line)
         except ValueError:
             return False
+        sticks = cd_sticks(segments, apart)
         if not NO_HOME_EXPANSION_RE.search(command):
             segments = [[expand_home(w) for w in segment] for segment in segments]
             targets = [expand_home(t) for t in targets]
         if any(t not in HARMLESS_TARGETS and not inside_gate_scratch(t) for t in targets):
             return False
-        for words in segments:
+        for words, moves in zip(segments, sticks):
             words = strip_prefix(words)
             if not words or program_of(words) in LOOP_HEADERS:
                 continue
             prog, args = program_of(words), words[1:]
-            if prog == "cd":
-                pos = positionals(args)
-                here = resolved_dir(here, pos[0] if pos else "~")
+            if prog in CHDIR_PROGRAMS:
+                here = cd_target(here, prog, args) if moves else None
                 continue
             if classify_program(prog, args) == READ:
                 continue
@@ -1795,15 +1911,29 @@ def passes_gate(command, cwd):
                 if target is not None and (os.path.realpath(target) + "/").startswith(
                         GATE_SCRATCH_ROOTS):
                     continue
+                # Only an absolute -o is trusted: git resolves a relative one against a
+                # directory that -C and its own setup decide, not the text.
+                outputs = git_archive_outputs(args)
+                if outputs and all(inside_gate_scratch(o) for o in outputs):
+                    continue
                 return False
             if prog in SCRATCH_WRITERS:
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
-                if paths and all(inside_gate_scratch(p) for p in paths):
+                if paths and all(inside_gate_scratch(path_from(here, p)) for p in paths):
                     continue
-            if prog == "tar" and tar_extracts_into_scratch(args):
+            if prog == "tar" and tar_extracts_into_scratch(here, args):
                 continue
             return False
     return True
+
+
+def path_from(here, path):
+    """path as a command run in here opens it, or None when only the shell knows."""
+    if os.path.isabs(path):
+        return path
+    if here is None or SHELL_EXPANSION_CHARS & set(path):
+        return None
+    return os.path.join(here, path)
 
 
 def inside_repo(path):
@@ -1820,8 +1950,11 @@ def inside_repo(path):
         here = parent
 
 
-def tar_extracts_into_scratch(args):
-    """True when tar only extracts, and every -C / --directory is a gate scratch root."""
+def tar_extracts_into_scratch(here, args):
+    """True when tar only extracts, and every -C / --directory lands in a gate scratch root.
+
+    Each one is taken from the directory the one before it left, as tar applies them.
+    """
     dirs, extract, i = [], False, 0
     while i < len(args):
         arg = args[i]
@@ -1843,7 +1976,13 @@ def tar_extracts_into_scratch(args):
                 return False
             extract = extract or "x" in arg
         i += 1
-    return extract and bool(dirs) and all(inside_gate_scratch(d) for d in dirs)
+    if not extract or not dirs:
+        return False
+    for d in dirs:
+        here = path_from(here, d)
+        if not inside_gate_scratch(here):
+            return False
+    return True
 
 
 def only_unknown_writes(command):
@@ -1867,7 +2006,9 @@ def pin_decisions(prog, args):
             os.path.basename(a) in PUBLISHING_SCRIPTS for a in positionals(args))):
         out.append((ASK, "runs a script that pushes images and moves shared registry tags: "
                          f"{ON_WORDS}"))
-    if moves_branch_or_mr(prog, args):
+    if pushes_branch(prog, args):
+        out.append((DENY, PUSH_REASON))
+    if moves_mr(prog, args):
         out.append((ASK, MR_MOVE_REASON))
     url = remote_http_write(prog, args)
     if url:
@@ -2016,10 +2157,9 @@ def default_branch_commits(command, cwd):
     out = []
     here = cwd
     switched = {}
-    for prog, args in invocations(command):
-        if prog == "cd":
-            pos = positionals(args)
-            here = resolved_dir(here, pos[0] if pos else "~")
+    for prog, args, moves in invocations_with_moves(command):
+        if prog in CHDIR_PROGRAMS:
+            here = cd_target(here, prog, args) if moves else None
             continue
         if prog != "git":
             continue
@@ -2136,25 +2276,30 @@ def script_decisions(command, cwd):
     """One ask per script the command runs whose text holds a command that needs words.
 
     The working directory follows every `cd` in the command, as for commits; a script
-    whose path is built at run time cannot be read, so it is not scanned.
+    whose path is built at run time cannot be read, so it is not scanned. A relative script
+    run where the directory is unknown asks, since its text could hold anything.
     """
     out = []
     here = cwd
     for line in command_lines(command):
         try:
-            segments, _ = split_line(line)
+            segments, _, apart = parse_line(line)
         except ValueError:
             continue
-        for segment in segments:
+        for segment, moves in zip(segments, cd_sticks(segments, apart)):
             words = strip_prefix(segment)
-            if words and program_of(words) == "cd":
-                pos = positionals(words[1:])
-                here = resolved_dir(here, pos[0] if pos else "~")
+            if words and program_of(words) in CHDIR_PROGRAMS:
+                here = cd_target(here, program_of(words), words[1:]) if moves else None
                 continue
             script = script_of(words)
             if not script:
                 continue
             path = resolved_dir(here, script)
+            if here is None and path is None and "$" not in script:
+                out.append((ASK, f"runs {script} from a directory known only at run time, so "
+                                 "its text could not be checked for commands that change live "
+                                 "or remote state"))
+                continue
             # This script's own CLI only classifies text; its selftest holds every pattern.
             if path is None or os.path.realpath(path) == os.path.realpath(__file__):
                 continue
@@ -2217,7 +2362,7 @@ def decide_bash(tool_input, gate_open, cwd):
     return out
 
 
-def decide_mcp(tool_name, tool_input, gate_open):
+def decide_mcp(tool_name, tool_input):
     tool = tool_name.rsplit("__", 1)[-1]
     if tool == SLACK_SEND:
         if tool_input.get("thread_ts") and tool_input.get("channel_id") in ALERT_CHANNEL_IDS:
@@ -2260,7 +2405,7 @@ def decide(tool_name, tool_input, gate_open, cwd=None):
     elif tool_name == "EnterWorktree":
         out = [] if gate_open else [(DENY, REFUSAL)]
     elif tool_name.startswith("mcp__"):
-        out = decide_mcp(tool_name, tool_input, gate_open)
+        out = decide_mcp(tool_name, tool_input)
     else:
         out = []
     return max(out, key=lambda d: DECISION_RANK[d[0]]) if out else None
@@ -2414,6 +2559,14 @@ def selftest():
         (False, "Bash", "git fetch --force", DENY),
         (False, "Bash", "git fetch origin main:main", DENY),
         (False, "Bash", "git fetch origin main", None),
+        (False, "Bash", "git lfs ls-files", None),
+        (False, "Bash", "git lfs env", None),
+        (False, "Bash", "git lfs pointer --file=x.tgz", None),
+        (False, "Bash", "git lfs logs last", None),
+        (False, "Bash", "git lfs logs clear", DENY),
+        (False, "Bash", "git lfs track '*.tgz'", DENY),
+        (False, "Bash", "git-lfs ls-files", None),
+        (False, "Bash", "git-lfs install", DENY),
         (False, "Bash", "uv sync", DENY),
         (False, "Bash", f"touch {scratch}x", None),
         (False, "Bash", f"rm {scratch}x", None),
@@ -2435,12 +2588,16 @@ def selftest():
         (False, "Bash", "tar -x -C ~/repo", DENY),
         (False, "Bash", f"touch {home}/.claude/plans/x.md", None),
         (False, "Bash", f"touch {home}/.claude/projects/p/memory/x.md", None),
-        (False, "Bash", f"mkdir -p {scratch}d && cp a.txt {scratch}d/", DENY),
         (False, "Bash", "git -C /x archive origin/b", None),
         (False, "Bash", f"git archive HEAD -o {home}/x.tar", DENY),
         (False, "Bash", f"git archive HEAD -o{home}/x.tar", DENY),
         (False, "Bash", f"git archive HEAD --output={home}/x.tar", DENY),
         (False, "Bash", f"git -C /x archive origin/b | tar -x -C {scratch}d", None),
+        (False, "Bash", f"git -C /x archive -o {scratch}d/x.tar HEAD", None),
+        (False, "Bash", f"git -C /x archive HEAD -o{scratch}d/x.tar", None),
+        (False, "Bash", f"git -C /x archive HEAD --output={scratch}d/x.tar", None),
+        (False, "Bash", "git -C /x archive -o x.tar HEAD", DENY),
+        (False, "Bash", f"git -C /x archive -o {scratch}x.tar -o {home}/x.tar HEAD", DENY),
         (False, "Bash", f"tar -xzf a.tgz --directory={scratch}d", None),
         (False, "Bash", f"tar -x --strip-components=1 -C {scratch}d -f a.tar", None),
         (False, "Bash", f"tar -x -C {home}/repo", DENY),
@@ -2450,7 +2607,8 @@ def selftest():
         (False, "Bash", f"tar -c -C {scratch}d -f {home}/x.tar .", DENY),
         (False, "Bash", f"tar -x --to-command=sh -C {scratch}d", DENY),
         (False, "Bash", f"tar -xC {home}/repo -C {scratch}d", DENY),
-        (False, "Bash", f"tar -x -C {scratch}d -C rel", DENY),
+        (False, "Bash", f"tar -x -C {scratch}d -C rel", None),
+        (False, "Bash", f"tar -x -C {scratch} -C ../x", DENY),
         (False, "Bash", "tar -xzOf a.tgz common/x.tpl | diff - x.tpl", None),
         (False, "Bash", "tar xzOf a.tgz common/x.tpl", None),
         (False, "Bash", "tar -x --to-stdout --file=a.tgz m", None),
@@ -2519,14 +2677,20 @@ def selftest():
         (True, "Bash", "curl -G -d q=1 https://example.com/x", None),
         (False, "Bash", "xh GET https://example.com/x", None),
         (False, "Bash", "curl https://example.com/x", None),
-        (True, "Bash", "git push origin main", ASK),
-        (False, "Bash", "git push origin main", ASK),
-        (True, "Bash", "git push --dry-run", ASK),
-        (True, "Bash", "git -C /x push origin main", ASK),
-        (True, "Bash", "git -c user.name=x --no-pager push", ASK),
-        (True, "Bash", "git --git-dir=/x/.git push", ASK),
-        (True, "Bash", "git push origin v1.2.3", ASK),
-        (True, "Bash", "git commit -m 'push it' && git push -f", ASK),
+        (True, "Bash", "git push origin main", DENY),
+        (False, "Bash", "git push origin main", DENY),
+        (True, "Bash", "git lfs push origin main", DENY),
+        (False, "Bash", "git lfs push origin main", DENY),
+        (True, "Bash", "git lfs push --all origin", DENY),
+        (True, "Bash", "git-lfs push origin main", DENY),
+        (False, "Bash", "git lfs lock x.bin", DENY),
+        (True, "Bash", "git lfs unlock x.bin", None),
+        (True, "Bash", "git push --dry-run", DENY),
+        (True, "Bash", "git -C /x push origin main", DENY),
+        (True, "Bash", "git -c user.name=x --no-pager push", DENY),
+        (True, "Bash", "git --git-dir=/x/.git push", DENY),
+        (True, "Bash", "git push origin v1.2.3", DENY),
+        (True, "Bash", "git commit -m 'push it' && git push -f", DENY),
         (True, "Bash", "git commit -m 'git push later'", None),
         (True, "Bash", "glab mr create --fill", ASK),
         (False, "Bash", "glab mr create --fill", ASK),
@@ -2893,6 +3057,14 @@ def selftest():
         ("glab api graphql -f query='mutation{x}'", DANGER),
         ("glab api projects/p/merge_requests/3", READ),
         ("glab api -X GET projects/p/merge_requests -f state=opened", READ),
+        ("git lfs", READ),
+        ("git lfs clean x.tgz", READ),
+        ("git lfs status", READ),
+        ("git lfs migrate import --everything", WRITE),
+        ("git lfs push origin main", DANGER),
+        ("git lfs lock x.bin", DANGER),
+        ("git lfs unlock --force x.bin", DANGER),
+        ("git lfs locks", READ),
         ("glab issue create -t x", DANGER),
         ("glab ci retry 5", DANGER),
         ("glab -R g/p mr update 3 -d x", DANGER),
@@ -2974,6 +3146,11 @@ def selftest():
             (not_repo, f"git -C $(echo {on_main}) commit -m x", ASK),
             (not_repo, f"cd $(echo {on_main}) && git commit -m x", ASK),
             (not_repo, f"cd $(echo x) && git -C {on_main} commit -m x", DENY),
+            (on_main, f"(cd {on_feature}) && git commit -m x", ASK),
+            (on_main, f"bash -c 'cd {on_feature}' && git commit -m x", ASK),
+            (on_main, f"cd {on_feature} && git commit -m x", None),
+            (on_feature, f"pushd {on_main} && git commit -m x", DENY),
+            (on_main, f"pushd {on_feature} && popd && git commit -m x", ASK),
             (not_repo, f"git -C $(echo {on_main}) merge --abort", None),
             (not_repo, f"git -C $(echo {on_main}) status", None),
             (not_repo, "git commit -m x", None),
@@ -3009,6 +3186,37 @@ def selftest():
             ("Bash", {"command": f"cd {scratch_dir} && git clone https://example.com/r.git"},
              None),
             ("Bash", {"command": f"git clone https://example.com/r.git {root}/r"}, DENY),
+            # A relative path counts from the directory the command reached.
+            ("Bash", {"command": f"cd {scratch_dir}/d && git archive HEAD | tar -x -C ."}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && mkdir -p d && touch d/x && cp d/x d/y"},
+             None),
+            ("Bash", {"command": "touch x"}, DENY),
+            ("Bash", {"command": f"cp a.txt {scratch_dir}/"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && touch ../x"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && touch $X"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && touch {{{on_main}/x,a}}"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && mv {on_main}/README.md ."}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && tar -x -C d -C ../.."}, DENY),
+            ("Bash", {"command": f"(cd {scratch_dir}) && touch x"}, DENY),
+            # A `cd` that may run in a process of its own leaves the directory unknown.
+            ("Bash", {"command": f"cd {scratch_dir} && git init -q"}, None),
+            ("Bash", {"command": f"(cd {scratch_dir}) && git commit -m x"}, DENY),
+            ("Bash", {"command": f"echo $(cd {scratch_dir}) && git commit -m x"}, DENY),
+            ("Bash", {"command": f"echo `cd {scratch_dir}` && git commit -m x"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} | cat && git commit -m x"}, DENY),
+            ("Bash", {"command": f"cat x | cd {scratch_dir} && git commit -m x"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} & git commit -m x"}, DENY),
+            ("Bash", {"command": f"{{ cd {scratch_dir}; }} | cat; git commit -m x"}, DENY),
+            ("Bash", {"command": f"if cd {scratch_dir}; then true; fi | cat; git commit -m x"},
+             DENY),
+            ("Bash", {"command": f"bash -c 'cd {scratch_dir}' && git commit -m x"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && ls | wc -l && git init -q"}, None),
+            ("Bash", {"command": f"pushd {scratch_dir} && git init -q"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && pushd {on_main} && git commit -m x"},
+             DENY),
+            ("Bash", {"command": f"pushd {scratch_dir} && popd && git commit -m x"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && pushd +1 && git commit -m x"}, DENY),
+            ("Bash", {"command": f"rm -rf {on_main}/README.md \\`"}, DENY),
             ("Bash", {"command": f"git clone --depth 1 -b v1 https://example.com/r.git "
                                  f"{scratch_dir}/r2"}, None),
             ("Bash", {"command": f"/bin/cp a {on_main}/x"}, DENY),
@@ -3061,6 +3269,8 @@ def selftest():
             ("./kubeconfig.sh", None),
             ("./mixed.sh", ASK),
             (f"cd {root} && ./plain/deploy.sh", ASK),
+            (f"(cd {root} && ./plain/deploy.sh)", ASK),
+            (f"(cd {root} && ./plain/read.sh)", ASK),
             ("bash -c 'echo deploy.sh'", None),
             ("./missing.sh", None),
         ]

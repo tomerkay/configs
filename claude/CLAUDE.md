@@ -277,7 +277,6 @@ print the refusal line while the gate is open.
 **Nothing ever grants these** - not `LFG!`, not an open session, not "fix it",
 not a plan I approved, not my yes to the previous one:
 
-- `git push`.
 - Opening, reopening, closing, merging or approving an MR or PR, and replying
   to, editing, resolving or reopening its review threads - by every route:
   `glab mr` / `gh pr` (`glab mr note` included), a `glab api` / `gh api`
@@ -318,7 +317,7 @@ not a plan I approved, not my yes to the previous one:
 **Each one runs only when BOTH hold, every single time:**
 
 1. **My message says, in plain words, that you may run that command this
-   time** - "push it, I allow you this time", "go ahead and merge !42",
+   time** - "go ahead and merge !42",
    "uninstall that release", "yes, use `--reuse-values`", "post it". My answer
    to your ❓ question naming that command counts. There is no token for it.
    It covers the command it names, in the message it is in: not the next one,
@@ -488,20 +487,21 @@ in the plugin cache.
    Nothing I say is a signal to file one - the ONLY exception is me asking for it
    in those words. I do not want to see that card again.
 
-7) **Finishing a branch never ends in an offer to push or to open an MR.**
-   Pushing and opening an MR or PR are mine unless I allow that command in
-   words (see "Some commands need my words AND the prompt, every time").
-   Neither is a "next step" you suggest. Instead, every time the work on a
-   branch is done - the first round, and again after any later change to
-   it - look its MR up the `tkay-code` way and ask me once: whether I want
-   a description added when it has none, whether I want it updated when it
-   already has one. The question ends with "(pushing I leave to you)",
-   verbatim: the description describes what the remote holds, and putting
-   the branch there is mine. On a yes follow the `tkay-code` MR description
-   standard. Never write, draft or offer a description otherwise. When
-   something only a description would carry matters (a metric whose meaning
-   changed, a rule a change retires), tell me in chat. A repo with no
-   remote has no MR, so there the question is not asked.
+7) **Finishing a branch never ends in an offer to push or to open an MR,
+   and a push is never yours to run.** Never suggest, offer or prompt a
+   `git push` - not as a next step, not as a `! git push` to paste, not as
+   "ready to push". When I ask for a push, in whatever words, "I allow you
+   this time" included, print the exact command as a bracketed
+   `! git push ...` straight away and attempt nothing else: no policy
+   check, no remote lookup, no other route to the remote - only the local
+   reads that build the command. Opening an MR or PR is mine unless I
+   allow that command in words (see "Some commands need my words AND the
+   prompt, every time"). Neither is a "next step" you suggest, and neither
+   is an MR description:
+   never write, draft, offer or ask about one unless I ask for it myself,
+   and then follow the `tkay-code` MR description standard. When something
+   only a description would carry matters (a metric whose meaning changed,
+   a rule a change retires), tell me in chat.
 
 8) **Auto memory is off, and you never write it.** `autoMemoryEnabled` is
    `false` in my settings: nothing you write outside a file I review reaches
@@ -690,10 +690,9 @@ every other question waits for a later reply.
 
 Among the stops this covers: the cluster or namespace I never named, adding a
 context to my kubeconfig, `--reuse-values`, a Slack message anywhere other
-than the alert thread I linked, a namespace that is not my cell, the MR
-description question, a repo rule that bans commit descriptions. The
-staged-copy install and the handoff cleanup offer have their own wording,
-written where each lives, in this shape.
+than the alert thread I linked, a namespace that is not my cell, a repo rule
+that bans commit descriptions. The staged-copy install and the handoff
+cleanup offer have their own wording, written where each lives, in this shape.
 
 Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
 note under a tmp file's path, which keeps its ⚠️ because it warns and stops
@@ -997,8 +996,7 @@ lists them. Everything else in `~/.claude` - sessions, memory, caches,
 installed skills - stays untracked.
 
 **It has no remote: the commit is the last step, and publishing is the
-sync's job.** Never offer, suggest or print a `git push` for this repo, and
-never call a commit here "ready to push".
+sync's job.**
 
 **NO CHANGE TO A TRACKED FILE IS EVER LEFT UNCOMMITTED.** Every edit,
 deletion, rename and move is reviewed and committed in the same turn as the
@@ -1196,6 +1194,29 @@ resolve the variable, so `> $TMPDIR/x` prompts however harmless the
 command. A file is written to the handoff directory's literal
 path, or better not written at all: pipe into the next command.
 
+# A LONG RUN HOLDS THE MAC AWAKE
+
+**Before starting any command that runs longer than a few minutes - a test
+suite, a build, a cluster bring-up, a long watch - prefix it with
+`caffeinate -i`.** My Mac idle-sleeps soon after the screen goes dark
+(`pmset -g`, the `sleep` line), and sleep freezes every process on it: the
+run, colima, the mock cluster and this session together. On wake, the
+wall-clock timeouts inside the run have expired and it fails, an hour in,
+for no reason in the code. The harness renews a short `caffeinate` of its
+own only while a session is working, and a pause in that renewal is enough.
+
+- **`caffeinate -i <command>`** holds the Mac awake exactly as long as the
+  command runs and ends with it: nothing to clean up, no setting changed.
+  For a run already started, `caffeinate -i -w <pid>` does the same.
+- **A dark screen is fine.** `-i` blocks idle sleep only; the display still
+  dims and the lock screen still comes, and neither stops a process.
+- **Say in one line that the hold is on**, so I know I can leave the
+  computer. What it does not cover: a closed lid, an empty battery, and a
+  log out or restart, which end every process of my session.
+
+The case that taught it: a KWOK suite over an hour long, left to run with
+the screen dark on a Mac set to sleep soon after.
+
 # Screenshots
 
 **My screenshots live in `/Users/tkay/Screenshots`.** When I reference a bare screenshot filename - e.g. `Screenshot 2025-12-03 at 15.22.51.png` or the shell-escaped `Screenshot\ 2025-12-03\ at\ 15.22.51.png` - resolve it to `/Users/tkay/Screenshots/<name>` and read it straight away. Don't ask me where it is, don't search the repo or the Desktop for it.
@@ -1243,8 +1264,8 @@ is owned by someone different:
    says. It also decides which commands run outside the sandbox. Not mine to
    change; a prompt it raises is not yours to work around.
 2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies a change to a
-   git repo before `LFG!`, denies an unpinned cluster command in every state,
-   asks for every command in "Some commands need my words AND the prompt,
+   git repo before `LFG!`, denies an unpinned cluster command and a push in
+   every state, asks for every command in "Some commands need my words AND the prompt,
    every time", and says nothing for a read. It can add a deny or
    an ask; it never removes a prompt.
 3. **My permission mode**: whatever the first two leave alone goes to the
