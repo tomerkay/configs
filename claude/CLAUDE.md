@@ -574,6 +574,16 @@ with the same number, and the shared number is the whole reference: the
 question line never says "see above". Those numbered parts are the
 elaboration; no separate section repeats them.
 
+**`Q<n>` in my message names a question; `1)` does not.** An item of mine
+that says `Q1` or `q1` is the answer to Q1 and nothing else. A numbered list
+- `1)`, `2)`, `1.` - is not an answer sheet: each item may answer the
+question of that number, or raise something new that has nothing to do with
+it. Read every item on its own words, open the reply with the reading you
+took, one line per item, and when an item fits both readings and they lead
+to different work, ask. The case that taught it: a reply to a Q1 and a Q2
+whose `1)` took up the leftovers table of the review above them, `2)` asked
+for a new rule and `3)` for this one.
+
 The shape is mine, so it binds every stop whoever told you to stop: a rule
 in this file, a `tkay-*` or team skill, a repo's `CLAUDE.md`, or your own
 judgement that a step needs my sign-off. A skill that says "ask" and nothing
@@ -798,6 +808,9 @@ default or config key is acceptable.
   number, never `null`.
 - **One reason to change:** what changes together lives together, what changes
   for different reasons lives apart, and one request reads from entry to exit.
+- **Solid vs fragile:** ask of every line what one small change elsewhere
+  does to it; one that then breaks far away, or stays standing and lies, is
+  fragile - cut the coupling or name the owner.
 - **The plain version wins:** the code a reader follows on the first pass;
   complexity for performance only with a measurement.
 - **A name means one thing, literally:** every name, label and state is true for

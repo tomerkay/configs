@@ -29,7 +29,9 @@ and no allow rule outranks an ask rule, while scratch is per session and left be
 anyway, so the delete costs a prompt and buys nothing. An `rm` that names a scratch path
 alongside anything outside the scratch root is forced to prompt instead, so that
 `rm -rf /private/tmp/claude/x ~/repos` or `rm -rf /private/tmp/claude/../..` never
-passes as scratch cleanup.
+passes as scratch cleanup. A write under /tmp is denied in every state, since a file there
+can vanish mid-session, unless it lands in a path the user's message named, as
+scratch-paths.py records it: the session's handoff directory holds what is written.
 
 CLI: `tool-gate.py [--open] <command>...` prints the rating and the decision for each
 Bash command with the gate closed (default) or open; `--tool <name> <field>=<value>...`
@@ -55,6 +57,7 @@ DESCRIPTOR_RE = re.compile(r"(?<![^\s();|&])\d+(?=[<>])")
 HARMLESS_TARGETS = {"/dev/null", "/dev/stderr", "/dev/stdout", "/dev/tty"}
 SCRATCH_PREFIXES = ("/tmp/claude/", "/private/tmp/claude/")
 SCRATCH_ROOTS = tuple(os.path.realpath(p.rstrip("/")) + "/" for p in SCRATCH_PREFIXES)
+TMP_ROOT = os.path.realpath("/tmp") + "/"
 ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 # Shell words that precede the real program on a segment and carry no rating of their own.
@@ -127,6 +130,7 @@ GENERIC_DANGER_WORDS = {"delete", "destroy", "remove", "rm", "rb", "terminate", 
 
 REFUSAL = 'YOU MUST WRITE "LFG!" for me to actually start implementing.'
 STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
+SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
 GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
 PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebook_path"}
@@ -145,6 +149,8 @@ SCRATCH_WRITERS = {"mkdir", "touch", "cp", "mv", "tee", "rm"}
 # GOTCHA: brace expansion, a variable or a substitution can turn a relative word into an
 # absolute path, so such a word is never joined to the working directory.
 SHELL_EXPANSION_CHARS = set("${`")
+# A glob can expand into a repo whatever the literal path around it says.
+GLOB_CHARS = set("*?[")
 # GOTCHA: an allowlist, because other tar options write outside -C (-P, --index-file, -c with
 # -f) or run a program (--to-command, --use-compress-program). -C stays out of the short
 # set so a clustered -xC never hides an extract target from the scratch check.
@@ -905,20 +911,28 @@ def classify_python(args):
 
 
 def classify_board(args):
-    """The grafana-dashboards skill's board.py: fetch and diff read the live board, publish
-    writes its next version, login saves a browser session locally."""
+    """The grafana-dashboards skill's board.py: fetch and diff read the live board, fetch
+    writes it where --out says, publish writes its next version, login saves a browser
+    session locally."""
     pos = positionals(args)
     sub = pos[0] if pos else ""
     if sub == "diff":
         return READ
     if sub == "fetch":
-        out = next((a.split("=", 1)[1] for a in args if a.startswith("--out=")), None)
-        if out is None and "--out" in args[:-1]:
-            out = args[args.index("--out") + 1]
-        return READ if out is None or inside_scratch(out) else WRITE
+        return READ if board_fetch_out(args) is None else WRITE
     if sub == "publish":
         return DANGER
     return WRITE
+
+
+def board_fetch_out(args):
+    """The --out path of a board.py fetch, or None when it is not a fetch or writes no file."""
+    if positionals(args)[:1] != ["fetch"]:
+        return None
+    out = next((a.split("=", 1)[1] for a in args if a.startswith("--out=")), None)
+    if out is None and "--out" in args[:-1]:
+        out = args[args.index("--out") + 1]
+    return out
 
 
 def classify_pip(args):
@@ -1496,13 +1510,55 @@ def classify_line(line):
 
 
 def command_lines(command):
-    # A backtick pair is a substitution: turned into `$(...)`, its commands run apart.
+    """The command's logical lines, heredoc bodies cut out.
+
+    A newline inside quotes, or escaped by a backslash, ends no line: a `python3 -c` body
+    over several lines and a `\\`-continued command are one line each. A backtick pair
+    is a substitution: turned into `$(...)`, its commands run apart.
+    """
     text = without_heredoc_bodies(command).split("`")
     text = "".join(part + ("$(" if n % 2 == 0 else ")") for n, part in enumerate(text[:-1])) \
         + text[-1]
-    for line in text.splitlines():
+    for line in logical_lines(text):
         if line.strip() and not line.strip().startswith("#"):
             yield line
+
+
+def logical_lines(text):
+    """text split at the newlines the shell takes as line ends.
+
+    A newline inside quotes is part of its line. A backslash before a newline outside
+    single quotes joins the two lines, and both characters are dropped as the shell drops
+    them, so the word after the join parses as the word it is. A comment runs to its
+    newline whatever quotes it holds, as in the shell.
+    """
+    lines, pieces, quote = [], [], None
+    start = i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "#" and not quote and (i == 0 or text[i - 1] in " \t;&|()\n"):
+            end = text.find("\n", i)
+            i = len(text) if end < 0 else end
+            continue
+        if c == "\\" and quote != "'" and i + 1 < len(text):
+            if text[i + 1] == "\n":
+                pieces.append(text[start:i])
+                start = i + 2
+            i += 2
+            continue
+        if quote:
+            if c == quote:
+                quote = None
+        elif c in "'\"":
+            quote = c
+        elif c == "\n":
+            pieces.append(text[start:i])
+            lines.append("".join(pieces))
+            pieces, start = [], i + 1
+        i += 1
+    pieces.append(text[start:])
+    lines.append("".join(pieces))
+    return lines
 
 
 def classify_command(command):
@@ -1541,6 +1597,43 @@ def rm_escapes_scratch(command):
             paths = rm_paths(words[1:])
             if (any(p.startswith(SCRATCH_PREFIXES) for p in paths)
                     and not all(inside_scratch(p) for p in paths)):
+                return True
+    return False
+
+
+TMP_WRITE_REASON = ("/tmp can vanish mid-session: write the file under this session's "
+                    "~/.cache/claude-handoff/<YYYY-MM-DD>-<slug>/ directory, or pipe it into "
+                    "the next command")
+
+
+def unnamed_tmp(path, named):
+    """True when path lands under /tmp and inside no path the user named."""
+    if not os.path.isabs(path):
+        return False
+    real = os.path.realpath(path)
+    if not real.startswith(TMP_ROOT):
+        return False
+    return not any(real == n or real.startswith(n.rstrip("/") + "/") for n in named)
+
+
+def writes_unnamed_tmp(command, named):
+    """True when a redirect, or a cp/mv destination or a mkdir/touch/tee path, lands under
+    /tmp outside the paths the user named. An `rm` there is cleanup."""
+    for line in command_lines(command):
+        try:
+            segments, targets = split_line(line)
+        except ValueError:
+            return "/tmp/" in line
+        if any(unnamed_tmp(t, named) for t in targets):
+            return True
+        for words in segments:
+            words = strip_prefix(words)
+            if not words or program_of(words) not in SCRATCH_WRITERS - {"rm"}:
+                continue
+            paths = positionals(words[1:])
+            if program_of(words) in ("cp", "mv"):
+                paths = paths[-1:]
+            if any(unnamed_tmp(p, named) for p in paths):
                 return True
     return False
 
@@ -1874,9 +1967,10 @@ def passes_gate(command, cwd):
     """True when nothing in the command changes a repo by a route its text shows.
 
     A read, a command that needs the user's words, opaque code, a write that lands in a
-    gate scratch root and git run in one all pass; any other write is held to scratch, as
-    the gate held every write before it narrowed to repos. The working directory follows
-    every `cd`, as for commits, and is unknown after one that may not stick.
+    gate scratch root, git run in one and an `rm` of literal files outside every repo all
+    pass; any other write is held to scratch, as the gate held every write before it
+    narrowed to repos. The working directory follows every `cd`, as for commits, and is
+    unknown after one that may not stick.
     """
     here = cwd
     for line in command_lines(command):
@@ -1921,8 +2015,17 @@ def passes_gate(command, cwd):
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
                 if paths and all(inside_gate_scratch(path_from(here, p)) for p in paths):
                     continue
+                # An rm leaves no file behind to hold to scratch, so outside every repo it
+                # is not the gate's.
+                if prog == "rm" and paths and all(outside_repos(path_from(here, p))
+                                                  for p in paths):
+                    continue
             if prog == "tar" and tar_extracts_into_scratch(here, args):
                 continue
+            if PYTHON_RE.fullmatch(prog) and args and os.path.basename(args[0]) == "board.py":
+                out = board_fetch_out(args[1:])
+                if out is not None and inside_gate_scratch(path_from(here, out)):
+                    continue
             return False
     return True
 
@@ -1934,6 +2037,17 @@ def path_from(here, path):
     if here is None or SHELL_EXPANSION_CHARS & set(path):
         return None
     return os.path.join(here, path)
+
+
+def outside_repos(path):
+    """True when path is a literal file in no git work tree.
+
+    An existing directory never is: `rm -r` of one takes any repo inside it along.
+    """
+    if path is None or (SHELL_EXPANSION_CHARS | GLOB_CHARS) & set(path):
+        return False
+    real = os.path.realpath(path)
+    return not os.path.isdir(real) and not inside_repo(real)
 
 
 def inside_repo(path):
@@ -2341,11 +2455,11 @@ def runs_whole_suite(prog, args):
     return False
 
 
-def decide_bash(tool_input, gate_open, cwd):
+def decide_bash(tool_input, gate_open, cwd, named):
     command = tool_input.get("command")
     if not isinstance(command, str):
         raise ValueError("Bash call without a command string")
-    out = []
+    out = [(DENY, TMP_WRITE_REASON)] if writes_unnamed_tmp(command, named) else []
     for prog, args in invocations(command):
         out.extend(pin_decisions(prog, args))
         if runs_whole_suite(prog, args):
@@ -2391,16 +2505,19 @@ def decide_mcp(tool_name, tool_input):
     return []
 
 
-def decide(tool_name, tool_input, gate_open, cwd=None):
+def decide(tool_name, tool_input, gate_open, cwd=None, named=()):
     """The strictest decision over every matching row, as (decision, reason) or None.
 
-    cwd is the directory the tool call runs in, which a Bash commit is judged against.
+    cwd is the directory the tool call runs in, which a Bash commit is judged against;
+    named holds the paths under /tmp the user's messages named.
     """
     if tool_name == "Bash":
-        out = decide_bash(tool_input, gate_open, cwd or os.getcwd())
+        out = decide_bash(tool_input, gate_open, cwd or os.getcwd(), named)
     elif tool_name in PATH_FIELD:
-        out = []
-        if not gate_open and inside_repo(tool_input.get(PATH_FIELD[tool_name])):
+        path = tool_input.get(PATH_FIELD[tool_name])
+        out = [(DENY, TMP_WRITE_REASON)] if isinstance(path, str) and unnamed_tmp(path, named) \
+            else []
+        if not gate_open and inside_repo(path):
             out.append((DENY, REFUSAL))
     elif tool_name == "EnterWorktree":
         out = [] if gate_open else [(DENY, REFUSAL)]
@@ -2411,14 +2528,28 @@ def decide(tool_name, tool_input, gate_open, cwd=None):
     return max(out, key=lambda d: DECISION_RANK[d[0]]) if out else None
 
 
+def session_file(directory, session_id):
+    return os.path.join(directory, re.sub(r"[^A-Za-z0-9_.-]", "_", session_id))
+
+
 def gate_is_open(session_id):
     if not isinstance(session_id, str) or not session_id:
         return False
     try:
-        with open(os.path.join(STATE_DIR, re.sub(r"[^A-Za-z0-9_.-]", "_", session_id))) as f:
+        with open(session_file(STATE_DIR, session_id)) as f:
             return f.read().strip() in OPEN_STATES
     except FileNotFoundError:
         return False
+
+
+def named_scratch_paths(session_id):
+    if not isinstance(session_id, str) or not session_id:
+        return ()
+    try:
+        with open(session_file(SCRATCH_PATHS_DIR, session_id)) as f:
+            return tuple(line.strip() for line in f if line.strip())
+    except FileNotFoundError:
+        return ()
 
 
 def hook_output(payload):
@@ -2440,8 +2571,9 @@ def hook_output(payload):
             rating = classify_command(tool_input["command"])
             updated["description"] = f"{rating} · {description}" if description else rating
             output["updatedInput"] = updated
-        decision = decide(tool_name, tool_input, gate_is_open(payload.get("session_id")),
-                          payload.get("cwd"))
+        session_id = payload.get("session_id")
+        decision = decide(tool_name, tool_input, gate_is_open(session_id), payload.get("cwd"),
+                          named_scratch_paths(session_id))
     except Exception as exc:
         decision = (DENY, f"tool-gate.py failed closed: {type(exc).__name__}: {exc}")
     if decision:
@@ -2471,7 +2603,7 @@ def describe(tool_name, tool_input, gate_open):
 
 
 def selftest():
-    global GATE_SCRATCH_ROOTS
+    global GATE_SCRATCH_ROOTS, TMP_ROOT
     home = os.path.expanduser("~")
     scratch = GATE_SCRATCH_ROOTS[0]
     alert = "C0ALERT"
@@ -2568,9 +2700,16 @@ def selftest():
         (False, "Bash", "git-lfs ls-files", None),
         (False, "Bash", "git-lfs install", DENY),
         (False, "Bash", "uv sync", DENY),
-        (False, "Bash", f"touch {scratch}x", None),
+        (False, "Bash", f"touch {scratch}x", DENY),
+        (True, "Bash", f"touch {scratch}x", DENY),
         (False, "Bash", f"rm {scratch}x", None),
-        (False, "Bash", f"echo hi > {scratch}x", None),
+        (False, "Bash", f"echo hi > {scratch}x", DENY),
+        (True, "Bash", "echo hi > /tmp/claude/x 2>/dev/null", DENY),
+        (True, "Bash", f"git show HEAD | tee {scratch}x", DENY),
+        (True, "Bash", f"mkdir -p {scratch}d", DENY),
+        (True, "Bash", f"cp {home}/x {scratch}x", DENY),
+        (True, "Bash", f"cp {scratch}x {home}/.cache/x", None),
+        (True, "Bash", f"diff -q {scratch}x {home}/.cache/x", None),
         (False, "Bash", f"touch {home}/.cache/x", None),
         (False, "Bash", "mkdir -p ~/.cache/claude-handoff/d", None),
         (False, "Bash", "git -C /x archive HEAD | tar -x -C ~/.cache/claude-handoff/d", None),
@@ -2798,6 +2937,12 @@ def selftest():
         (False, "Bash", "python3 /x/board.py fetch garbled-output --org 2", None),
         (False, "Bash", f"python3 /x/board.py fetch g --org 2 --out {scratch}g.json", None),
         (False, "Bash", "python3 /x/board.py fetch g --org 2 --out /x/g.json", DENY),
+        (False, "Bash",
+         f"python3 /x/board.py fetch g --org 2 --out {home}/.cache/claude-handoff/d/g.json", None),
+        (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out g.json", None),
+        (False, "Bash", "cd /x && python3 /x/board.py fetch g --org 2 --out g.json", DENY),
+        (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out $u.json",
+         DENY),
         (False, "Bash", "python3 /x/board.py diff g /x/g.json --org 2", None),
         (False, "Bash", "python3 /x/board.py login", DENY),
         (True, "Bash", "python3 /x/board.py publish g /x/g.json --org 2 --message m", None),
@@ -2805,6 +2950,13 @@ def selftest():
         (False, "Bash", "kubectl get pods --help", None),
         (False, "Bash", "helm upgrade --help", None),
         (False, "Bash", "python3 --help", None),
+        # A logical line runs on through a quoted or an escaped newline.
+        (False, "Bash", 'python3 -c "\nimport json\nprint(1)\n"', None),
+        (False, "Bash", "kubectl get pods \\\n  --context X -n Y", None),
+        (False, "Bash", 'echo "a\nb"\ngit -C /x add f', DENY),
+        (False, "Bash", "git -C /x \\\n  stash", DENY),
+        (False, "Bash", "( cd /x\n  git stash )", DENY),
+        (False, "Bash", "echo a # don't\ngit -C /x stash", DENY),
         (False, "Bash", "kubectl version", DENY),
         (False, "Bash", "git -c core.fsmonitor=/x.sh status", DENY),
         (False, "Bash", "git -C /x -c diff.external=/x.sh diff", DENY),
@@ -2891,18 +3043,24 @@ def selftest():
         (False, "Bash", "xh -a u:p http://user@host/x", None),
         (False, "Bash", "xh -a u:p http://host/x k=v", ASK),
         (False, "Bash", "xh --verify no 'host/x?y=1'", None),
-        (False, "Bash", "kubectl get pods --context X -n 123 > /private/tmp/claude/p", None),
+        (False, "Bash", "kubectl get pods --context X -n 123 > /private/tmp/claude/p", DENY),
         (False, "Bash", "bash -lc 'touch /etc/x'", DENY),
         (False, "Bash", f"bash {scratch}check.sh", None),
         (False, "Bash", f"python3 {scratch}check.py", None),
         (True, "Bash", f"python3 {scratch}check.py", None),
         (False, "Bash", f"python3 {os.path.realpath(__file__)} --selftest", None),
-        (False, "Write", {"file_path": f"{scratch}a.md"}, None),
-        (False, "Write", {"file_path": "/tmp/a.md"}, None),
+        (False, "Write", {"file_path": f"{scratch}a.md"}, DENY),
+        (True, "Write", {"file_path": f"{scratch}a.md"}, DENY),
+        (True, "Edit", {"file_path": "/tmp/claude/a.md"}, DENY),
+        (True, "Write", {"file_path": f"{home}/.cache/claude-handoff/d/a.md"}, None),
+        (False, "Write", {"file_path": "/tmp/a.md"}, DENY),
+        (True, "Write", {"file_path": "/private/tmp/a.md"}, DENY),
+        (True, "Bash", "echo x > /tmp/a.diff", DENY),
+        (True, "Bash", "rm -f /tmp/a.diff", None),
         (False, "Write", {"file_path": f"{home}/.claude/lfg-state/x"}, DENY),
         (False, "Edit", {"file_path": f"{home}/repos/x.py"}, None),
         (True, "Edit", {"file_path": f"{home}/repos/x.py"}, None),
-        (False, "NotebookEdit", {"notebook_path": f"{scratch}n.ipynb"}, None),
+        (False, "NotebookEdit", {"notebook_path": f"{scratch}n.ipynb"}, DENY),
         (False, "NotebookEdit", {"notebook_path": f"{home}/repos/n.ipynb"}, None),
         (False, "Write", {}, None),
         (False, "mcp__claude_ai_Slack__slack_send_message",
@@ -2953,7 +3111,9 @@ def selftest():
     for gate_open, tool_name, tool_input, expected in cases:
         if tool_name == "Bash":
             tool_input = {"command": tool_input}
-        got = decide(tool_name, tool_input, gate_open)
+        # A command with no directory of its own is judged against the working directory,
+        # so the table is judged from one that is neither a repo nor a scratch root.
+        got = decide(tool_name, tool_input, gate_open, "/")
         got_kind = got[0] if got else None
         ok = got_kind == expected
         failures += not ok
@@ -3044,6 +3204,9 @@ def selftest():
         ("glab mr update 3 --description-file d.md", DANGER),
         ("python3 /x/board.py publish g /x/g.json --org 2 --message m", DANGER),
         ("python3 /x/board.py fetch g --org 2 --out=/x/g.json", WRITE),
+        (f"python3 /x/board.py fetch g --org 2 --out {scratch}g.json", WRITE),
+        ("python3 /x/board.py fetch g --org 2", READ),
+        ('echo "a\nb"', READ),
         ("gh pr edit 3 --body-file d.md", DANGER),
         ("glab mr create --fill", DANGER),
         ("glab mr note 3 -m x", DANGER),
@@ -3167,10 +3330,11 @@ def selftest():
             DEFAULT_BRANCH_EXEMPT = saved_exempt
         # The gate holds repo changes only: the throwaway repos stand in for real ones, and
         # the scratch roots narrow to one directory so the repos sit outside them.
-        saved_roots = GATE_SCRATCH_ROOTS
+        saved_roots = GATE_SCRATCH_ROOTS, TMP_ROOT
         scratch_dir = os.path.join(root, "scratch")
         os.makedirs(scratch_dir)
         GATE_SCRATCH_ROOTS = (os.path.realpath(scratch_dir) + "/",)
+        TMP_ROOT = os.path.realpath(root) + "/harness/"
         gate_cases = [
             # (tool, input, expected decision with the gate closed), run from on_main
             ("Bash", {"command": "python3 -c 'print(1)'"}, None),
@@ -3193,6 +3357,14 @@ def selftest():
             ("Bash", {"command": "touch x"}, DENY),
             ("Bash", {"command": f"cp a.txt {scratch_dir}/"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && touch ../x"}, DENY),
+            # An rm outside every repo passes, unless its path may reach into one.
+            ("Bash", {"command": f"rm {not_repo}/x.txt"}, None),
+            ("Bash", {"command": f"cd {not_repo} && rm -f x.txt"}, None),
+            ("Bash", {"command": f"rm -f {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"rm -rf {root}"}, DENY),
+            ("Bash", {"command": f"rm {not_repo}/*.txt"}, DENY),
+            ("Bash", {"command": f"rm {not_repo}/$X"}, DENY),
+            ("Bash", {"command": f"touch {not_repo}/x.txt"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && touch $X"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && touch {{{on_main}/x,a}}"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && mv {on_main}/README.md ."}, DENY),
@@ -3241,7 +3413,7 @@ def selftest():
             failures += not ok
             print(f"{'ok  ' if ok else 'FAIL'} gate EnterWorktree, gate open -> {got}")
         finally:
-            GATE_SCRATCH_ROOTS = saved_roots
+            GATE_SCRATCH_ROOTS, TMP_ROOT = saved_roots
         # A script whose text holds a command that needs words asks once, in every state.
         scripts = {
             "deploy.sh": "#!/bin/sh\nhelm upgrade r ./c --kube-context X -n Y\n",
@@ -3281,8 +3453,28 @@ def selftest():
             failures += not ok
             print(f"{'ok  ' if ok else 'FAIL'} script {command!r} -> {got}"
                   + ("" if ok else f" (want {expected})"))
+    # A write under the scratch root lands only in a path the user named.
+    named = (os.path.realpath("/tmp/claude/a.diff"), os.path.realpath("/tmp/claude/out"),
+             os.path.realpath("/tmp/n.txt"))
+    named_cases = [
+        ("Bash", {"command": "git show x > /tmp/claude/a.diff"}, None),
+        ("Bash", {"command": "git show x > /private/tmp/claude/a.diff"}, None),
+        ("Write", {"file_path": "/tmp/claude/out/x.md"}, None),
+        ("Bash", {"command": "mkdir -p /tmp/claude/out/d"}, None),
+        ("Write", {"file_path": "/tmp/claude/outside.md"}, DENY),
+        ("Write", {"file_path": "/tmp/claude/out-of/x.md"}, DENY),
+        ("Bash", {"command": "git show x > /tmp/claude/a.diff2"}, DENY),
+        ("Write", {"file_path": "/tmp/n.txt"}, None),
+    ]
+    for tool, tool_input, expected in named_cases:
+        got = decide(tool, tool_input, True, "/", named)
+        got = got[0] if got else None
+        ok = got == expected
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} named {tool} {tool_input} -> {got}"
+              + ("" if ok else f" (want {expected})"))
     total = (len(cases) + len(payload_cases) + len(strip_cases) + len(label_cases)
-             + len(branch_cases) + len(script_cases) + len(gate_cases) + 1)
+             + len(branch_cases) + len(script_cases) + len(gate_cases) + len(named_cases) + 1)
     print(f"\n{total - failures}/{total} passed")
     return failures == 0
 

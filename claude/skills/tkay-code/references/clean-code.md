@@ -290,6 +290,12 @@ every copy.
   interface: the consumer keeps a named constant that names its owner. The
   test is what a change of the value costs - when the change is a migration
   anyway, the second copy does not drift.
+- **This rule is the commonest case of "SOLID VS FRAGILE".** A second copy
+  is a line that a change to the first leaves standing and false, the silent
+  form of fragility. That section's test decides the cases this one does not
+  name - a count, a path, an example, a rule written in two places - and
+  explains the copy above that cannot drift: it is solid, because the only
+  change that could break it is the migration that rewrites it.
 
 What that looks like in practice:
 
@@ -333,6 +339,51 @@ and what changes for different reasons lives apart.
   condition that led here is off the screen. Untangle it - pass the value,
   return early, put the two halves side by side - never explain the route
   in a comment.
+
+---
+
+# SOLID VS FRAGILE
+
+**Before writing a line, ask what one small change elsewhere does to it.**
+Fragility is one of the design smells Robert C. Martin named next to the
+SOLID principles: a change in one place breaks something in another, often
+somewhere nobody connected to it. It comes in two forms, and the second is
+the one that reaches production:
+
+- **Loud fragility: the change breaks something far from it.** A rename
+  that fails a test in another package, a new field that breaks a parser
+  three services away, one caller's timeout tweaked and another caller's
+  retry tripped. The break is visible, but it lands where nobody was
+  looking, and whoever made the change could not see it coming. The fix
+  cuts the coupling: the value read from one place, the behaviour behind
+  one interface, the dependency pointing one way. "ONE REASON TO CHANGE"
+  keeps the blast radius of a change to the one place that changes for
+  that reason.
+- **Silent fragility: the change leaves something standing and false.** A
+  copied value, a count, a path, a line number, a "currently", an example
+  that mirrors the real config, a values file for a chart another repo
+  owns. Nothing breaks and nothing tells the reader; the line goes on
+  reading as true. The fix names the owner or derives from it, and when
+  neither is possible, writes the trigger next to the line, so the reader
+  knows what to re-check and when.
+
+**A solid line answers the same question with nothing to fix:** the change
+cannot reach it, or the line follows it, or it breaks loudly at the point
+of the change - a `required` key, a lookup by name, a test that calls the
+real thing. Loud at the change is solid; loud far away is fragile.
+
+The test, for a value, a rule, a comment, a line of logic or a module
+boundary: name the change elsewhere that would affect it, then say what
+happens. Nothing, it follows, or it breaks where the change is made:
+solid. It breaks somewhere else, or it stays and lies: fragile, and it is
+rewritten before it is written.
+
+**Worked example.** A consumer repo carried a values file for a chart it
+did not own. The chart renamed a key, Helm ignores a key the chart does
+not know, and the copy kept rendering while the setting it carried did
+nothing. The solid version is the chart repo's own example, rendered by
+its CI on every change, with the consumer pointing at a checkout of it:
+the rename then breaks at the commit that causes it.
 
 ---
 
