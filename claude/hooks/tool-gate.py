@@ -343,7 +343,11 @@ def classify_git(args):
         # write a file anywhere, so a read verb with it is a write.
         return WRITE if has_flag(rest, "--output") else READ
     if sub == "reflog":
-        return READ if not pos or pos[0] == "show" else DANGER
+        # Any positional that is not one of these subcommands is a ref to show, or the value of
+        # a show option such as `-n 40`.
+        if set(pos) & {"expire", "delete", "drop"}:
+            return DANGER
+        return WRITE if "write" in pos else READ
     if sub == "branch":
         if has_flag(rest, "-l", "--list", "--contains", "--no-contains", "--merged",
                     "--no-merged", "--points-at", "--show-current"):
@@ -1011,7 +1015,9 @@ def classify_go(args):
     if not pos:
         return READ
     sub = pos[0]
-    if sub in ("test", "vet", "list", "env", "version", "doc", "help", "bug"):
+    if sub == "env":
+        return WRITE if has_flag(args, "-w", "-u") else READ
+    if sub in ("test", "vet", "list", "version", "doc", "help", "bug"):
         return READ
     if sub == "mod":
         return READ if len(pos) > 1 and pos[1] in ("graph", "why", "verify") else WRITE
@@ -1963,6 +1969,51 @@ def git_archive_outputs(args):
     return outputs
 
 
+GO_MODULE_FILES = ("go.mod", "go.work")
+# The subcommands whose writes are the module files, vendor/ and a build's binary, and
+# nothing a directive or a script decides. `go work sync` rewrites the go.mod of every
+# module in the workspace, wherever it sits.
+GO_SCRATCH_SUBCOMMANDS = {"mod", "get", "build"}
+GO_PATH_FLAGS = {"-C", "-o", "-modfile"}
+
+
+def go_writes_into_scratch(here, args):
+    """True for a go module or build command whose every write lands in a gate scratch root.
+
+    Go writes go.mod, go.sum and vendor/ in the module root and go.work in the workspace
+    root, both found by walking up from the working directory, and a build's binary there
+    or at -o. -C moves the working directory, so it is never trusted.
+    """
+    if here is None or not inside_gate_scratch(os.path.join(here, "go.mod")):
+        return False
+    pos = positionals(args)
+    if not pos or pos[0] not in GO_SCRATCH_SUBCOMMANDS:
+        return False
+    paths = []
+    for i, a in enumerate(args):
+        if not a.startswith("-"):
+            continue
+        name, eq, value = a.partition("=")
+        name = "-" + name.lstrip("-")
+        if name == "-C":
+            return False
+        if name in GO_PATH_FLAGS:
+            paths.append(value if eq else (args[i + 1] if i + 1 < len(args) else ""))
+    if pos[:2] == ["mod", "edit"]:
+        paths.extend(pos[2:])
+    if not all(p and inside_gate_scratch(path_from(here, p)) for p in paths):
+        return False
+    d = here
+    while True:
+        if any(os.path.exists(os.path.join(d, f)) and not inside_gate_scratch(os.path.join(d, f))
+               for f in GO_MODULE_FILES):
+            return False
+        parent = os.path.dirname(d)
+        if parent == d:
+            return True
+        d = parent
+
+
 def passes_gate(command, cwd):
     """True when nothing in the command changes a repo by a route its text shows.
 
@@ -2026,6 +2077,11 @@ def passes_gate(command, cwd):
                 out = board_fetch_out(args[1:])
                 if out is not None and inside_gate_scratch(path_from(here, out)):
                     continue
+            if prog == "go" and go_writes_into_scratch(here, args):
+                continue
+            # go env -w and -u write Go's own user config file, which sits in no repo.
+            if prog == "go" and positionals(args)[:1] == ["env"]:
+                continue
             return False
     return True
 
@@ -2940,6 +2996,31 @@ def selftest():
         (False, "Bash",
          f"python3 /x/board.py fetch g --org 2 --out {home}/.cache/claude-handoff/d/g.json", None),
         (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out g.json", None),
+        # go module and build commands write the module files and the binary where they run.
+        (False, "Bash", f"cd {scratch}d && go mod tidy", None),
+        (False, "Bash", f"cd {scratch}d && export GOFLAGS=-mod=mod && go mod download", None),
+        (False, "Bash", f"cd {scratch}d; go get example.com/m@v1.0.0", None),
+        (False, "Bash", f"cd {scratch}d && go build -o out .", None),
+        (False, "Bash", f"cd {scratch}d && go build -o={scratch}d/bin/out .", None),
+        (False, "Bash", f"cd {scratch}d && go mod edit -require=example.com/m@v1.0.0", None),
+        (False, "Bash", f"cd {scratch}d && go build -o /x/out .", DENY),
+        (False, "Bash", f"cd {scratch}d && go build -o", DENY),
+        (False, "Bash", f"cd {scratch}d && go get C o", None),
+        (False, "Bash", f"cd {scratch}d && go mod tidy -modfile=/x/go.mod", DENY),
+        (False, "Bash", f"cd {scratch}d && go mod edit -require=example.com/m@v1.0.0 /x/go.mod",
+         DENY),
+        (False, "Bash", f"cd {scratch}d && go -C /x mod tidy", DENY),
+        (False, "Bash", f"cd {scratch}d && go mod tidy -C=/x", DENY),
+        (False, "Bash", f"cd {scratch}d && go generate ./...", DENY),
+        (False, "Bash", f"cd {scratch}d && go work sync", DENY),
+        (False, "Bash", f"cd {scratch}d && go install example.com/m@v1.0.0", DENY),
+        (False, "Bash", f"cd $(echo {scratch}d) && go mod tidy", DENY),
+        (False, "Bash", "cd /x && go mod tidy", DENY),
+        # go mod download adds the go.sum entries it verifies, read-only flags or not.
+        (False, "Bash", "go mod download", DENY),
+        (False, "Bash", "GOFLAGS=-mod=readonly go mod download example.com/m", DENY),
+        # go env -w writes Go's user config file, outside every repo.
+        (False, "Bash", "go env -w GOFLAGS=-mod=mod", None),
         (False, "Bash", "cd /x && python3 /x/board.py fetch g --org 2 --out g.json", DENY),
         (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out $u.json",
          DENY),
@@ -2970,6 +3051,14 @@ def selftest():
         (False, "Bash", "git branch -a --contains abc", None),
         (False, "Bash", "git branch --list 'x/*'", None),
         (False, "Bash", "git branch new-branch", DENY),
+        (False, "Bash", "git reflog -n 40 --date=iso", None),
+        (False, "Bash", "git -C /x reflog -n 60 HEAD", None),
+        (False, "Bash", "git reflog show main", None),
+        (False, "Bash", "git reflog exists main", None),
+        (False, "Bash", "git reflog expire --all", DENY),
+        (False, "Bash", "git reflog delete HEAD@{1}", DENY),
+        (False, "Bash", "git reflog drop main", DENY),
+        (False, "Bash", "git reflog write main abc def msg", DENY),
         (False, "Bash", "git config user.email", None),
         (False, "Bash", "git config --global user.email", None),
         (False, "Bash", "git config user.email x", DENY),
@@ -3257,6 +3346,10 @@ def selftest():
         ("uv run /x/scripts/build_vllm_overlay.py --branch b", DANGER),
         ("/x/scripts/build_vllm_overlay.py --branch b", DANGER),
         ("gh api -X PATCH repos/o/r/pulls/1 -f body=x", WRITE),
+        # go env changes Go's user config only with -w or -u.
+        ("go env GOPATH", READ),
+        ("go env -w GOFLAGS=-mod=mod", WRITE),
+        ("go env -u GOFLAGS", WRITE),
     ]
     for command, expected in label_cases:
         got = classify_command(command)

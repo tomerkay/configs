@@ -96,15 +96,27 @@ against.
 - **Nothing else goes in.** Never a restatement of the change, a drawback
   dismissed in the same line, or a cost true of every change - "the old
   behaviour stays until it is installed" is one, and earns no line.
+- **The change taking effect is never a drawback.** Its intended effect, and
+  the way every change of its kind goes live, are what the change is for. Why
+  Not holds what goes wrong, costs or is lost beyond them: a side effect
+  nobody asked for, a case the change breaks, a door it closes. The case that
+  taught it, a hook change that rates `go env -w` as a write:
+
+  ```
+  ❌ - The hook goes live in every open session the moment it's copied.
+  ❌ - Commands already running that call it start getting the 🟠 rating.
+  ✅ - none: every existing selftest case keeps its decision.
+  ```
+
 - **Each point is one short clause**, and a list holds as many points as the
   case has. How the risk plays out, when it bites or what undoes it belongs
   in the text above, never in the point. The case that taught it:
 
   ```
-  ❌ - The hook goes live in every open session the moment it's copied.
-       Any regression would show up there before the live tests run, and
-       git restore is the fallback.
-  ✅ - The hook goes live in every session the moment it's copied.
+  ❌ - An environment override such as GOFLAGS=-modfile can still point a
+       scratch go mod tidy at a repo file, but a check after the command
+       reports it and it takes a deliberate override.
+  ✅ - An environment override can still move Go's writes into a repo.
   ```
 
 - **No list is padded to match the other**: one with no such point says
