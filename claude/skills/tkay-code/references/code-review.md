@@ -194,36 +194,36 @@ of the last commit's review.
 
 The verdict agrees with that commit's FINDINGS line: never `✅ Ship it` while
 its MUST HAVE count is above zero. A single-commit CR still ends with a one-row
-table. The branch summary, the closing table and the leftovers table below are
+table. The branch summary, the closing table and the bycatch table below are
 the only summaries allowed in a CR.
 
-### The leftovers table — right after the closing table, every CR
+### The bycatch table — right after the closing table, every CR
 
-The closing table judges the commits. The leftovers table holds what the review
+The closing table judges the commits. The bycatch table holds what the review
 turned up on the way that is NOT a finding against a commit: a pre-existing bug
 in a file the branch touched, a stale or false doc next to the change, a trap
 the diff happened to expose. Three columns, under its own heading:
 
-## Issues found on the way
+## Bycatch
 
-| Issue and how bad | Introduced by this branch? | Verdict |
+| What it is and how bad | Introduced by this branch? | Verdict |
 |---|---|---|
 | <what it is, with `file`, and its severity tag> | `yes <sha>` / `no, pre-existing` | <TL;DR Verdict> |
 
-- **Issue and how bad** — one sentence plus the severity tag, so I can tell a
+- **What it is and how bad** — one sentence plus the severity tag, so I can tell a
   lying doc from a typo without re-reading the findings.
 - **Introduced by this branch?** — `yes <sha>` or `no, pre-existing`.
   Blame it; never guess. A `yes` means the finding also belongs in that
   commit's review above, and this row points at it.
 - **Verdict** — what you think I should do, as a recommendation I can
-  overrule: a TL;DR Verdict with the leftover calls of `references/verdict.md`.
+  overrule: a TL;DR Verdict with the bycatch calls of `references/verdict.md`.
   🔧 Add fix is a new commit on this branch, or an amend of the commit that
   introduced it; ⏸ Leave for now carries the reason in a few words - out of
   the branch's scope, another owner's file, not worth the review cost today.
   How sure, Size and Difficulty are the fix's, even when it is left for now.
 
 When nothing came up, the heading stays and the table is one line instead:
-"None found on the way." Never skip it silently - an absent section reads as
+"No bycatch." Never skip it silently - an absent section reads as
 "did not look".
 
 ### Rules that keep the tags honest
@@ -273,7 +273,7 @@ Each category below has a **default severity** - deviate only with a stated reas
 
 3. **Security** [default: 🟠 · MUST HAVE, a leak or bypass you can show: 🔴 · MUST HAVE]
    - **Ask every question in "SECURITY" in `references/clean-code.md`** of the diff and of the component it lands in.
-   - An exposure the branch did not introduce goes into the leftovers table - never dropped because it is pre-existing.
+   - An exposure the branch did not introduce goes into the bycatch table - never dropped because it is pre-existing.
 
 4. **Metrics & Observability** [default: 🟠 · MUST HAVE for missing/partial metric calls and wrong metric type, 🟡 · NICE TO HAVE for naming]
    - Is every bad path counted, and the unit of work too? "EVERY BAD PATH IS COUNTED, THEN LOGGED" in `references/clean-code.md` says what counts as one
@@ -356,7 +356,7 @@ same for the commit in its place in the earlier closing table.
 - **The outcome is judged afresh every time.** Each new or rewritten commit
   is read against the carried ones, and a carried commit that a later change
   breaks gets the finding. The branch summary, the closing table and the
-  leftovers table are rebuilt for the branch as it now stands.
+  bycatch table are rebuilt for the branch as it now stands.
 
 The case that taught it: a second CR of a five-commit branch, after a
 fixup was folded into the third commit and a sixth was added.
@@ -388,7 +388,7 @@ second commit's message:
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
 - Give each commit a score out of 10
-- **End the CR with the branch summary, the closing table, then the leftovers table** (see "The branch summary", "The closing table" and "The leftovers table" above)
+- **End the CR with the branch summary, the closing table, then the bycatch table** (see "The branch summary", "The closing table" and "The bycatch table" above)
 - **Open with the FINDINGS line, the MUST-HAVE roll-up, the score and the Full Verdict, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Findings vocabulary is fixed" above)

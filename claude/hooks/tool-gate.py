@@ -104,7 +104,7 @@ WRITE_PROGRAMS = {
 
 DANGER_PROGRAMS = {
     "rm", "rmdir", "dd", "mkfs", "shred", "diskutil", "kill", "pkill", "killall", "shutdown",
-    "reboot", "halt", "sudo", "doas", "fdisk", "parted", "wipefs", "nvme", "fuser",
+    "reboot", "halt", "sudo", "doas", "fdisk", "parted", "wipefs", "nvme",
 }
 
 # Scripts that push images and move shared registry tags from their own subprocesses, where
@@ -1275,7 +1275,18 @@ def classify_stern(_):
     return READ
 
 
+def fuser_kills(args):
+    """True when fuser signals the processes it finds: psmisc's -k / --kill. macOS has neither."""
+    return any(a == "--kill" or (a.startswith("-") and not a.startswith("--") and "k" in a)
+               for a in args)
+
+
+def classify_fuser(args):
+    return DANGER if fuser_kills(args) else READ
+
+
 HANDLERS = {
+    "fuser": classify_fuser,
     "git": classify_git, "git-lfs": lambda args: classify_git(["lfs", *args]),
     "kubectl": classify_kubectl, "k": classify_kubectl, "oc": classify_kubectl,
     "helm": classify_helm,
@@ -2082,6 +2093,9 @@ def passes_gate(command, cwd):
             # go env -w and -u write Go's own user config file, which sits in no repo.
             if prog == "go" and positionals(args)[:1] == ["env"]:
                 continue
+            # A signal reaches a process, never a file.
+            if prog in ("kill", "pkill", "killall"):
+                continue
             return False
     return True
 
@@ -2178,6 +2192,9 @@ def pin_decisions(prog, args):
                          f"{ON_WORDS}"))
     if pushes_branch(prog, args):
         out.append((DENY, PUSH_REASON))
+    if prog in ("pkill", "killall") or (prog == "fuser" and fuser_kills(args)):
+        out.append((ASK, "kills every process its name, pattern or file matches, other "
+                         f"sessions' included: {ON_WORDS}"))
     if moves_mr(prog, args):
         out.append((ASK, MR_MOVE_REASON))
     url = remote_http_write(prog, args)
@@ -3021,6 +3038,18 @@ def selftest():
         (False, "Bash", "GOFLAGS=-mod=readonly go mod download example.com/m", DENY),
         # go env -w writes Go's user config file, outside every repo.
         (False, "Bash", "go env -w GOFLAGS=-mod=mod", None),
+        # A signal reaches a process, never a file.
+        (False, "Bash", "kill 12345", None),
+        (False, "Bash", "kill 12345 && echo x > /x/f", DENY),
+        # A kill by name hides its targets, so it needs the user's words in every state.
+        (False, "Bash", "pkill -f temporal", ASK),
+        (True, "Bash", "pkill -f temporal", ASK),
+        (True, "Bash", "killall temporal", ASK),
+        (True, "Bash", "sleep 1 && pkill temporal", ASK),
+        (False, "Bash", "fuser -k 8080/tcp", ASK),
+        (True, "Bash", "fuser -km /mnt/x", ASK),
+        (False, "Bash", "fuser -v 8080/tcp", None),
+        (True, "Bash", "pgrep -fl temporal", None),
         (False, "Bash", "cd /x && python3 /x/board.py fetch g --org 2 --out g.json", DENY),
         (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out $u.json",
          DENY),
@@ -3350,6 +3379,15 @@ def selftest():
         ("go env GOPATH", READ),
         ("go env -w GOFLAGS=-mod=mod", WRITE),
         ("go env -u GOFLAGS", WRITE),
+        ("kill 12345", DANGER),
+        ("pkill -f temporal", DANGER),
+        ("killall temporal", DANGER),
+        # fuser only lists the processes holding a file, unless -k makes it signal them.
+        ("fuser -cu /x", READ),
+        ("fuser -v -n tcp 8080", READ),
+        ("fuser -k 8080/tcp", DANGER),
+        ("fuser -ki -TERM /x", DANGER),
+        ("fuser --kill /x", DANGER),
     ]
     for command, expected in label_cases:
         got = classify_command(command)

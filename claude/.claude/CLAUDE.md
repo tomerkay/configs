@@ -18,7 +18,7 @@ one:
 2. **Review the staged diff with the `tkay-code` review standard**, in the
    full shape that standard gives a one-commit branch: the FINDINGS line and
    the commit's Full Verdict, both buckets, the branch summary, the closing
-   table and the leftovers table. The diff stands in for the commit; a Full
+   table and the bycatch table. The diff stands in for the commit; a Full
    Verdict on its own is not a review. A MUST HAVE finding is fixed on the
    staged copy before the question, not after it: the standard's "show the
    fix and wait" does not apply here, because the question is my sign-off.
@@ -125,7 +125,7 @@ included.
   hunk every time; never commit it with a pathspec, which takes the whole
   file. A working tree whose only difference is that line is clean for the
   status check above, and that line is never a review finding either - not
-  a leftover, not an issue found on the way.
+  bycatch.
 
 **A new file joins the allowlist only after I agree.** Tracking a file
 publishes it: the sync copies whatever this repo tracks into the public repo.

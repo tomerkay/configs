@@ -313,6 +313,11 @@ not a plan I approved, not my yes to the previous one:
 - A Slack message anywhere other than the alert thread I linked. Here my words
   cover the thread they name, not only the one message - "Alert investigation
   is ungated END TO END" says so.
+- A kill by name, pattern or file: `pkill`, `killall`, `fuser -k`. It hits
+  every process that matches, other sessions' included. Stopping your own
+  process needs no words: `pgrep -fl <pattern>` to see the matches, then
+  `kill <pid>`, both with the sandbox off - inside it, `pgrep` lists
+  nothing and `kill` reaches no process outside it.
 
 **Each one runs only when BOTH hold, every single time:**
 
@@ -561,7 +566,7 @@ question of that number, or raise something new that has nothing to do with
 it. Read every item on its own words, open the reply with the reading you
 took, one line per item, and when an item fits both readings and they lead
 to different work, ask. The case that taught it: a reply to a Q1 and a Q2
-whose `1)` took up the leftovers table of the review above them, `2)` asked
+whose `1)` took up the bycatch table of the review above them, `2)` asked
 for a new rule and `3)` for this one.
 
 The shape is mine, so it binds every stop whoever told you to stop: a rule
@@ -1108,11 +1113,16 @@ is owned by someone different:
    `permissions.ask` prompts in every mode, whatever any allow rule or hook
    says. It also decides which commands run outside the sandbox. Not mine to
    change; a prompt it raises is not yours to work around.
-2. **The gate hook** (`~/.claude/hooks/tool-gate.py`): denies a change to a
-   git repo before `LFG!`, denies an unpinned cluster command and a push in
-   every state, asks for every command in "Some commands need my words AND the prompt,
-   every time", and says nothing for a read. It can add a deny or
-   an ask; it never removes a prompt.
+2. **The gate hook** (`~/.claude/hooks/tool-gate.py`) has three jobs, and
+   only the first is the LFG gate:
+   - **The gate:** denies a change to a git repo before `LFG!`.
+   - **Every state, whatever the gate:** denies an unpinned cluster
+     command and a push.
+   - **The words rule:** asks for every command in "Some commands need my
+     words AND the prompt, every time".
+
+   It says nothing for a read. It can add a deny or an ask; it never
+   removes a prompt.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
    permission mode takes over" after `LFG!` means.

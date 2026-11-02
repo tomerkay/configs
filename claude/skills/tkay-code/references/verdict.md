@@ -54,7 +54,7 @@ tool or an idea:
 - **🔀 Squash into `<sha>`** - it belongs inside that earlier commit.
 - **🗑 Drop** - the branch is better without it.
 
-**A leftover** - something found on the way that is not part of what is being
+**Bycatch** - something found on the way that is not part of what is being
 judged:
 
 - **🔧 Add fix** - fix it as part of this work.
@@ -65,7 +65,7 @@ The call says what to do, never how sure you are of it.
 ## How sure, Size and Difficulty
 
 - **How sure is how sure you are that the thing is right and does what it
-  claims** - for a leftover, that the fix you name would be - not how sure
+  claims** - for a bycatch row, that the fix you name would be - not how sure
   you are of the call or that I will agree. One of four, each defined by what
   backs it: VERIFIED, you ran it or tested the exact behaviour; CONFIDENT,
   not run, but you traced every step in the code or the docs; LIKELY, one
