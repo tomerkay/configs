@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Standards for code reviews (CR), commit messages, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo, plus the clean-code rules for every line of code. Use whenever asked to review code, a branch, a PR or commits, including a CR asked for on an MR or PR link; to propose a change or give a verdict on one, an option or an idea; to read a GitLab MR, its review threads or its CI through glab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable.
+description: Standards for code reviews (CR), commit messages, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo, plus the clean-code rules for every line of code. Use whenever asked to review code, a branch, a PR or commits, including a CR asked for on an MR or PR link, or for a CR Summary; to propose a change or give a verdict on one, an option or an idea; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable.
 ---
 
 # Code standards
@@ -13,7 +13,7 @@ standards.
 
 | Task | Read first |
 |---|---|
-| A code review / CR / "review my branch, PR, commits", or a CR asked for on an MR or PR link | `references/code-review.md`, `references/verdict.md` and `references/clean-code.md` — **before writing a single finding** |
+| A code review / CR / "review my branch, PR, commits", a CR asked for on an MR or PR link, or a CR Summary | `references/code-review.md`, `references/verdict.md` and `references/clean-code.md` — **before writing a single finding** |
 | Anything on a GitLab MR - its review threads, its pipeline, a job log - or any `glab` call | `references/gitlab.md` — **before the first glab call** |
 | Writing or amending ANY commit message, or committing at all | `references/commits.md` — **before you type the message** |
 | Creating or naming a branch | `references/commits.md` — "Branch Names", **before you pick the name** |

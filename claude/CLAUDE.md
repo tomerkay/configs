@@ -299,6 +299,9 @@ not a plan I approved, not my yes to the previous one:
 - An HTTP write - any method but `GET`, `HEAD` and `OPTIONS` - through `xh`,
   `curl` or `wget` to a host that is not loopback. A host built at run time
   counts as remote; a write to the local mock on `localhost` is free.
+- A `glab api` or `gh api` write the MR row above does not cover - a file
+  upload, a label, a project variable. An edit of an MR's own title or
+  description, and a draft note, stay outside both rows.
 - A write to the prod backoffice through its MCP `api_call`. The dev
   backoffice's `api_call` is free.
 - Adding a context to my kubeconfig, and switching the current context or
@@ -392,9 +395,9 @@ action of that kind.**
 
 | When I ask for, or you are about to do | Invoke |
 |---|---|
-| a code review / CR / "review my branch, my PR, my commits", or a CR I ask for on an MR or PR link | `tkay-code` |
+| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary | `tkay-code` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
-| read a GitLab MR, its review threads or its CI through `glab` | `tkay-code` |
+| any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
 | write an MR or PR description | `tkay-code` |
 | create or name a git branch | `tkay-code` |

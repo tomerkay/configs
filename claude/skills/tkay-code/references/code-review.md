@@ -25,13 +25,55 @@ commit judged against the one before it, and nobody judging what lands.
   the review of the commit that should carry the fix, so that commit's verdict
   blocks.
 - **The commit verdicts never read greener than the outcome.** If the branch
-  at HEAD is broken, at least one row of the closing table is not `✅ Ship it`.
+  at HEAD is broken, at least one row of the commits table is not `✅ Ship it`.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
   assemble the change in their head - recommend `🔀 Squash into` even when no
   commit got anything wrong. A commit earns its place by making the outcome
   easier to understand or to bisect, not by existing.
+
+## THE CR IS FOUR SECTIONS
+
+**Every CR is laid out as four sections, in this order, each under its own
+top-level heading:**
+
+1. `# Findings` - every commit's review, in branch order, in the shape
+   "Mandatory output shape per commit" gives.
+2. `# Branch overview` - what the branch does as a whole at HEAD; see "The
+   branch overview".
+3. `# Commits` - the verdict table, one row per commit; see "The commits
+   table".
+4. `# Bycatch` - what the review turned up on the way; see "The bycatch
+   table".
+
+The last three are built from the findings: the overview and the commits
+table judge what the findings found, and the bycatch is what they set
+aside.
+
+### The CR Summary
+
+**When I ask for the "CR Summary", the reply is the last three sections,
+with no `# Findings`** - and only when the CR it summarises is already
+done in this session.
+
+- **This session already reviewed the branch**: the three sections are
+  rebuilt from that review under "A repeat CR in the same session". A
+  commit whose review is carried stays off the screen; a commit that needs
+  a fresh review brings its section back under `# Findings`, because its
+  findings are new to me.
+- **No CR of the branch in this session**: the summary is a full CR. Every
+  commit is reviewed, and the reply is all four sections.
+
+```
+"CR Summary", after this session's CR of the branch, nothing changed since:
+❌ # Findings, # Branch overview, # Commits, # Bycatch - the CR again
+✅ # Branch overview, # Commits, # Bycatch
+
+"CR Summary", no CR of the branch yet:
+❌ # Branch overview, # Commits, # Bycatch - verdicts no finding stands under
+✅ # Findings, # Branch overview, # Commits, # Bycatch
+```
 
 ## CRITICAL: IS IT A REAL BUG OR A NIT — AND MUST I FIX IT NOW?
 
@@ -59,8 +101,8 @@ Every finding MUST carry both tags. Findings MUST be split into two hard-separat
 Severity says **how broken** it is. Policy says **whether I have to act before merging**. Every finding carries BOTH, on the same line:
 
 ```
-### 🔴 BUG · MUST HAVE: <one-line claim>
-### 🟡 QUALITY · NICE TO HAVE: <one-line claim>
+#### 🔴 BUG · MUST HAVE: <one-line claim>
+#### 🟡 QUALITY · NICE TO HAVE: <one-line claim>
 ```
 
 | Policy | Meaning |
@@ -110,32 +152,32 @@ The MUST-HAVE roll-up lists EVERY MUST HAVE item, including any 🟡/⚪ you pro
 
 **The commit's Full Verdict** follows its score, in the shape and with the commit calls of `references/verdict.md`:
 
-- **Its call is the one its closing-table row gives**, under the rules in "The closing table" below. The row is this verdict's TL;DR, so the two never disagree.
+- **Its call is the one its commits-table row gives**, under the rules in "The commits table" below. The row is this verdict's TL;DR, so the two never disagree.
 - **How sure is how sure you are that the commit does what it claims at HEAD once its MUST HAVEs are fixed.** A known bug is in the findings and the call, never in How sure.
 - **Why Yes and Why Not hold what the change gains and costs** - behaviour it introduces, alerts it shifts, doors it closes - never its findings, which the roll-up already lists. When nothing is left beyond them, Why Not says "none, beyond the findings above".
 
-Then exactly two sections, in this order, with the divider. **The buckets split on BROKEN vs NOT BROKEN - severity, not importance.** Importance is what the MUST HAVE tag decides, and a promoted MUST HAVE lives in the second bucket while still blocking the merge. Within each bucket, MUST HAVE items come first:
+Then exactly two buckets, in this order, with the divider, each under a `###` heading inside its commit. **The buckets split on BROKEN vs NOT BROKEN - severity, not importance.** Importance is what the MUST HAVE tag decides, and a promoted MUST HAVE lives in the second bucket while still blocking the merge. Within each bucket, MUST HAVE items come first:
 
 ```
-## 🔴🟠 REAL ISSUES — the code is wrong or hazardous
+### 🔴🟠 REAL ISSUES — the code is wrong or hazardous
 ...MUST HAVE first, worst first...
 
 ---
 
-## 🟡⚪ NOT BROKEN — code is correct (some may still block)
+### 🟡⚪ NOT BROKEN — code is correct (some may still block)
 ...any promoted MUST HAVE first, then NICE TO HAVE...
 ```
 
 **If a bucket is empty, SAY IT OUT LOUD** - and say what you actually checked, not that correctness is proven: "REAL ISSUES: none - I traced both new branches and grepped every caller in HEAD." An empty bucket means you found nothing, so don't write "the code is correct" as if you'd proved it. Never make me infer emptiness from absence. Same for the roll-up: "MUST HAVE: none."
 
-### The branch summary — right above the closing table, every CR
+### The branch overview — the second section, every CR
 
 After the last commit's review, say in plain words what the branch does as a
 whole at HEAD - what someone who never opens the diff gets when it merges.
 No file, function, flag or SHA: sentences a teammate reading release notes
 would follow. Under its own heading:
 
-## What the branch does
+# Branch overview
 
 ```
 • <one thing the branch does, in plain words>
@@ -160,18 +202,18 @@ would follow. Under its own heading:
 - **The Commits line names every commit the change lives in**, in branch
   order. A commit that serves two entries is on both lines.
 - **These verdicts judge the outcome, so a broken branch shows up here.** A
-  `❌ Don't`, or How sure below `CONFIDENT`, under a closing table of nothing
+  `❌ Don't`, or How sure below `CONFIDENT`, under a commits table of nothing
   but `✅ Ship it` means the commits above are missing a finding or a `🗑 Drop`:
   find it on the commits the entry names and put it on the one that should
   carry it.
 
-### The closing table — the last thing in every CR
+### The commits table — the third section, every CR
 
-After the branch summary, end the CR with one table: one row per commit,
+After the branch overview comes one table: one row per commit,
 in branch order, three columns, under its own heading so it never reads as part
 of the last commit's review.
 
-## Commits
+# Commits
 
 | What the commit does | Score | Verdict |
 |---|---|---|
@@ -193,18 +235,18 @@ of the last commit's review.
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
 The verdict agrees with that commit's FINDINGS line: never `✅ Ship it` while
-its MUST HAVE count is above zero. A single-commit CR still ends with a one-row
-table. The branch summary, the closing table and the bycatch table below are
+its MUST HAVE count is above zero. A single-commit CR still has a one-row
+table. The branch overview, the commits table and the bycatch table below are
 the only summaries allowed in a CR.
 
-### The bycatch table — right after the closing table, every CR
+### The bycatch table — the last section, every CR
 
-The closing table judges the commits. The bycatch table holds what the review
+The commits table judges the commits. The bycatch table holds what the review
 turned up on the way that is NOT a finding against a commit: a pre-existing bug
 in a file the branch touched, a stale or false doc next to the change, a trap
 the diff happened to expose. Three columns, under its own heading:
 
-## Bycatch
+# Bycatch
 
 | What it is and how bad | Introduced by this branch? | Verdict |
 |---|---|---|
@@ -340,7 +382,7 @@ saw: together they pin its diff and everything below it, so a fresh read has
 nothing new to find. Carry its section over as it was written, with one line
 naming the review it comes from, and spend the effort on what changed.
 Compare `git rev-parse <sha>^{tree} <sha>~1^{tree}` for each commit with the
-same for the commit in its place in the earlier closing table.
+same for the commit in its place in the earlier commits table.
 
 - **The same SHA is carried as it is.**
 - **A new SHA over the same trees changed only commit messages** - a reword
@@ -355,7 +397,7 @@ same for the commit in its place in the earlier closing table.
   it would carry; review that commit again.
 - **The outcome is judged afresh every time.** Each new or rewritten commit
   is read against the carried ones, and a carried commit that a later change
-  breaks gets the finding. The branch summary, the closing table and the
+  breaks gets the finding. The branch overview, the commits table and the
   bycatch table are rebuilt for the branch as it now stands.
 
 The case that taught it: a second CR of a five-commit branch, after a
@@ -388,7 +430,7 @@ second commit's message:
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
 - Give each commit a score out of 10
-- **End the CR with the branch summary, the closing table, then the bycatch table** (see "The branch summary", "The closing table" and "The bycatch table" above)
+- **Lay the CR out in the four sections of "THE CR IS FOUR SECTIONS"**, the findings first and the bycatch table last
 - **Open with the FINDINGS line, the MUST-HAVE roll-up, the score and the Full Verdict, tag every finding with BOTH axes (🔴/🟠/🟡/⚪ · MUST HAVE/NICE TO HAVE), and split REAL ISSUES from NOT BROKEN with the divider** (see the two-axis section above - this is non-negotiable)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a bucket is empty** - I need to hear it, not deduce it (exact wording in "Findings vocabulary is fixed" above)
@@ -413,6 +455,8 @@ second commit's message:
 ### Example Review Flow
 
 ```
+# Findings
+
 ## Commit 1 of 4: perf(validator): Reduce validation time by 50%
 
 FINDINGS: 🔴 1 BUG + 🟠 1 RISK — 3 MUST HAVE, 3 NICE TO HAVE
@@ -426,9 +470,9 @@ Score: 4/10
 - **Why Not?**
   - none, beyond the findings above - checked that hashY keeps the key format
 
-## 🔴🟠 REAL ISSUES — the code is wrong or hazardous
+### 🔴🟠 REAL ISSUES — the code is wrong or hazardous
 
-### 🔴 BUG · MUST HAVE: blacklist lookup crashes on an empty pod list
+#### 🔴 BUG · MUST HAVE: blacklist lookup crashes on an empty pod list
 `validator/hash.py:88` - `pods[0].name` runs before the empty check.
 FAILS WHEN: gateway returns zero pods (happens on every cluster cold start)
 → IndexError, validator loop dies, no pod gets validated until restart.
@@ -436,7 +480,7 @@ VERIFIED: traced from `validate_all()` at line 40; nothing guards the call.
 [show code]
 Fix: [show fix]
 
-### 🟠 RISK · MUST HAVE: failure metric never fires on the timeout path
+#### 🟠 RISK · MUST HAVE: failure metric never fires on the timeout path
 `validator/hash.py:123` - logs "pod failed" but never calls `record_failure()`.
 TRIGGERS WHEN: pod times out (the most common real failure).
 → Grafana shows zero failures during an actual outage. Blind in prod.
@@ -445,24 +489,24 @@ Fix: [show fix]
 
 ---
 
-## 🟡⚪ NOT BROKEN — code is correct (some may still block)
+### 🟡⚪ NOT BROKEN — code is correct (some may still block)
 
-### 🟡 QUALITY · MUST HAVE [subject makes a claim the diff can't back; history is permanent]
+#### 🟡 QUALITY · MUST HAVE [subject makes a claim the diff can't back; history is permanent]
 "Reduce validation time by 50%" is an OUTCOME, and nothing in the body shows
 where 50% comes from. Fails "If applied, this commit will... reduce validation
 time" (awkward). Should be: "use hashY instead of hashX for lookups" - and the
 50% goes in the BODY with the 100ms → 50ms numbers behind it.
 
-### 🟡 QUALITY · NICE TO HAVE: body missing the WHY
+#### 🟡 QUALITY · NICE TO HAVE: body missing the WHY
 Doesn't say: hashX did O(n) iteration → CPU spikes; hashY is O(1).
 
-### 🟡 QUALITY · NICE TO HAVE: past tense in body
+#### 🟡 QUALITY · NICE TO HAVE: past tense in body
 "Changed from hashX to hashY" → "Replaces hashX with hashY".
 
-### ⚪ NIT · NICE TO HAVE: subject capitalized
+#### ⚪ NIT · NICE TO HAVE: subject capitalized
 "Reduce" → "reduce".
 
-### ✅ Correct:
+#### ✅ Correct:
 - Type is right: perf
 - Has scope: (validator)
 - The hashY swap itself is correct - the algorithm change is sound
@@ -483,17 +527,17 @@ Score: 9/10
 - **Why Not?**
   - none - grepped every caller, none relied on the exception
 
-## 🔴🟠 REAL ISSUES
+### 🔴🟠 REAL ISSUES
 None - no 🔴 and no 🟠. I traced both new branches in `extract_token()` and the
 null path is handled; metric fires on every path; no callers of the removed
 helper remain in HEAD (grepped).
 
 ---
 
-## 🟡⚪ NOT BROKEN
-### ⚪ NIT · NICE TO HAVE: redundant comment
+### 🟡⚪ NOT BROKEN
+#### ⚪ NIT · NICE TO HAVE: redundant comment
 `gateway/auth.py:31` - `# check if header exists` above `if not header:` - delete it.
-### ⚪ NIT · NICE TO HAVE: trailing whitespace
+#### ⚪ NIT · NICE TO HAVE: trailing whitespace
 `config/models.yaml:14`
 ```
 

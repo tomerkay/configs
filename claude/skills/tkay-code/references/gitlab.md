@@ -1,9 +1,15 @@
-# Reading GitLab from the host
+# GitLab from the host
 
-`glab` is the tool for everything on gitlab.com a task needs read: an MR,
-its review threads, its pipelines, a job log. It stays inside the sandbox
-and its token stays inside glab - the one failure that makes both look
-impossible has a one-variable fix.
+`glab` is the tool for everything a task needs on gitlab.com: reading an
+MR, its review threads, its pipelines or a job log, and uploading a file.
+It stays inside the sandbox and its token stays inside glab - the one
+failure that makes both look impossible has a one-variable fix.
+
+**Before deciding glab cannot make a request, read `glab api --help`.**
+Between `--form` for `multipart/form-data`, and `--input` with
+`--header` for a raw body of any type, it shapes any request the REST API
+takes, so "glab has no flag for this" is never a reason to reach for the
+token. "Uploading a file" below is the case that taught it.
 
 ## The TLS failure and its fix
 
@@ -66,3 +72,47 @@ allows that command in plain words, and otherwise print it, the note's
 full text included, for me to run myself. A review I asked for on an MR
 link writes nothing to it either - see "A CR asked for on a link" in
 `references/code-review.md`.
+
+## Uploading a file
+
+An image in an MR description or a note is an upload to the project:
+`POST projects/<project>/uploads` with a `multipart/form-data` body
+holding one part named `file`. The JSON answer carries `markdown`,
+`![name](/uploads/<hash>/name.png)`, and that is what goes into the text.
+
+`--form` sends it. `-F` is the trap: in curl it means a form part, in
+glab it is `--field`, which reads the file into a JSON field, and GitLab
+refuses it:
+
+```
+❌ glab api --method POST "projects/<project>/uploads" -F "file=@shot.png"
+   → HTTP 400
+✅ glab api --method POST "projects/<project>/uploads" --form "file=@shot.png" | jq -r '.markdown'
+```
+
+A glab whose `glab api --help` does not list `--form` predates it: build
+the multipart body in a scratch file, with `\r\n` line breaks, and send it
+with `--input` and `--header "Content-Type: multipart/form-data;
+boundary=<boundary>"`.
+
+It declares `allowed_domains` in auto mode like every call above.
+
+An upload is a write on my behalf, like a note: run it only when my
+message allows it in plain words.
+
+**An upload outlives the text that links it.** Replacing an image in a
+description stores the new file beside the old one: the old one leaves
+the MR but stays stored in the project, reachable at its URL. So when
+images change, upload only the ones that changed and keep the other links
+as they are, and say when asking that the old files stay stored.
+
+Deleting one is `DELETE projects/<project>/uploads/<secret>/<filename>`,
+with both parts read off its `/uploads/<secret>/<filename>` link, and it
+needs the Maintainer role or above
+([GitLab docs](https://docs.gitlab.com/api/project_markdown_uploads/));
+Developer gets HTTP 403. Before offering one, read my access level:
+`glab api user | jq .id`, then
+`glab api "projects/<project>/members/all/<id>" | jq .access_level`.
+`40` or above can delete; below it, say a maintainer of the project has
+to, instead of handing me a command that fails. A delete is a write on my
+behalf like the upload.

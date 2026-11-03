@@ -682,7 +682,7 @@ def classify_gh(args):
         if method == "DELETE":
             return DANGER
         # Fields switch the default method to POST; under an explicit GET they are query params.
-        fields = has_flag(args, "-f", "-F", "--field", "--raw-field")
+        fields = has_flag(args, "-f", "-F", "--field", "--raw-field", "--form")
         if (method != "GET" or has_flag(args, "--input")
                 or (fields and not any(a == "--method" or a.startswith(("-X", "--method="))
                                        for a in args))):
@@ -779,6 +779,37 @@ def mr_api_moves(args, pos):
     # A body from --input can carry the state where no argument shows it.
     return (any(MR_ITEM_RE.search(p) for p in paths)
             and (has_flag(args, "--input") or any(MR_STATE_FIELD_RE.match(a) for a in args)))
+
+
+# Writes on an MR that CLAUDE.md leaves free: its title or description, and a draft note.
+MR_DRAFT_NOTE_RE = re.compile(r"/merge_requests/[^/]+/draft_notes(?:/[^/]+)?/?$")
+API_WRITE_REASON = f"writes to GitLab or GitHub through its API on the user's behalf: {ON_WORDS}"
+
+
+def api_write_needs_words(prog, args):
+    if prog not in ("gh", "glab"):
+        return False
+    rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
+    pos = positionals(rest)
+    if pos[:1] != ["api"] or classify_gh(rest) == READ or mr_api_moves(rest, pos):
+        return False
+    if http_method(rest, "-X", "--method") == "DELETE":
+        return True
+    paths = [a.split("?", 1)[0] for a in pos[1:]]
+    return not any(MR_ITEM_RE.search(p) or MR_DRAFT_NOTE_RE.search(p) for p in paths)
+
+
+# gh and glab groups whose writes land on GitLab or GitHub alone, and the verbs in them that
+# write a checkout, a branch or files here instead.
+GH_REMOTE_GROUPS = {"api", "mr", "pr", "issue", "ci", "run", "label", "variable", "secret",
+                    "workflow", "schedule", "cache"}
+GH_LOCAL_SUBS = {"checkout", "clone", "download", "sync", "artifact", "develop"}
+
+
+def gh_writes_remote_only(args):
+    rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
+    group, sub = (positionals(rest) + ["", ""])[:2]
+    return group in GH_REMOTE_GROUPS and sub not in GH_LOCAL_SUBS
 
 
 def pushes_branch(prog, args):
@@ -2061,6 +2092,8 @@ def passes_gate(command, cwd):
                 continue
             if runs_opaque_code(words):
                 continue
+            if prog in ("gh", "glab") and gh_writes_remote_only(args):
+                continue
             if prog == "git":
                 target = git_target_dir(here, args)
                 # The directory itself may be a scratch root, so it counts as inside one.
@@ -2197,6 +2230,8 @@ def pin_decisions(prog, args):
                          f"sessions' included: {ON_WORDS}"))
     if moves_mr(prog, args):
         out.append((ASK, MR_MOVE_REASON))
+    elif api_write_needs_words(prog, args):
+        out.append((ASK, API_WRITE_REASON))
     url = remote_http_write(prog, args)
     if url:
         out.append((ASK, f"an HTTP write to {url} changes state on a remote server: "
@@ -2410,6 +2445,9 @@ SCRIPT_HTTP_WRITE_RES = (
     re.compile(r"\bcurl\b.*\s(?:-d|--data(?:-raw|-binary|-urlencode)?|--json|-F|--form)\b"),
     re.compile(r"--post-data\b|--method[\s=]+['\"]?(?:POST|PUT|PATCH|DELETE)\b"),
     re.compile(r"\b(?:requests|httpx|session|client)\.(?:post|put|patch|delete)\("),
+    # A field, a form or a body makes gh and glab api send a POST unless the line says GET.
+    re.compile(r"\b(?:gh|glab)\s+api\b(?!.*(?:-X|--method)[\s=]*['\"]?GET\b)"
+               r".*\s(?:-[fF]|--(?:raw-)?field|--form|--input)\b"),
 )
 LOOPBACK_IN_TEXT_RE = re.compile(r"\b(?:localhost|127\.\d+\.\d+\.\d+)\b|\[::1\]")
 URL_IN_TEXT_RE = re.compile(r"[A-Za-z][\w+.-]*://[^\s'\"]+")
@@ -2963,6 +3001,31 @@ def selftest():
         (True, "Bash", "glab api projects/p/repository/branches", None),
         (True, "Bash", "glab api graphql -f query='mutation{mergeRequestAccept(input:{}){x}}'", ASK),
         (True, "Bash", "glab api graphql -f query='{project(fullPath:\"g/p\"){mergeRequests{x}}}'", None),
+        (True, "Bash", "glab api --method POST projects/p/uploads --form file=@f.png", ASK),
+        (False, "Bash", "glab api --method POST projects/p/uploads --form file=@f.png", ASK),
+        (True, "Bash", "glab api projects/p/uploads --form file=@f.png", ASK),
+        (True, "Bash", "gh api repos/o/r/labels -f name=x", ASK),
+        (False, "Bash", "gh api repos/o/r/labels -f name=x", ASK),
+        (False, "Bash", "glab mr update 3 --description-file d.md", None),
+        (False, "Bash", "glab -R g/p mr update 3 -d x", None),
+        (False, "Bash", "glab api -X PUT projects/p/merge_requests/3 -f title=x", None),
+        (False, "Bash", "glab api projects/p/merge_requests/3/draft_notes -f note=x", None),
+        (False, "Bash", "glab issue create -t x", None),
+        (False, "Bash", "glab ci retry 5", None),
+        (False, "Bash", "gh pr edit 3 --body-file d.md", None),
+        (False, "Bash", "glab mr update 3 -d x > d.md", DENY),
+        (False, "Bash", "glab mr checkout 3", DENY),
+        (False, "Bash", "gh pr checkout 3", DENY),
+        (False, "Bash", "gh run download 5", DENY),
+        (False, "Bash", "glab ci artifact main build", DENY),
+        (False, "Bash", "gh issue develop 3 --checkout", DENY),
+        (False, "Bash", "gh repo clone o/r", DENY),
+        (True, "Bash", "glab api -X DELETE projects/p/labels/x", ASK),
+        (True, "Bash", "glab api -X DELETE projects/p/merge_requests/3", ASK),
+        (True, "Bash", "glab api graphql -f query='mutation{labelCreate(input:{}){x}}'", ASK),
+        (True, "Bash", "gh api -X PATCH repos/o/r/pulls/3 -f title=x", None),
+        (True, "Bash", "glab api -X PUT projects/p/merge_requests/3/draft_notes/9 -f note=x", None),
+        (True, "Bash", "glab api -X GET projects/p/labels -f search=x", None),
         (True, "Bash", "gh api -X PUT repos/o/r/pulls/1/merge", ASK),
         (True, "Bash", "gh api repos/o/r/pulls -f title=x -f head=b -f base=main", ASK),
         (True, "Bash", "gh api -X PATCH repos/o/r/pulls/1 -f state=closed", ASK),
@@ -3108,7 +3171,7 @@ def selftest():
         (False, "Bash", "python3 -m json.tool", None),
         (False, "Bash", "python3 -m unittest", None),
         (False, "Bash", "gh api graphql -f query='{viewer{login}}'", None),
-        (False, "Bash", "gh api graphql -f query='mutation{x}'", DENY),
+        (False, "Bash", "gh api graphql -f query='mutation{x}'", ASK),
         (True, "Bash", "kubectl config use-context x", ASK),
         (False, "Bash", "kubectl config use-context x", ASK),
         (True, "Bash", "kubectx x", ASK),
@@ -3337,6 +3400,7 @@ def selftest():
         ("glab api projects/p/merge_requests/3/notes -f body=x", DANGER),
         ("glab api graphql -f query='mutation{x}'", DANGER),
         ("glab api projects/p/merge_requests/3", READ),
+        ("glab api projects/p/uploads --form file=@f.png", DANGER),
         ("glab api -X GET projects/p/merge_requests -f state=opened", READ),
         ("git lfs", READ),
         ("git lfs clean x.tgz", READ),
@@ -3555,6 +3619,9 @@ def selftest():
             "built.sh": 'helm "$1" r ./c\n',
             "kubeconfig.sh": 'kubectl config --kubeconfig="$kc" delete-context x\n',
             "mixed.sh": "curl -H 'Origin: http://localhost' -X POST https://example.com/x\n",
+            "upload.sh": 'glab api "projects/p/uploads" --form "file=@$f"\n',
+            "label.sh": "gh api repos/o/r/labels -f name=x\n",
+            "query.sh": "glab api --method GET projects/p/labels -f search=x\n",
         }
         for name, text in scripts.items():
             with open(os.path.join(not_repo, name), "w") as f:
@@ -3571,6 +3638,9 @@ def selftest():
             ("./built.sh", None),
             ("./kubeconfig.sh", None),
             ("./mixed.sh", ASK),
+            ("./upload.sh", ASK),
+            ("./label.sh", ASK),
+            ("./query.sh", None),
             (f"cd {root} && ./plain/deploy.sh", ASK),
             (f"(cd {root} && ./plain/deploy.sh)", ASK),
             (f"(cd {root} && ./plain/read.sh)", ASK),

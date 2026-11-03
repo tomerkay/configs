@@ -17,9 +17,9 @@ one:
    every edit to the copy.
 2. **Review the staged diff with the `tkay-code` review standard**, in the
    full shape that standard gives a one-commit branch: the FINDINGS line and
-   the commit's Full Verdict, both buckets, the branch summary, the closing
-   table and the bycatch table. The diff stands in for the commit; a Full
-   Verdict on its own is not a review. A MUST HAVE finding is fixed on the
+   the commit's Full Verdict, both buckets, the branch overview, the
+   commits table and the bycatch table. The diff stands in for the
+   commit; a Full Verdict on its own is not a review. A MUST HAVE finding is fixed on the
    staged copy before the question, not after it: the standard's "show the
    fix and wait" does not apply here, because the question is my sign-off.
 3. **Ask once**: show the diff, the review and the commit message, written by
