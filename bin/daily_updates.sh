@@ -16,15 +16,34 @@ GO_PIN_REPO="$HOME/repos/data-path"
 LINT_REPO="https://github.com/golangci/golangci-lint"
 LINT_BIN="$HOME/.local/bin/golangci-lint"
 
+STEP_ERR=$(mktemp)
+trap 'rm -f "$STEP_ERR"' EXIT
+
+# Keeps the step's stderr in a file as well as passing it on, so step_reason can
+# read it even when the step ran inside a command substitution.
+run_step() {
+	"$@" 2>"$STEP_ERR"
+	step_status=$?
+	cat "$STEP_ERR" >&2
+	return "$step_status"
+}
+
+# git, brew, gvm, curl and claude print the cause on the first line that names an
+# error and follow it with generic advice, so that line beats the last one.
+step_reason() {
+	grep -m1 -iE 'error|fatal|fail|ssh:|curl:' "$STEP_ERR" ||
+		grep -v '^[[:space:]]*$' "$STEP_ERR" | tail -n 1
+}
+
 # A formula can keep older kegs until cleanup runs, so take the last (newest) column.
 brew_version() {
 	brew list --versions "$1" 2>/dev/null | awk '{print $NF}'
 }
 
-# One install per scope: the user one, plus one per repo whose own settings enable the bundle.
-bundle_versions() {
-	jq -r --arg p "$ATERO_BUNDLE" \
-		'[.plugins[$p][] | "\(.projectPath // "user" | split("/") | last)=\(.version)"] | join(" ")' \
+# $1 is the project path of a project-scope install, or empty for the user one.
+bundle_version() {
+	jq -r --arg p "$ATERO_BUNDLE" --arg dir "$1" \
+		'.plugins[$p][] | select((.projectPath // "") == $dir) | .version' \
 		"$PLUGINS_FILE" 2>/dev/null
 }
 
@@ -33,6 +52,7 @@ bundle_project_dirs() {
 		"$PLUGINS_FILE" 2>/dev/null
 }
 
+# $5 is the cause, printed only when $4 is a failing exit code.
 report() {
 	if [ "$2" = "$3" ]; then
 		result="not updated ($2)"
@@ -42,56 +62,99 @@ report() {
 	if [ "$4" -eq 0 ]; then
 		echo "$1: $result"
 	else
-		echo "$1: FAILED (exit $4) - $result"
+		echo "$1: FAILED: ${5:-no error output} (exit $4) - $result"
 	fi
 }
+
+report_status() {
+	if [ "$2" -eq 0 ]; then
+		echo "$1: ok"
+	else
+		echo "$1: FAILED: ${3:-no error output} (exit $2)"
+	fi
+}
+
+# Each scope is its own copy of the bundle, so each updates, and fails, on its own.
+bundle_scope_report() {
+	scope_before=$(bundle_version "$1")
+	# The update's own output belongs in the cron log, not in the captured report.
+	if [ -z "$1" ]; then
+		run_step "$CLAUDE" plugin update "$ATERO_BUNDLE" >&2
+	else
+		(cd "$1" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") >&2
+	fi
+	scope_status=$?
+	scope=${1:-user}
+	report "$ATERO_BUNDLE (${scope##*/})" "$scope_before" "$(bundle_version "$1")" \
+		"$scope_status" "$(step_reason)"
+}
+
+# A subshell body, so its cd leaves the script's directory alone.
+install_lint() (
+	cd "$lint_dir" &&
+		curl -sSfLO "$LINT_REPO/releases/download/v$lint_latest/$lint_asset.tar.gz" &&
+		curl -sSfLO "$LINT_REPO/releases/download/v$lint_latest/golangci-lint-$lint_latest-checksums.txt" &&
+		grep " $lint_asset.tar.gz\$" "golangci-lint-$lint_latest-checksums.txt" | shasum -a 256 -c &&
+		tar -xzf "$lint_asset.tar.gz" &&
+		mkdir -p "$(dirname "$LINT_BIN")" &&
+		mv "$lint_asset/golangci-lint" "$LINT_BIN"
+)
 
 omz_before=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_before=$("$CLAUDE" --version 2>/dev/null)
 
 # brew's own auto-update only fires once every 24h, which a daily cron can miss,
 # leaving the upgrades to resolve against a stale tap index.
-brew update
+run_step brew update
 brew_update_status=$?
+brew_update_reason=$(step_reason)
 
 # `omz update` is a zsh function, absent outside an interactive shell; upgrade.sh is
 # the unattended entry point (-i would make it prompt).
-zsh -f "$ZSH/tools/upgrade.sh" -v default
+run_step zsh -f "$ZSH/tools/upgrade.sh" -v default
 omz_status=$?
+omz_reason=$(step_reason)
 
 # check_for_upgrade.sh prompts again 13 days after this stamp, so cron has to write it.
 echo "LAST_EPOCH=$(( $(date +%s) / 86400 ))" > "$ZSH/cache/.zsh-update"
 
-"$CLAUDE" update
+run_step "$CLAUDE" update
 claude_status=$?
+claude_reason=$(step_reason)
 
-bundle_before=$(bundle_versions)
 # An installed plugin is a frozen copy pinned to its plugin.json version, so the
 # marketplace pull alone changes nothing until `plugin update` re-copies it. Each
 # scope is its own copy, and the default update touches only the user one.
-if "$CLAUDE" plugin marketplace update "$ATERO_MARKETPLACE"; then
-	"$CLAUDE" plugin update "$ATERO_BUNDLE"
-	bundle_status=$?
-	for dir in $(bundle_project_dirs); do
-		(cd "$dir" && "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") || bundle_status=$?
-	done
-else
-	bundle_status=$?
+run_step "$CLAUDE" plugin marketplace update "$ATERO_MARKETPLACE"
+marketplace_status=$?
+marketplace_reason=$(step_reason)
+if [ "$marketplace_status" -eq 0 ]; then
+	bundle_report=$(
+		for dir in "" $(bundle_project_dirs); do
+			bundle_scope_report "$dir"
+		done
+	)
 fi
 
 go_before=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 # The pin is read from origin/main, so whatever branch the checkout is on does not
 # change it. BatchMode makes a fetch that would prompt for a passphrase fail instead
 # of hanging the cron.
-go_pin=$(GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=15' \
-	git -C "$GO_PIN_REPO" fetch -q origin main >&2 &&
-	git -C "$GO_PIN_REPO" show origin/main:.go-version)
+go_stage="fetching data-path origin/main"
+run_step env GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=15' \
+	git -C "$GO_PIN_REPO" fetch -q origin main
 go_status=$?
 if [ "$go_status" -eq 0 ]; then
+	go_stage="reading .go-version from data-path origin/main"
+	go_pin=$(run_step git -C "$GO_PIN_REPO" show origin/main:.go-version)
+	go_status=$?
+fi
+if [ "$go_status" -eq 0 ]; then
+	go_stage="switching gvm and ~/.local/bin to $go_pin"
 	# gvm is a set of bash functions; -B installs the prebuilt binary, which needs no
 	# go1.4 bootstrap. Go writes the module cache read-only, which gvm uninstall's
 	# rm -rf cannot remove.
-	bash -c '
+	run_step bash -c '
 		. "$HOME/.gvm/scripts/gvm" || exit 1
 		[ -d "$GVM_ROOT/gos/$1" ] || gvm install "$1" -B || exit 1
 		gvm use "$1" --default >/dev/null || exit 1
@@ -112,58 +175,51 @@ if [ "$go_status" -eq 0 ]; then
 	# uninstall above can delete; with it unset, gvm in .zshrc sets the pin's.
 	tmux set-environment -gu GOROOT 2>/dev/null
 fi
+go_reason="$go_stage: $(step_reason)"
 go_after=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 
 # Homebrew's formula depends on its own go, a second toolchain beside the gvm pin.
 # The release binary has no such dependency and runs whichever go is on PATH.
 lint_before=$("$LINT_BIN" version --short 2>/dev/null)
 lint_after=$lint_before
-lint_latest=$(curl -sSfL -o /dev/null -w '%{url_effective}' "$LINT_REPO/releases/latest")
+lint_stage="looking up the latest release"
+lint_latest=$(run_step curl -sSfL -o /dev/null -w '%{url_effective}' "$LINT_REPO/releases/latest")
 lint_status=$?
 lint_latest=${lint_latest##*/v}
 if [ "$lint_status" -eq 0 ] && [ "$lint_latest" != "$lint_before" ]; then
+	lint_stage="installing v$lint_latest"
 	lint_asset="golangci-lint-$lint_latest-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/')"
 	lint_dir=$(mktemp -d)
-	(
-		cd "$lint_dir" &&
-			curl -sSfLO "$LINT_REPO/releases/download/v$lint_latest/$lint_asset.tar.gz" &&
-			curl -sSfLO "$LINT_REPO/releases/download/v$lint_latest/golangci-lint-$lint_latest-checksums.txt" &&
-			grep " $lint_asset.tar.gz\$" "golangci-lint-$lint_latest-checksums.txt" | shasum -a 256 -c &&
-			tar -xzf "$lint_asset.tar.gz" &&
-			mkdir -p "$(dirname "$LINT_BIN")" &&
-			mv "$lint_asset/golangci-lint" "$LINT_BIN"
-	) >&2
+	run_step install_lint >&2
 	lint_status=$?
 	rm -rf "$lint_dir"
 	lint_after=$("$LINT_BIN" version --short 2>/dev/null)
 fi
+lint_reason="$lint_stage: $(step_reason)"
 
 brew_report=$(
 	for f in $BREW_FORMULAE; do
 		before=$(brew_version "$f")
 		# brew's own output belongs in the cron log, not in the captured report.
-		brew upgrade -y "$f" >&2
+		run_step brew upgrade -y "$f" >&2
 		status=$?
+		reason=$(step_reason)
 		after=$(brew_version "$f")
-		report "$f" "$before" "$after" "$status"
+		report "$f" "$before" "$after" "$status" "$reason"
 	done
 )
 
 omz_after=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_after=$("$CLAUDE" --version 2>/dev/null)
-bundle_after=$(bundle_versions)
 
 body=$(
-	report "oh-my-zsh" "$omz_before" "$omz_after" "$omz_status"
-	report "claude" "$claude_before" "$claude_after" "$claude_status"
-	report "$ATERO_BUNDLE" "$bundle_before" "$bundle_after" "$bundle_status"
-	report "go (data-path pin)" "$go_before" "$go_after" "$go_status"
-	report "golangci-lint" "$lint_before" "$lint_after" "$lint_status"
-	if [ "$brew_update_status" -eq 0 ]; then
-		echo "brew update: ok"
-	else
-		echo "brew update: FAILED (exit $brew_update_status)"
-	fi
+	report "oh-my-zsh" "$omz_before" "$omz_after" "$omz_status" "$omz_reason"
+	report "claude" "$claude_before" "$claude_after" "$claude_status" "$claude_reason"
+	report_status "$ATERO_MARKETPLACE marketplace" "$marketplace_status" "$marketplace_reason"
+	[ -n "$bundle_report" ] && echo "$bundle_report"
+	report "go (data-path pin)" "$go_before" "$go_after" "$go_status" "$go_reason"
+	report "golangci-lint" "$lint_before" "$lint_after" "$lint_status" "$lint_reason"
+	report_status "brew update" "$brew_update_status" "$brew_update_reason"
 	echo "$brew_report"
 )
 
@@ -184,9 +240,15 @@ else
 	summary="$summary; nothing updated"
 fi
 
+# Reasons are free text that can hold the summary's own separators, so each failure
+# gets a line of its own.
+failures=$(echo "$body" | grep ': FAILED: ' |
+	sed -E 's/ - (not )?updated .*$//; s/: FAILED: /: /; s/^/failed: /')
+
 {
 	echo "last run: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 	echo "summary: $summary"
+	[ -n "$failures" ] && echo "$failures"
 	echo "$body"
 	echo "============================================================"
 } >> "$LOG_FILE"
