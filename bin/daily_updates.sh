@@ -95,6 +95,12 @@ if [ "$go_status" -eq 0 ]; then
 		. "$HOME/.gvm/scripts/gvm" || exit 1
 		[ -d "$GVM_ROOT/gos/$1" ] || gvm install "$1" -B || exit 1
 		gvm use "$1" --default >/dev/null || exit 1
+		# A process started before a pin change keeps a PATH to the version the loop
+		# below uninstalls; these links resolve go to the pin from any PATH that
+		# carries ~/.local/bin.
+		for bin in go gofmt; do
+			ln -sfn "$GVM_ROOT/gos/$1/bin/$bin" "$HOME/.local/bin/$bin" || exit 1
+		done
 		for v in $(ls "$GVM_ROOT/gos"); do
 			[ "$v" = "$1" ] && continue
 			chmod -R u+w "$GVM_ROOT/pkgsets/$v" 2>/dev/null
@@ -102,6 +108,9 @@ if [ "$go_status" -eq 0 ]; then
 		done
 	' _ "$go_pin" >&2
 	go_status=$?
+	# A tmux server hands every new pane the GOROOT it started with, which the
+	# uninstall above can delete; with it unset, gvm in .zshrc sets the pin's.
+	tmux set-environment -gu GOROOT 2>/dev/null
 fi
 go_after=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 
