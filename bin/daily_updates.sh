@@ -100,6 +100,13 @@ install_lint() (
 		mv "$lint_asset/golangci-lint" "$LINT_BIN"
 )
 
+# The data-path remote is reachable from here only over the tailnet; without it the
+# fetch waits out ssh's connect timeout and fails.
+tailscale_state=$(tailscale status --json 2>/dev/null | jq -r .BackendState 2>/dev/null)
+if [ "$tailscale_state" != Running ]; then
+	echo "tailscale is ${tailscale_state:-not answering}: start it, data-path cannot be fetched" >&2
+fi
+
 omz_before=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_before=$("$CLAUDE" --version 2>/dev/null)
 
@@ -137,45 +144,47 @@ if [ "$marketplace_status" -eq 0 ]; then
 fi
 
 go_before=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
-# The pin is read from origin/main, so whatever branch the checkout is on does not
-# change it. BatchMode makes a fetch that would prompt for a passphrase fail instead
-# of hanging the cron.
-go_stage="fetching data-path origin/main"
-run_step env GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=15' \
-	git -C "$GO_PIN_REPO" fetch -q origin main
-go_status=$?
-if [ "$go_status" -eq 0 ]; then
-	go_stage="reading .go-version from data-path origin/main"
-	go_pin=$(run_step git -C "$GO_PIN_REPO" show origin/main:.go-version)
+if [ "$tailscale_state" = Running ]; then
+	# The pin is read from origin/main, so whatever branch the checkout is on does not
+	# change it. BatchMode makes a fetch that would prompt for a passphrase fail instead
+	# of hanging the cron.
+	go_stage="fetching data-path origin/main"
+	run_step env GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=15' \
+		git -C "$GO_PIN_REPO" fetch -q origin main
 	go_status=$?
+	if [ "$go_status" -eq 0 ]; then
+		go_stage="reading .go-version from data-path origin/main"
+		go_pin=$(run_step git -C "$GO_PIN_REPO" show origin/main:.go-version)
+		go_status=$?
+	fi
+	if [ "$go_status" -eq 0 ]; then
+		go_stage="switching gvm and ~/.local/bin to $go_pin"
+		# gvm is a set of bash functions; -B installs the prebuilt binary, which needs no
+		# go1.4 bootstrap. Go writes the module cache read-only, which gvm uninstall's
+		# rm -rf cannot remove.
+		run_step bash -c '
+			. "$HOME/.gvm/scripts/gvm" || exit 1
+			[ -d "$GVM_ROOT/gos/$1" ] || gvm install "$1" -B || exit 1
+			gvm use "$1" --default >/dev/null || exit 1
+			# A process started before a pin change keeps a PATH to the version the loop
+			# below uninstalls; these links resolve go to the pin from any PATH that
+			# carries ~/.local/bin.
+			for bin in go gofmt; do
+				ln -sfn "$GVM_ROOT/gos/$1/bin/$bin" "$HOME/.local/bin/$bin" || exit 1
+			done
+			for v in $(ls "$GVM_ROOT/gos"); do
+				[ "$v" = "$1" ] && continue
+				chmod -R u+w "$GVM_ROOT/pkgsets/$v" 2>/dev/null
+				gvm uninstall "$v" || exit 1
+			done
+		' _ "$go_pin" >&2
+		go_status=$?
+		# A tmux server hands every new pane the GOROOT it started with, which the
+		# uninstall above can delete; with it unset, gvm in .zshrc sets the pin's.
+		tmux set-environment -gu GOROOT 2>/dev/null
+	fi
+	go_reason="$go_stage: $(step_reason)"
 fi
-if [ "$go_status" -eq 0 ]; then
-	go_stage="switching gvm and ~/.local/bin to $go_pin"
-	# gvm is a set of bash functions; -B installs the prebuilt binary, which needs no
-	# go1.4 bootstrap. Go writes the module cache read-only, which gvm uninstall's
-	# rm -rf cannot remove.
-	run_step bash -c '
-		. "$HOME/.gvm/scripts/gvm" || exit 1
-		[ -d "$GVM_ROOT/gos/$1" ] || gvm install "$1" -B || exit 1
-		gvm use "$1" --default >/dev/null || exit 1
-		# A process started before a pin change keeps a PATH to the version the loop
-		# below uninstalls; these links resolve go to the pin from any PATH that
-		# carries ~/.local/bin.
-		for bin in go gofmt; do
-			ln -sfn "$GVM_ROOT/gos/$1/bin/$bin" "$HOME/.local/bin/$bin" || exit 1
-		done
-		for v in $(ls "$GVM_ROOT/gos"); do
-			[ "$v" = "$1" ] && continue
-			chmod -R u+w "$GVM_ROOT/pkgsets/$v" 2>/dev/null
-			gvm uninstall "$v" || exit 1
-		done
-	' _ "$go_pin" >&2
-	go_status=$?
-	# A tmux server hands every new pane the GOROOT it started with, which the
-	# uninstall above can delete; with it unset, gvm in .zshrc sets the pin's.
-	tmux set-environment -gu GOROOT 2>/dev/null
-fi
-go_reason="$go_stage: $(step_reason)"
 go_after=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 
 # Homebrew's formula depends on its own go, a second toolchain beside the gvm pin.
@@ -213,11 +222,20 @@ omz_after=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_after=$("$CLAUDE" --version 2>/dev/null)
 
 body=$(
+	if [ "$tailscale_state" = Running ]; then
+		echo "tailscale: ok"
+	else
+		echo "tailscale: FAILED: ${tailscale_state:-not answering}"
+	fi
 	report "oh-my-zsh" "$omz_before" "$omz_after" "$omz_status" "$omz_reason"
 	report "claude" "$claude_before" "$claude_after" "$claude_status" "$claude_reason"
 	report_status "$ATERO_MARKETPLACE marketplace" "$marketplace_status" "$marketplace_reason"
 	[ -n "$bundle_report" ] && echo "$bundle_report"
-	report "go (data-path pin)" "$go_before" "$go_after" "$go_status" "$go_reason"
+	if [ "$tailscale_state" = Running ]; then
+		report "go (data-path pin)" "$go_before" "$go_after" "$go_status" "$go_reason"
+	else
+		echo "go (data-path pin): skipped, tailscale is down - not updated ($go_before)"
+	fi
 	report "golangci-lint" "$lint_before" "$lint_after" "$lint_status" "$lint_reason"
 	report_status "brew update" "$brew_update_status" "$brew_update_reason"
 	echo "$brew_report"
