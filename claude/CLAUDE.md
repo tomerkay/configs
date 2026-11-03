@@ -40,7 +40,8 @@ that first token, you are gated.
 **The gate and the commands that need my words are enforced by
 `~/.claude/hooks/tool-gate.py`**, a PreToolUse hook that reads the state
 `~/.claude/hooks/lfg-state.py` records when I type the token, and
-`~/.claude/hooks/repo-watch.py` reports a repo change a script made before it.
+`~/.claude/hooks/repo-watch.py` reports a repo change seen while a Bash
+command ran before it.
 A call the hook denies is the hook doing its job, never a reason to look for
 another way to the same change. Run `python3 ~/.claude/hooks/tool-gate.py
 [--open] <command>` to see the decision for any command.
@@ -58,8 +59,15 @@ outside this file drifts from the one the hook enforces.
 `git status` would show - an edited, created or deleted tracked or
 untracked file - and a change to its history: a commit, a branch, a tag,
 a stash, a reset, a rebase, a cherry-pick, a merge, a worktree. Any repo
-on my machine, mine or cloned, outside your scratch. That is the whole
-scope.
+under one of my repo roots - `REPO_ROOT_NAMES` in
+`~/.claude/hooks/tool-gate.py` lists them - outside your scratch. That is
+the whole scope.
+
+**Every repo I work in is cloned under a repo root.** A clone a tool keeps
+for itself anywhere else - Homebrew's prefix, the plugin marketplaces,
+oh-my-zsh - is that tool's state, not my work, and outside the gate. A
+clone you make outside the roots asks every time, gate open or closed:
+say in one line why it does not belong under a root.
 
 **Everything else is outside the gate, never waits for `LFG!`, and an
 `LFG!` never unlocks it.** Reading, scratch files, scripts, containers,
@@ -136,14 +144,17 @@ A change to a git repo by ANY mechanism:
   repo
 - `git add`, `commit`, `stash`, `reset`, `rebase`, `cherry-pick`,
   `checkout --`, `switch`, `branch`, `tag`, `worktree add`, and a
-  `git clone` into a path outside your scratch
+  `git clone` into a repo root
 
 **The hooks enforce what they can see and report what they cannot.**
 `tool-gate.py` denies the commands above before they run, and keeps a
 redirect, `cp`, `mv`, `tee` or `sed -i` to your scratch even outside a
 repo; the repo watch compares `git status` around every Bash command and
-reports a change a script made. A report is a broken gate: say so, as
-"If you break this gate" says, and stop.
+reports any change made while it ran. A report is a broken gate when your
+command could have made it: say so, as "If you break this gate" says, and
+stop. One your command could not have made came from another process,
+most often another session in the same repo: say that in one line and
+carry on.
 
 ## What is ALWAYS allowed, gate open or closed
 

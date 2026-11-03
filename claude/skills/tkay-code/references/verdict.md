@@ -34,13 +34,12 @@ needs one. A TL;DR Verdict never carries Why Yes or Why Not.
 
 ## The call
 
-Three sets, one per kind of thing judged. The words are fixed, never
+One set per kind of thing judged. The words are fixed, never
 improvised, and each set is used only for its own kind. **Each call opens
 with its emoji**, wherever it is written - a verdict, a table cell or a
 sentence; nothing else in a verdict carries one.
 
-**A change** - a change proposed to me, a change a branch makes, an option, a
-tool or an idea:
+**A change** - a change proposed to me, an option, a tool or an idea:
 
 - **✅ Do it** - you would make it.
 - **⚖️ Close call** - both ways are defensible; the text around the verdict
@@ -53,6 +52,18 @@ tool or an idea:
 - **🔧 Needs change** - amending this commit fixes what blocks it.
 - **🔀 Squash into `<sha>`** - it belongs inside that earlier commit.
 - **🗑 Drop** - the branch is better without it.
+
+**A branch overview entry** - one thing a branch under review does, as it
+lands:
+
+- **✅ Merge it** - the change is right and every commit it lives in is
+  ✅ Ship it.
+- **🔧 Merge after fixes** - the change is right, and a commit it lives in
+  must change first; the brackets name the commit and what it needs.
+- **⚖️ Close call** - merging and not merging are both defensible; the text
+  around the verdict says which way you lean and why.
+- **❌ Don't merge** - the change itself is wrong or out of scope, whatever
+  its commits are called.
 
 **Bycatch** - something found on the way that is not part of what is being
 judged:
@@ -71,8 +82,8 @@ The call says what to do, never how sure you are of it.
   not run, but you traced every step in the code or the docs; LIKELY, one
   unchecked inference carries it; 50-50, more than one unchecked inference,
   or you do not know. Below 50-50 the call never says go ahead: never ✅ Do it,
-  ✅ Ship it or 🔧 Add fix. A test you can run yourself is run before the
-  verdict, not listed.
+  ✅ Ship it, ✅ Merge it, 🔧 Merge after fixes or 🔧 Add fix. A test you can
+  run yourself is run before the verdict, not listed.
 - **Size is how much the change touches**, one of four: huge, large, medium,
   small. **Difficulty is how hard it is to get right**, one of four: super
   hard, hard, easy, super easy. The two are independent: a one-line change

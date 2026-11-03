@@ -7,8 +7,9 @@ interpreter or a container runs past it, since nothing in its text says what it 
 While the gate is closed, this hook records the working repo's state before each Bash
 command - `git status`, each dirty file's mtime and size, HEAD and every branch, tag
 and stash ref - and compares it after, whether the command succeeded or failed. A
-difference is reported to the user and to Claude: it is a broken gate, and git holds
-the undo.
+difference is reported to the user and to Claude, and git holds the undo. It is a broken
+gate when the command made it; the snapshot cannot tell, so a change another session
+made in the same repo while the command ran is reported the same way.
 
 Only the repo the command starts in is watched; a script that writes into a second repo
 is not seen. A repo under a gate scratch root is outside the gate and never watched.
@@ -53,14 +54,16 @@ def git_out(repo, *args):
 
 
 def watched_repo(cwd):
-    """The top of the repo cwd is in, or None outside a repo or inside scratch."""
+    """The top of the repo cwd is in, or None outside a repo root or inside scratch."""
     if not cwd:
         return None
     top = git_out(cwd, "rev-parse", "--show-toplevel")
     if not top:
         return None
     top = os.path.realpath(top.strip())
-    return None if (top + "/").startswith(tool_gate.GATE_SCRATCH_ROOTS) else top
+    if (top + "/").startswith(tool_gate.GATE_SCRATCH_ROOTS) or not tool_gate.inside_roots(top):
+        return None
+    return top
 
 
 def dirty_paths(status_lines):
@@ -151,14 +154,17 @@ def handle(payload, gate_open, watch_dir):
         return None
     shown = "\n".join(found[:10]) + ("\n..." if len(found) > 10 else "")
     return {
-        "systemMessage": f"⚠️ Before LFG!, a Bash command changed {recorded['repo']}:\n{shown}",
+        "systemMessage": (f"⚠️ Before LFG!, {recorded['repo']} changed while a Bash "
+                          f"command ran:\n{shown}"),
         "hookSpecificOutput": {
             "hookEventName": payload["hook_event_name"],
             "additionalContext": (
-                f"The repo watch saw this command change {recorded['repo']} while the LFG! "
-                f"gate is closed:\n{shown}\nThat is a broken gate: say so in one sentence, "
-                "stop, and tell the user exactly what changed, as CLAUDE.md's \"If you break "
-                "this gate\" says."),
+                f"The repo watch saw {recorded['repo']} change while this command ran, with "
+                f"the LFG! gate closed:\n{shown}\nAnother session working in the same repo "
+                "can make the same change. If this command could have written it, that is a "
+                "broken gate: say so in one sentence, stop, and tell the user exactly what "
+                "changed, as CLAUDE.md's \"If you break this gate\" says. If it could not, "
+                "tell the user in one line that another process changed the repo."),
         },
     }
 
@@ -220,8 +226,9 @@ def selftest():
         # A repo under a scratch root is never watched; the cases that expect a report run
         # with the scratch roots emptied.
         check("repo under a scratch root", run(repo, False, edit_tracked), None)
-        saved_roots = tool_gate.GATE_SCRATCH_ROOTS
+        saved_roots = tool_gate.GATE_SCRATCH_ROOTS, tool_gate.REPO_ROOTS
         setattr(tool_gate, "GATE_SCRATCH_ROOTS", ())
+        setattr(tool_gate, "REPO_ROOTS", (os.path.realpath(root) + "/",))
         try:
             check("edit of a tracked file, gate closed", run(repo, False, edit_tracked),
                   "reported")
@@ -233,7 +240,8 @@ def selftest():
             check("cwd outside any repo", run(plain, False, edit_tracked), None)
             check("no state left behind", os.listdir(watch_dir), [])
         finally:
-            setattr(tool_gate, "GATE_SCRATCH_ROOTS", saved_roots)
+            setattr(tool_gate, "GATE_SCRATCH_ROOTS", saved_roots[0])
+            setattr(tool_gate, "REPO_ROOTS", saved_roots[1])
     print(f"\n{total - failures}/{total} passed")
     return failures == 0
 

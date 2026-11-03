@@ -138,6 +138,13 @@ PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebo
 # Writes here never need the gate: scratch, plan mode and memory are harness bookkeeping.
 GATE_SCRATCH_ROOTS = tuple(os.path.realpath(os.path.expanduser(p)) + "/"
                            for p in ("/private/tmp/claude", "~/.cache", "~/.claude/plans"))
+# The gate guards only the repos under these roots: a clone a tool keeps for itself elsewhere
+# (Homebrew, plugin marketplaces, oh-my-zsh) is that tool's state, not the user's work.
+REPO_ROOT_NAMES = ("~/repos", "~/.claude", "~/misc")
+REPO_ROOTS = tuple(os.path.realpath(os.path.expanduser(p)) + "/" for p in REPO_ROOT_NAMES)
+CLONE_OUTSIDE_ROOTS = (f"clones a repo outside {', '.join(REPO_ROOT_NAMES)}, where the gate "
+                       "would not guard it")
+CLONE_VALUE_FLAGS = {"-u", "--upstream-remote-name", "-g", "--group"}
 MEMORY_ROOT_RE = re.compile(
     "^" + re.escape(os.path.realpath(os.path.expanduser("~/.claude/projects"))) + r"/[^/]+/memory/")
 # GOTCHA: the lexer strips quotes, so a `~` the shell leaves literal ('~', "~", \~) reaches the
@@ -176,6 +183,8 @@ HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "
 HELM_RELEASE_MOVES = {"uninstall", "delete", "del", "rollback"}
 GIT_CONFIG_VALUE_FLAGS = {"-f", "--file", "--blob", "--default", "--type"}
 GIT_CONFIG_READ_SUBCOMMANDS = {"get", "list"}
+SSH_VALUE_FLAGS = {"-B", "-b", "-c", "-D", "-E", "-e", "-F", "-I", "-i", "-J", "-L", "-l", "-m",
+                   "-O", "-o", "-p", "-Q", "-R", "-S", "-W", "-w"}
 GIT_CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "edit", "rename-section", "remove-section"}
 # GOTCHA: `clean` stores the object under .git/lfs/objects the way `fetch` fills .git/objects:
 # no ref and no work-tree file moves, so it reads like the rest.
@@ -338,7 +347,9 @@ def classify_git(args):
                "shortlog", "grep", "for-each-ref", "show-ref", "check-ignore", "var",
                "count-objects", "diff-tree", "diff-index", "diff-files", "whatchanged",
                "range-diff", "version", "help", "cherry", "show-branch", "annotate", "bundle-verify",
-               "check-attr", "check-ref-format", "fsck", "verify-commit", "verify-tag"}:
+               "check-attr", "check-ref-format", "fsck", "verify-commit", "verify-tag",
+               "merge-tree"}:
+        # merge-tree stores its result as unreachable objects: no ref, index or file moves.
         # GOTCHA: git runs unsandboxed under the managed policy, and `log`/`diff`/`show --output`
         # write a file anywhere, so a read verb with it is a write.
         return WRITE if has_flag(rest, "--output") else READ
@@ -1113,10 +1124,49 @@ def classify_tmux(args):
     pos = positionals(args)
     if not pos:
         return WRITE
-    return READ if pos[0] in ("ls", "list-sessions", "list-windows", "list-panes", "display",
-                              "display-message", "show", "show-options", "show-environment",
-                              "capture-pane", "has-session", "info", "list-keys", "list-commands",
-                              "list-buffers", "show-buffer") else WRITE
+    if pos[0] in ("capturep", "capture-pane"):
+        return READ if tmux_capture_prints(args[args.index(pos[0]) + 1:]) else WRITE
+    # GOTCHA: tmux accepts a short alias for every command, and the aliases are what gets typed.
+    return READ if pos[0] in ("ls", "list-sessions", "lsc", "list-clients", "lsw", "list-windows",
+                              "lsp", "list-panes", "lsk", "list-keys", "lscm", "list-commands",
+                              "lsb", "list-buffers", "showb", "show-buffer", "show",
+                              "show-options", "showw", "show-window-options", "showenv",
+                              "show-environment", "showmsgs", "show-messages", "show-hooks",
+                              "display", "display-message", "has", "has-session") else WRITE
+
+
+def tmux_capture_prints(args):
+    # Without -p, capture-pane writes the pane into a paste buffer instead of stdout.
+    takes_value = False
+    for arg in args:
+        if takes_value or not arg.startswith("-") or arg.startswith("--"):
+            takes_value = False
+            continue
+        for i, letter in enumerate(arg[1:], start=1):
+            if letter == "p":
+                return True
+            if letter in "bESt":
+                takes_value = i == len(arg) - 1
+                break
+    return False
+
+
+def classify_ssh(args):
+    rest, seen = split_globals(args, SSH_VALUE_FLAGS)
+    if has_flag(rest, "-G", "-V"):
+        return READ
+    pos = positionals(rest)
+    if "-O" in seen or len(pos) != 1:
+        return WRITE
+    dest = pos[0].removeprefix("ssh://")
+    user = dest.rpartition("@")[0] if "@" in dest else seen.get("-l", "")
+    # A forge's git user has no shell: with no remote command it only prints the auth greeting,
+    # while a remote command can mint a token (GitLab's personal_access_token).
+    return READ if user == "git" else WRITE
+
+
+def classify_ssh_add(args):
+    return READ if has_flag(args, "-l", "-L") else WRITE
 
 
 def classify_rsync(args):
@@ -1349,6 +1399,8 @@ HANDLERS = {
     "terraform": classify_terraform, "tofu": classify_terraform,
     "brew": classify_brew,
     "tmux": classify_tmux,
+    "ssh": classify_ssh,
+    "ssh-add": classify_ssh_add,
     "rsync": classify_rsync,
     "tar": classify_tar,
     "unzip": classify_unzip,
@@ -1884,6 +1936,88 @@ def inside_gate_scratch(path):
     return real.startswith(GATE_SCRATCH_ROOTS) or bool(MEMORY_ROOT_RE.match(real))
 
 
+def inside_roots(path):
+    return (os.path.realpath(path) + "/").startswith(REPO_ROOTS)
+
+
+def writes_outside_roots(here, args):
+    """True when the working directory and every path among args lie outside the repo roots.
+
+    A program the gate cannot read may write to its working directory or to any path it is
+    given, so both must be known; a word built at run time could point anywhere.
+    """
+    if here is None or inside_roots(here):
+        return False
+    for arg in args:
+        # A word with a space in it is an inline script, which can write anywhere.
+        if (SHELL_EXPANSION_CHARS & set(arg)) or any(c.isspace() for c in arg):
+            return False
+        value = arg.partition("=")[2] if "=" in arg else arg
+        if "/" in value or value.startswith(("~", ".")):
+            path = resolved_dir(here, value)
+            if path is None or inside_roots(path):
+                return False
+    return True
+
+
+def claude_plugin_user_scope(args):
+    """True for `claude plugin`, which writes ~/.claude/plugins, unless its scope is the
+    project's or the local one, which write the working directory's .claude/settings."""
+    rest, seen = split_globals(args, {"-s", "--scope"})
+    scope = seen.get("-s", seen.get("--scope", "user"))
+    return rest[:1] == ["plugin"] and scope == "user"
+
+
+def clone_destination(here, prog, args):
+    """The directory a git, gh or glab clone lands in, None when it is known only at run
+    time, or "" when the command clones nothing."""
+    if prog == "git":
+        return git_target_dir(here, args) if git_subcommand_args(args)[:1] == ["clone"] else ""
+    if prog not in ("gh", "glab"):
+        return ""
+    rest = args[:args.index("--")] if "--" in args else args
+    rest, seen = split_globals(rest, GH_GLOBAL_VALUE_FLAGS | CLONE_VALUE_FLAGS)
+    pos = positionals(rest)
+    if pos[:2] != ["repo", "clone"]:
+        return ""
+    if here is None:
+        return None
+    if len(pos) > 3:
+        return resolved_dir(here, pos[3])
+    # glab clones every repo of a group into the working directory.
+    if "-g" in seen or "--group" in seen:
+        return here
+    return resolved_dir(here, pos[2].rstrip("/").rsplit("/", 1)[-1]) if len(pos) == 3 else None
+
+
+def clone_decisions(command, cwd):
+    """An ask for each clone that lands outside the repo roots and outside scratch.
+
+    The working directory follows every `cd`, as for commits.
+    """
+    out = []
+    here = cwd
+    for line in command_lines(command):
+        try:
+            segments, _, apart = parse_line(line)
+        except ValueError:
+            continue
+        for segment, moves in zip(segments, cd_sticks(segments, apart)):
+            words = strip_prefix(segment)
+            if not words:
+                continue
+            prog = program_of(words)
+            if prog in CHDIR_PROGRAMS:
+                here = cd_target(here, prog, words[1:]) if moves else None
+                continue
+            dest = clone_destination(here, prog, words[1:])
+            if dest == "":
+                continue
+            if dest is None or not (inside_roots(dest) or inside_gate_scratch(dest)):
+                out.append((ASK, CLONE_OUTSIDE_ROOTS))
+    return out
+
+
 def expand_home(word):
     return os.path.expanduser(word) if word == "~" or word.startswith("~/") else word
 
@@ -2056,27 +2190,29 @@ def go_writes_into_scratch(here, args):
         d = parent
 
 
-def passes_gate(command, cwd):
-    """True when nothing in the command changes a repo by a route its text shows.
+def gate_blockers(command, cwd):
+    """The words of each program the gate holds, a `tee` of each redirect target outside
+    scratch, or [None] for a line it cannot parse; empty when nothing changes a repo by a
+    route the text shows.
 
     A read, a command that needs the user's words, opaque code, a write that lands in a
-    gate scratch root, git run in one and an `rm` of literal files outside every repo all
-    pass; any other write is held to scratch, as the gate held every write before it
-    narrowed to repos. The working directory follows every `cd`, as for commits, and is
-    unknown after one that may not stick.
+    gate scratch root, git run in one or outside the repo roots, an `rm` of literal files
+    outside every repo, and a write whose working directory and every named path lie outside
+    the repo roots all pass; any other write is held to scratch. The working directory
+    follows every `cd`, as for commits, and is unknown after one that may not stick.
     """
-    here = cwd
+    blockers, here = [], cwd
     for line in command_lines(command):
         try:
             segments, targets, apart = parse_line(line)
         except ValueError:
-            return False
+            return [None]
         sticks = cd_sticks(segments, apart)
         if not NO_HOME_EXPANSION_RE.search(command):
             segments = [[expand_home(w) for w in segment] for segment in segments]
             targets = [expand_home(t) for t in targets]
-        if any(t not in HARMLESS_TARGETS and not inside_gate_scratch(t) for t in targets):
-            return False
+        blockers.extend(["tee", t] for t in targets
+                        if t not in HARMLESS_TARGETS and not inside_gate_scratch(t))
         for words, moves in zip(segments, sticks):
             words = strip_prefix(words)
             if not words or program_of(words) in LOOP_HEADERS:
@@ -2100,12 +2236,16 @@ def passes_gate(command, cwd):
                 if target is not None and (os.path.realpath(target) + "/").startswith(
                         GATE_SCRATCH_ROOTS):
                     continue
+                # A clone outside the roots is the clone check's to ask about.
+                if target is not None and not inside_roots(target):
+                    continue
                 # Only an absolute -o is trusted: git resolves a relative one against a
                 # directory that -C and its own setup decide, not the text.
                 outputs = git_archive_outputs(args)
                 if outputs and all(inside_gate_scratch(o) for o in outputs):
                     continue
-                return False
+                blockers.append(words)
+                continue
             if prog in SCRATCH_WRITERS:
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
                 if paths and all(inside_gate_scratch(path_from(here, p)) for p in paths):
@@ -2126,11 +2266,21 @@ def passes_gate(command, cwd):
             # go env -w and -u write Go's own user config file, which sits in no repo.
             if prog == "go" and positionals(args)[:1] == ["env"]:
                 continue
-            # A signal reaches a process, never a file.
-            if prog in ("kill", "pkill", "killall"):
+            # A signal reaches a process, never a file, and ssh-add changes only the agent's keys.
+            if prog in ("kill", "pkill", "killall", "ssh-add"):
                 continue
-            return False
-    return True
+            # Both write only under their own prefix, whose clones are the tool's state; brew
+            # bundle is the exception, writing a Brewfile into the working directory.
+            if prog == "brew" and positionals(args)[:1] != ["bundle"]:
+                continue
+            if prog == "claude" and claude_plugin_user_scope(args):
+                continue
+            # go generate and go work sync write where directives and the workspace say, so
+            # go keeps the rules above.
+            if prog not in SCRATCH_WRITERS | {"go"} and writes_outside_roots(here, args):
+                continue
+            blockers.append(words)
+    return blockers
 
 
 def path_from(here, path):
@@ -2154,8 +2304,9 @@ def outside_repos(path):
 
 
 def inside_repo(path):
-    """True when path lies in a git work tree outside the gate scratch roots."""
-    if not isinstance(path, str) or not os.path.isabs(path) or inside_gate_scratch(path):
+    """True when path lies in a git work tree under a repo root, outside the scratch roots."""
+    if (not isinstance(path, str) or not os.path.isabs(path) or inside_gate_scratch(path)
+            or not inside_roots(path)):
         return False
     here = os.path.dirname(os.path.realpath(path))
     while True:
@@ -2202,9 +2353,23 @@ def tar_extracts_into_scratch(here, args):
     return True
 
 
-def only_unknown_writes(command):
+def held_for_shell_paths(blockers):
+    """True when every program the gate holds would pass with each word the shell builds at
+    run time standing for a path in a gate scratch root, so only those words stop it."""
+    if any(words is None for words in blockers):
+        return False
+    stand_in = GATE_SCRATCH_ROOTS[0] + "x"
+    rewritten = [[stand_in if SHELL_EXPANSION_CHARS & set(w) else w for w in words]
+                 for words in blockers]
+    return rewritten != blockers and not gate_blockers(
+        "\n".join(shlex.join(words) for words in rewritten), None)
+
+
+def only_unknown_writes(blockers):
+    """True when every program the gate holds is a write only because the classifier has
+    never met it; a known write, an unparsed line or an untrusted redirect is not."""
     with unknown_programs_as(READ):
-        return classify_command(command) == READ
+        return all(words is not None and classify_words(words) == READ for words in blockers)
 
 
 def pin_decisions(prog, args):
@@ -2539,6 +2704,8 @@ def script_decisions(command, cwd):
 
 CARGO_VALUE_FLAGS = {"-p", "--package", "--features", "-F", "--target", "-j", "--jobs",
                      "--manifest-path", "--profile", "--test", "--bench", "--bin", "--example"}
+SHELL_PATH_REASON = ("a write path is built by the shell at run time, so the gate cannot tell "
+                     "whether it lands in a repo: write the path out literally")
 SUITE_REASON = ("runs a whole test suite: ask before it starts, and run the tests the change "
                 "touches unless the user asked for the suite")
 
@@ -2577,9 +2744,14 @@ def decide_bash(tool_input, gate_open, cwd, named):
             out.append((ASK, SUITE_REASON))
     out.extend(default_branch_commits(command, cwd))
     out.extend(script_decisions(command, cwd))
-    if not gate_open and classify_command(command) != READ and not passes_gate(command, cwd):
-        if only_unknown_writes(command):
+    out.extend(clone_decisions(command, cwd))
+    blockers = gate_blockers(command, cwd) if not gate_open and \
+        classify_command(command) != READ else []
+    if blockers:
+        if only_unknown_writes(blockers):
             out.append((ASK, "unclassified - fix the handler in tool-gate.py"))
+        elif held_for_shell_paths(blockers):
+            out.append((DENY, SHELL_PATH_REASON))
         else:
             out.append((DENY, REFUSAL))
     if rm_escapes_scratch(command):
@@ -2714,8 +2886,10 @@ def describe(tool_name, tool_input, gate_open):
 
 
 def selftest():
-    global GATE_SCRATCH_ROOTS, TMP_ROOT
+    global GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS
     home = os.path.expanduser("~")
+    # A directory under a repo root, standing in for a repo the gate guards.
+    rx = os.path.join(REPO_ROOTS[0], "x")
     scratch = GATE_SCRATCH_ROOTS[0]
     alert = "C0ALERT"
     ALERT_CHANNEL_IDS.add(alert)
@@ -2788,6 +2962,8 @@ def selftest():
         (False, "Bash", "kubectl attach p -it --context X -n Y", ASK),
         (False, "Bash", f"git log -1 --output={home}/.claude/lfg-state/abc", DENY),
         (False, "Bash", "git log -1", None),
+        (False, "Bash", "git merge-tree --write-tree a b", None),
+        (False, "Bash", "git merge a", DENY),
         (False, "Bash", "git stash", DENY),
         (False, "Bash", "git restore .", DENY),
         (False, "Bash", "git checkout -- .", DENY),
@@ -2846,8 +3022,8 @@ def selftest():
         (False, "Bash", f"git -C /x archive -o {scratch}d/x.tar HEAD", None),
         (False, "Bash", f"git -C /x archive HEAD -o{scratch}d/x.tar", None),
         (False, "Bash", f"git -C /x archive HEAD --output={scratch}d/x.tar", None),
-        (False, "Bash", "git -C /x archive -o x.tar HEAD", DENY),
-        (False, "Bash", f"git -C /x archive -o {scratch}x.tar -o {home}/x.tar HEAD", DENY),
+        (False, "Bash", f"git -C {rx} archive -o x.tar HEAD", DENY),
+        (False, "Bash", f"git -C {rx} archive -o {scratch}x.tar -o {home}/x.tar HEAD", DENY),
         (False, "Bash", f"tar -xzf a.tgz --directory={scratch}d", None),
         (False, "Bash", f"tar -x --strip-components=1 -C {scratch}d -f a.tar", None),
         (False, "Bash", f"tar -x -C {home}/repo", DENY),
@@ -2869,6 +3045,22 @@ def selftest():
         (False, "Bash", "tar -cOf a.tar .", DENY),
         (False, "Bash", f"touch {home}/repos/probe", DENY),
         (False, "Bash", "touch /tmp/probe.md", DENY),
+        (False, "Bash", "tmux list-clients -F '#{client_name} #{client_width}x#{client_height}'", None),
+        (False, "Bash", "tmux showw -g aggressive-resize", None),
+        (False, "Bash", "tmux lsp -a", None),
+        (False, "Bash", "tmux kill-server", DENY),
+        (False, "Bash", "tmux capture-pane -p -t x", None),
+        (False, "Bash", "tmux capturep -pJS - -t x", None),
+        (False, "Bash", "tmux capture-pane -t x", DENY),
+        (False, "Bash", "tmux capture-pane -tp", DENY),
+        (False, "Bash", "tmux capture-pane -S -p", DENY),
+        (False, "Bash", "tmux capture-pane -e -p -S -50", None),
+        (False, "Bash", "time ssh -v -o BatchMode=yes -o ConnectTimeout=15 -T git@gitlab.com", None),
+        (False, "Bash", "ssh -T -p 22 -l git gitlab.com", None),
+        (False, "Bash", "ssh -G gitlab.com", None),
+        (False, "Bash", "ssh git@gitlab.com personal_access_token t api 30", DENY),
+        (False, "Bash", "ssh -T host", DENY),
+        (False, "Bash", "ssh -O exit git@gitlab.com", DENY),
         (False, "Bash", f"touch {scratch}../x", DENY),
         (True, "Bash", f"rm -rf {scratch}x {home}/.cache/x", ASK),
         (True, "Bash", f"rm -rf {scratch}x", None),
@@ -3104,6 +3296,10 @@ def selftest():
         # A signal reaches a process, never a file.
         (False, "Bash", "kill 12345", None),
         (False, "Bash", "kill 12345 && echo x > /x/f", DENY),
+        (False, "Bash", "ssh-add -l", None),
+        (False, "Bash", "ssh-add -L", None),
+        (False, "Bash", "ssh-add ~/.ssh/id_ed25519", None),
+        (False, "Bash", "ssh-add -D && echo x > /x/f", DENY),
         # A kill by name hides its targets, so it needs the user's words in every state.
         (False, "Bash", "pkill -f temporal", ASK),
         (True, "Bash", "pkill -f temporal", ASK),
@@ -3113,7 +3309,7 @@ def selftest():
         (True, "Bash", "fuser -km /mnt/x", ASK),
         (False, "Bash", "fuser -v 8080/tcp", None),
         (True, "Bash", "pgrep -fl temporal", None),
-        (False, "Bash", "cd /x && python3 /x/board.py fetch g --org 2 --out g.json", DENY),
+        (False, "Bash", f"cd {rx} && python3 /x/board.py fetch g --org 2 --out g.json", DENY),
         (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out $u.json",
          DENY),
         (False, "Bash", "python3 /x/board.py diff g /x/g.json --org 2", None),
@@ -3126,13 +3322,13 @@ def selftest():
         # A logical line runs on through a quoted or an escaped newline.
         (False, "Bash", 'python3 -c "\nimport json\nprint(1)\n"', None),
         (False, "Bash", "kubectl get pods \\\n  --context X -n Y", None),
-        (False, "Bash", 'echo "a\nb"\ngit -C /x add f', DENY),
-        (False, "Bash", "git -C /x \\\n  stash", DENY),
+        (False, "Bash", f'echo "a\nb"\ngit -C {rx} add f', DENY),
+        (False, "Bash", f"git -C {rx} \\\n  stash", DENY),
         (False, "Bash", "( cd /x\n  git stash )", DENY),
-        (False, "Bash", "echo a # don't\ngit -C /x stash", DENY),
+        (False, "Bash", f"echo a # don't\ngit -C {rx} stash", DENY),
         (False, "Bash", "kubectl version", DENY),
         (False, "Bash", "git -c core.fsmonitor=/x.sh status", DENY),
-        (False, "Bash", "git -C /x -c diff.external=/x.sh diff", DENY),
+        (False, "Bash", f"git -C {rx} -c diff.external=/x.sh diff", DENY),
         (False, "Bash", "git --config-env=core.pager=X log", DENY),
         (False, "Bash", "git grep -c foo", None),
         (False, "Bash", "git log -c -1", None),
@@ -3193,6 +3389,16 @@ def selftest():
         (False, "Bash", "frobnicate --flag", ASK),
         (False, "Bash", "frobnicate | grep x", ASK),
         (False, "Bash", "frobnicate && touch /etc/x", DENY),
+        # Deny or ask is judged on what the gate holds: a known write it lets through, such as
+        # brew, leaves an unknown program beside it an ask.
+        (False, "Bash", "brew upgrade x; frobnicate", ASK),
+        (False, "Bash", "HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade -y x 2>&1 >/dev/null\n"
+                        "bash -c 'gvm use go0.0.0' 2>&1", ASK),
+        # Sourcing a script runs its text in the shell, a known write wherever it sits.
+        (False, "Bash", "brew upgrade x; bash -c '. \"$HOME/.gvm/scripts/gvm\" && gvm use g'",
+         DENY),
+        (False, "Bash", "frobnicate > out.txt", DENY),
+        (False, "Bash", "frobnicate; git stash", DENY),
         (False, "Bash", "stern x --context X -n Y", None),
         (False, "Bash", "stern x", DENY),
         (False, "Bash", "kubectl --help", None),
@@ -3204,8 +3410,35 @@ def selftest():
         (False, "Bash", "claude plugin list --json --available", None),
         (False, "Bash", "claude plugin marketplace list", None),
         (False, "Bash", "claude -p plugin list", DENY),
-        (False, "Bash", "claude plugin install foo", DENY),
-        (False, "Bash", "claude plugin marketplace update", DENY),
+        # claude plugin writes only ~/.claude/plugins, unless scoped to the working directory.
+        (False, "Bash", "claude plugin install foo", None),
+        (False, "Bash", "claude plugin marketplace update", None),
+        (False, "Bash", "claude plugin install foo --scope project", DENY),
+        (False, "Bash", "claude plugin install foo -s local", DENY),
+        (False, "Bash", '"$HOME/.local/bin/claude" plugin update a@b 2>/dev/null', None),
+        # brew writes only its own prefix, except bundle, which writes a Brewfile here.
+        (False, "Bash", "HOMEBREW_NO_AUTO_UPDATE=1 /opt/homebrew/bin/brew upgrade -y x 2>&1 "
+                        ">/dev/null", None),
+        (False, "Bash", "brew bundle dump", DENY),
+        # Only repos under the roots are the gate's: a write elsewhere passes, unless it
+        # names a path into a root or runs an inline script.
+        (False, "Bash", "cd /opt/x && make install", None),
+        (False, "Bash", f"cd /opt/x && make install PREFIX={rx}", DENY),
+        (False, "Bash", "cd /opt/x && bash -lc 'touch /etc/y'", DENY),
+        (False, "Bash", "cd /opt/x && git stash", None),
+        (False, "Bash", "cd /opt/x && go generate ./...", DENY),
+        (False, "Bash", f"cd {home} && pip install x", None),
+        (False, "Edit", {"file_path": f"{home}/.oh-my-zsh/custom/x.zsh"}, None),
+        # A clone outside the roots asks in every gate state; inside one it is the gate's.
+        (False, "Bash", "git clone https://example.com/r.git /opt/r", ASK),
+        (True, "Bash", "git clone https://example.com/r.git /opt/r", ASK),
+        (True, "Bash", "cd /opt && gh repo clone o/r", ASK),
+        (True, "Bash", "cd /opt && glab repo clone -g grp", ASK),
+        (True, "Bash", "git clone https://example.com/r.git $D", ASK),
+        (False, "Bash", f"git clone https://example.com/r.git {rx}", DENY),
+        (True, "Bash", f"git clone https://example.com/r.git {rx}", None),
+        (True, "Bash", f"cd {rx} && gh repo clone o/r -- --depth 1", None),
+        (True, "Bash", f"git clone https://example.com/r.git {scratch}r", None),
         (False, "Bash", "claude -p 'Review' --tools \"\" --disallowedTools 'mcp__*'", None),
         (False, "Bash", "claude -p 'Review' --tools \"\"", DENY),
         (False, "Bash", "claude -p 'Review'", DENY),
@@ -3293,8 +3526,9 @@ def selftest():
         if tool_name == "Bash":
             tool_input = {"command": tool_input}
         # A command with no directory of its own is judged against the working directory,
-        # so the table is judged from one that is neither a repo nor a scratch root.
-        got = decide(tool_name, tool_input, gate_open, "/")
+        # so the table is judged from one under a repo root that is neither a repo nor a
+        # scratch root.
+        got = decide(tool_name, tool_input, gate_open, os.path.join(REPO_ROOTS[0], "no-repo"))
         got_kind = got[0] if got else None
         ok = got_kind == expected
         failures += not ok
@@ -3302,6 +3536,23 @@ def selftest():
                  else f"{tool_name} {tool_input}")
         print(f"{'ok  ' if ok else 'FAIL'} [{'open' if gate_open else 'closed'}] "
               f"{shown} -> {got_kind}" + ("" if ok else f" (want {expected})"))
+    reason_cases = [
+        # (command, expected reason) with the gate closed
+        ("D=/x; mkdir -p $D/old", SHELL_PATH_REASON),
+        (f"cd {rx} && git archive HEAD | tar -x -C $D/old", SHELL_PATH_REASON),
+        (f"cp $SRC {rx}/f", REFUSAL),
+        ('git commit -m "$MSG"', REFUSAL),
+        (f"git -C $D commit -m m && touch {rx}/f", REFUSAL),
+        ("echo hi > $TMPDIR/x", SHELL_PATH_REASON),
+        ("echo hi > out.txt", REFUSAL),
+        (f"echo hi > $D/x; echo hi > {rx}/f", REFUSAL),
+    ]
+    for command, expected in reason_cases:
+        got = decide("Bash", {"command": command}, False, os.path.join(REPO_ROOTS[0], "no-repo"))
+        ok = got == (DENY, expected)
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} reason {command} -> {got}"
+              + ("" if ok else f" (want {expected})"))
     payload_cases = [
         ({"tool_name": "Bash", "session_id": "s"}, DENY),
         ({"tool_name": "Write", "session_id": "s", "tool_input": None}, DENY),
@@ -3525,10 +3776,11 @@ def selftest():
             DEFAULT_BRANCH_EXEMPT = saved_exempt
         # The gate holds repo changes only: the throwaway repos stand in for real ones, and
         # the scratch roots narrow to one directory so the repos sit outside them.
-        saved_roots = GATE_SCRATCH_ROOTS, TMP_ROOT
+        saved_roots = GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS
         scratch_dir = os.path.join(root, "scratch")
         os.makedirs(scratch_dir)
         GATE_SCRATCH_ROOTS = (os.path.realpath(scratch_dir) + "/",)
+        REPO_ROOTS = (os.path.realpath(root) + "/",)
         TMP_ROOT = os.path.realpath(root) + "/harness/"
         gate_cases = [
             # (tool, input, expected decision with the gate closed), run from on_main
@@ -3608,7 +3860,7 @@ def selftest():
             failures += not ok
             print(f"{'ok  ' if ok else 'FAIL'} gate EnterWorktree, gate open -> {got}")
         finally:
-            GATE_SCRATCH_ROOTS, TMP_ROOT = saved_roots
+            GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS = saved_roots
         # A script whose text holds a command that needs words asks once, in every state.
         scripts = {
             "deploy.sh": "#!/bin/sh\nhelm upgrade r ./c --kube-context X -n Y\n",

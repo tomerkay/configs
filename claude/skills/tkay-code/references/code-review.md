@@ -181,7 +181,7 @@ would follow. Under its own heading:
 
 ```
 • <one thing the branch does, in plain words>
-✅ Do it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+✅ Merge it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
 **Commits:** `<sha>`, `<sha>`
 
 • <the next thing the branch does>
@@ -197,15 +197,29 @@ would follow. Under its own heading:
   and a blank line before the next entry. A terminal drops the blank line
   between list items, and the entries run together.
 - **Each entry carries a TL;DR Verdict on that change as it stands at HEAD**,
-  in the shape and with the change calls of `references/verdict.md`. Its How
+  in the shape and with the branch calls of `references/verdict.md`. Its How
   sure is how sure you are that the change works at HEAD.
+- **The call follows the commits it names.** `✅ Merge it` only when every
+  one of them is `✅ Ship it`; any other commit call makes it `🔧 Merge after
+  fixes`, naming the commit and what it needs, unless the change itself
+  earns `⚖️ Close call` or `❌ Don't merge`. An entry never reads greener
+  than a commit it lives in, even when that commit changes nothing in the
+  tree. The case that taught it, a branch whose only extra commit was a
+  back-merge of the default branch that carried no change:
+
+  ```
+  ❌ ✅ Do it · **How sure:** LIKELY · ...
+     with `<sha>` 🗑 Drop (carries no change) in the commits table
+  ✅ 🔧 Merge after fixes (drop the back-merge `<sha>`) · **How sure:** LIKELY · ...
+  ```
+
 - **The Commits line names every commit the change lives in**, in branch
   order. A commit that serves two entries is on both lines.
 - **These verdicts judge the outcome, so a broken branch shows up here.** A
-  `❌ Don't`, or How sure below `CONFIDENT`, under a commits table of nothing
-  but `✅ Ship it` means the commits above are missing a finding or a `🗑 Drop`:
-  find it on the commits the entry names and put it on the one that should
-  carry it.
+  `❌ Don't merge`, or How sure below `CONFIDENT`, under a commits table of
+  nothing but `✅ Ship it` means the commits above are missing a finding or a
+  `🗑 Drop`: find it on the commits the entry names and put it on the one
+  that should carry it.
 
 ### The commits table — the third section, every CR
 
