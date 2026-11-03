@@ -144,8 +144,7 @@ omz_after=$(git -C "$ZSH" rev-parse --short HEAD 2>/dev/null)
 claude_after=$("$CLAUDE" --version 2>/dev/null)
 bundle_after=$(bundle_versions)
 
-{
-	echo "last run: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+body=$(
 	report "oh-my-zsh" "$omz_before" "$omz_after" "$omz_status"
 	report "claude" "$claude_before" "$claude_after" "$claude_status"
 	report "$ATERO_BUNDLE" "$bundle_before" "$bundle_after" "$bundle_status"
@@ -157,5 +156,28 @@ bundle_after=$(bundle_versions)
 		echo "brew update: FAILED (exit $brew_update_status)"
 	fi
 	echo "$brew_report"
+)
+
+names_matching() {
+	echo "$body" | grep -- "$1" | sed 's/: .*//' | paste -sd, - | sed 's/,/, /g'
+}
+
+failed=$(names_matching ': FAILED')
+updated=$(names_matching ': updated ')
+if [ -n "$failed" ]; then
+	summary="FAILED: $failed"
+else
+	summary="all ok"
+fi
+if [ -n "$updated" ]; then
+	summary="$summary; updated: $updated"
+else
+	summary="$summary; nothing updated"
+fi
+
+{
+	echo "last run: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+	echo "summary: $summary"
+	echo "$body"
 	echo "============================================================"
 } >> "$LOG_FILE"
