@@ -95,8 +95,8 @@ drop_bundle_record() {
 	return 1
 }
 
-# The user install is the copy every directory gets; a project record is listed only
-# when it ends up on another version, or has to be dropped.
+# The user install is the copy every directory gets, so a project record that ends
+# the run on another version is a failure, whatever its own update said.
 bundle_report() {
 	user_before=$(bundle_version "")
 	# The update's own output belongs in the cron log, not in the captured report.
@@ -111,7 +111,10 @@ bundle_report() {
 		if [ ! -d "$dir" ]; then
 			drop_why="its directory is gone"
 		elif worktree_record "$dir"; then
-			[ "$before" = "$user_after" ] && continue
+			if [ "$before" = "$user_after" ]; then
+				report "$label" "$before" "$before" 0
+				continue
+			fi
 			drop_why="a stale worktree record, recreated by the next session there"
 		fi
 		if [ -n "$drop_why" ]; then
@@ -126,10 +129,10 @@ bundle_report() {
 		(cd "$dir" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") >&2
 		status=$?
 		after=$(bundle_version "$dir")
-		if [ "$status" -ne 0 ]; then
-			report "$label" "$before" "$after" "$status" "$(step_reason)"
-		elif [ "$after" != "$user_after" ]; then
+		if [ "$status" -eq 0 ] && [ "$after" != "$user_after" ]; then
 			echo "$label: FAILED: on $after while the user install is on $user_after"
+		else
+			report "$label" "$before" "$after" "$status" "$(step_reason)"
 		fi
 	done
 }
