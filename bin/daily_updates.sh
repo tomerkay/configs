@@ -74,19 +74,63 @@ report_status() {
 	fi
 }
 
-# Each scope is its own copy of the bundle, so each updates, and fails, on its own.
-bundle_scope_report() {
-	scope_before=$(bundle_version "$1")
-	# The update's own output belongs in the cron log, not in the captured report.
-	if [ -z "$1" ]; then
-		run_step "$CLAUDE" plugin update "$ATERO_BUNDLE" >&2
-	else
-		(cd "$1" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") >&2
+# A linked worktree's .git is a file naming the main checkout, whose own .git is a
+# directory. `plugin update --scope project` run in a worktree updates the main
+# checkout's record and leaves the worktree's own where it is, and `plugin install`
+# refuses a record that exists, so nothing moves a worktree's record.
+worktree_record() {
+	[ -f "$1/.git" ]
+}
+
+# $1 is the record's project path. A session started there recreates a missing
+# record at the current version.
+drop_bundle_record() {
+	tmp=$(mktemp "$PLUGINS_FILE.XXXXXX") || return 1
+	if jq --arg p "$ATERO_BUNDLE" --arg dir "$1" \
+		'.plugins[$p] |= map(select((.projectPath // "") != $dir))' "$PLUGINS_FILE" > "$tmp" &&
+		mv "$tmp" "$PLUGINS_FILE"; then
+		return 0
 	fi
-	scope_status=$?
-	scope=${1:-user}
-	report "$ATERO_BUNDLE (${scope##*/})" "$scope_before" "$(bundle_version "$1")" \
-		"$scope_status" "$(step_reason)"
+	rm -f "$tmp"
+	return 1
+}
+
+# The user install is the copy every directory gets; a project record is listed only
+# when it ends up on another version, or has to be dropped.
+bundle_report() {
+	user_before=$(bundle_version "")
+	# The update's own output belongs in the cron log, not in the captured report.
+	run_step "$CLAUDE" plugin update "$ATERO_BUNDLE" >&2
+	user_status=$?
+	user_after=$(bundle_version "")
+	report "$ATERO_BUNDLE" "$user_before" "$user_after" "$user_status" "$(step_reason)"
+	for dir in $(bundle_project_dirs); do
+		label="$ATERO_BUNDLE (${dir##*/})"
+		before=$(bundle_version "$dir")
+		drop_why=
+		if [ ! -d "$dir" ]; then
+			drop_why="its directory is gone"
+		elif worktree_record "$dir"; then
+			[ "$before" = "$user_after" ] && continue
+			drop_why="a stale worktree record, recreated by the next session there"
+		fi
+		if [ -n "$drop_why" ]; then
+			if drop_bundle_record "$dir"; then
+				echo "$label: dropped $before, $drop_why"
+			else
+				echo "$label: FAILED: could not drop $before, $drop_why"
+			fi
+			continue
+		fi
+		(cd "$dir" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") >&2
+		status=$?
+		after=$(bundle_version "$dir")
+		if [ "$status" -ne 0 ]; then
+			report "$label" "$before" "$after" "$status" "$(step_reason)"
+		elif [ "$after" != "$user_after" ]; then
+			echo "$label: FAILED: on $after while the user install is on $user_after"
+		fi
+	done
 }
 
 # A subshell body, so its cd leaves the script's directory alone.
@@ -136,11 +180,7 @@ run_step "$CLAUDE" plugin marketplace update "$ATERO_MARKETPLACE"
 marketplace_status=$?
 marketplace_reason=$(step_reason)
 if [ "$marketplace_status" -eq 0 ]; then
-	bundle_report=$(
-		for dir in "" $(bundle_project_dirs); do
-			bundle_scope_report "$dir"
-		done
-	)
+	bundle_report=$(bundle_report)
 fi
 
 go_before=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
@@ -247,6 +287,7 @@ names_matching() {
 
 failed=$(names_matching ': FAILED')
 updated=$(names_matching ': updated ')
+dropped=$(names_matching ': dropped ')
 if [ -n "$failed" ]; then
 	summary="FAILED: $failed"
 else
@@ -257,6 +298,7 @@ if [ -n "$updated" ]; then
 else
 	summary="$summary; nothing updated"
 fi
+[ -n "$dropped" ] && summary="$summary; dropped: $dropped"
 
 # Reasons are free text that can hold the summary's own separators, so each failure
 # gets a line of its own.
