@@ -221,17 +221,6 @@ rule in the first place: you do not change something we have not discussed, gate
 open or gate shut. 3 still applies, the commands that need my words still need
 them, and everything else in this section stands.
 
-### Say what you are about to do, before you do it
-
-**Before every change, whether or not I typed a token in that message**, your
-first line is a restatement of what you are about to change:
-
-> Implementing: `<the specific change>` - files: `<the files>`
-
-One line, before the first tool call. If I misread the situation or you misread
-me, that line is where I catch it. Skipping it is a violation of this gate even
-if the work itself was authorised.
-
 ### The grant is session-wide by default
 
 Once a valid `LFG!` has opened the gate, **it stays open for the rest of the
@@ -252,9 +241,6 @@ While the gate is open:
   is asked about every time, and everything in "Some commands need my words
   AND the prompt, every time" needs both, every time, one command at a time -
   an open gate widens how often the token applies, never what it can unlock.
-- **You still print the `Implementing: <change> - files: <files>` line before every
-  change.** That line is how I catch a misread, and an open session is exactly
-  when I need it most.
 - **An open gate is not a licence to invent work.** The gate decides whether you
   may act AT ALL. It says nothing about WHAT to act on, and it never has - that
   comes from what I asked for. A change we have not discussed gets proposed and
@@ -413,7 +399,7 @@ action of that kind.**
 | write an MR or PR description | `tkay-code` |
 | create or name a git branch | `tkay-code` |
 | create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
-| a plan, design doc or implementation write-up | `tkay-writing-plans` |
+| a plan - shaped by default, a full plan only when I say FULL PLAN - a design doc or an implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
 | build, edit, fetch or publish a Grafana dashboard, panel or template variable | `atero-skills:grafana-dashboards`, plus `dashboarding` when building or debugging the JSON |
@@ -566,7 +552,8 @@ stated as the assumption, in prose, and the reply goes on. Anything else is
 not a ❓.
 
 **Questions are numbered Q1, Q2, Q3 afresh in each reply**, so I answer one
-by its number; the Q keeps it apart from the labels of the open-issues tree.
+by its number; the Q keeps it apart from the reading list's `R<n>` and from
+the outline numbers of the open-issues tree.
 When a question rests on material above it - a diff, a doubt, a risk, the
 steps it would take - that part of the reply is headed `Q<n>. <the decision>`
 with the same number, and the shared number is the whole reference: the
@@ -577,11 +564,10 @@ elaboration; no separate section repeats them.
 that says `Q1` or `q1` is the answer to Q1 and nothing else. A numbered list
 - `1)`, `2)`, `1.` - is not an answer sheet: each item may answer the
 question of that number, or raise something new that has nothing to do with
-it. Read every item on its own words, open the reply with the reading you
-took, one line per item, and when an item fits both readings and they lead
-to different work, ask. The case that taught it: a reply to a Q1 and a Q2
-whose `1)` took up the bycatch table of the review above them, `2)` asked
-for a new rule and `3)` for this one.
+it. Each item is read on its own words, in the reading list - see "A
+MESSAGE ABOUT SEVERAL THINGS OPENS WITH THE READING LIST". The case that
+taught it: a reply to a Q1 and a Q2 whose `1)` took up the bycatch table of
+the review above them, `2)` asked for a new rule and `3)` for this one.
 
 The shape is mine, so it binds every stop whoever told you to stop: a rule
 in this file, a `tkay-*` or team skill, a repo's `CLAUDE.md`, or your own
@@ -726,15 +712,72 @@ not. Both forms of a verdict, their calls and every field in them are the
 - **A fix shown under a review finding** carries that finding's tags, not a
   verdict.
 
-# OPEN ISSUES AND QUESTIONS ARE A TABLE OF CONTENTS, NEVER A TABLE
+# A MESSAGE ABOUT SEVERAL THINGS OPENS WITH THE READING LIST
+
+**When my message talks about several things, not one, the reply opens with
+the reading list: how you read each thing I said**, whatever shape I wrote
+it in - a list, outline numbers or plain prose. A misreading is caught on
+its first lines, before any work rests on it. A message about one thing
+gets no reading list. Nothing goes above it: a line another rule puts at
+the top of a reply comes right after it.
+
+The reply then reads, top to bottom:
+
+1. `### How I read your items`, the reading list under it, and a `---`
+   line that ends it, with a blank line above, or markdown turns the
+   last line of the list into a heading.
+2. The open-issues tree, when one is due.
+3. The rest of the reply, with the ❓ block last.
+
+- **A bulleted list, numbered `R1`, `R2`, `R3` afresh in each reply** - R
+  for reading - with `a`, `b`, `c` bulleted under a line for separate parts
+  of one thing, so `R3.a` names one line. Bare lines fold into one
+  paragraph; the R keeps a line apart from a `Q<n>` question and from the
+  tree's outline numbers.
+- **One short line per thing I said, keyed by what I named.** A thing that
+  names a tree item or a question carries that number inside the line
+  (`R1. 2.e: ...`). One that names nothing gets a line of its own, and a
+  principle that settles other items lists them as its sub-lines.
+- **A reading, not a reply.** Each line says what you took me to mean - a
+  decision, a correction, a question I asked. What you say about it comes
+  after the `---`, headed by the same `R<n>`; a line that needs nothing
+  more gets no part of its own.
+- **Two readings that lead to different work are asked** as a ❓ question;
+  the line says it reads two ways and names both.
+- **A thing that hits the closed gate** gets the refusal line and its diff,
+  verbatim, as its part of the reply.
+- **It is for replies to me in chat** - never a Slack post, a commit
+  message or a file.
+
+The case that taught it: a message in prose that answered several plan
+items by their outline numbers and stated, unnumbered, that only managed
+endpoints are enforced:
+
+```
+### How I read your items
+
+- **R1.** 2.e: manage-on checks only the live deployments; the others can be anything.
+- **R2.** 4.k: you're asking what the stamp is.
+- **R3.** The general principle: outside managed endpoints, nothing is enforced. It drops:
+  - **a.** 2.d
+  - **b.** 3.b
+- **R4.** 8.e: you're correcting me: it works after unmanage and re-manage too.
+
+---
+```
+
+# OPEN ISSUES, QUESTIONS AND PLANS ARE A TABLE OF CONTENTS, NEVER A TABLE
 
 **Whenever I ask for the open issues or the open questions - "a table", "a
-list", "where we stand", "what's left", in whatever words - the answer is the
-tree below, shaped like a document's table of contents.** Never a markdown
+list", "where we stand", "what's left", in whatever words - or for a plan we
+are still shaping, the answer is the tree below, shaped like a document's
+table of contents.** A plan's items say what we want, never how it is built:
+no tests, commits or contract until I ask for a FULL PLAN in those words, and
+`tkay-writing-plans` says what each mode holds. Never a markdown
 table with columns, and never a list whose items run to sentences: not when
 another part of the same reply is a table, and not when each item has several
 things worth saying. Whatever does not fit on the item's one line is left out.
-The shape, with its labels and states:
+The shape, with its outline numbers and states:
 
 ```
 1. Release branch ⏳
@@ -745,10 +788,11 @@ The shape, with its labels and states:
 ```
 
 **When open questions or issues pile up in a session, a reply that moves to
-another item opens with a short tree of them**, so I can see where we stand and
-that we are still on track. The tree is kept from the moment two or more
-threads are open at once, a question nests inside another, I say "one by one"
-or the like, or I ask for it; a single-topic exchange has none.
+another item opens with a short tree of them**, right after the reading list
+when the reply has one, so I can see where we stand and that we are still on
+track. The tree is kept from the moment two or more threads are open at
+once, a question nests inside another, I say "one by one" or the like, or I
+ask for it; a single-topic exchange has none.
 
 **It appears only when the item in hand changes**: a new question opens, which
 grows the tree, or one is settled and we move to the next - and whenever I ask
@@ -769,10 +813,11 @@ clarification, another round on it - the reply has no tree.
   clear what it is, then its state: ✅ decided, with what was decided in a few
   words; ⏳ open; 👉 the one this reply is on. Nest only where the sub-items are
   separate decisions, never to list how a decided item was done.
-- **Every item carries a label I can answer by**: `1`, `2`, `3` at the top,
-  `a`, `b`, `c` under them, `i`, `ii`, `iii` below that - so "1.b.ii" names one
-  item. A label never changes for the rest of the session: a settled or
-  collapsed item keeps its label, and a new item takes the next free one.
+- **Every item carries an outline number I can answer by**: `1`, `2`, `3` at
+  the top, `a`, `b`, `c` under them, `i`, `ii`, `iii` below that - so "1.b.ii"
+  names one item. An outline number never changes for the rest of the
+  session: a settled or collapsed item keeps its outline number, and a new
+  item takes the next free one. The words after it are free to change.
 - **A branch whose items are all decided collapses** into one ✅ line, and the
   tree stops appearing once nothing in it is open.
 - **It is navigation, not a recap.** No reasoning, no repeated findings, no

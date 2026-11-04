@@ -1,13 +1,51 @@
 ---
 name: tkay-writing-plans
-description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked to write, update, re-check or keep alive a plan, design doc, proposal or implementation write-up, and when implementing an agreed plan.
+description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked for a plan, design doc or implementation write-up, to update, re-check or keep alive one, and when implementing an agreed plan. A plan is shaped first - talked through, nothing built - and becomes a document only when a full plan is asked for in those words.
 ---
 
 # Writing Plans
 
-When I ask for a plan document, this is the shape I want. Write it to a directory that
+When I ask for a full plan, this is the shape I want. Write it to a directory that
 survives the session unless I name somewhere else - never `/tmp` or a session
 scratchpad, which can vanish while the plan is still in use.
+
+## Two modes: shaping, then a full plan
+
+**A plan is shaped until I ask for a full plan in those words.** Shaping settles what
+we want: the problem in plain words, what is in scope and what is out, the decisions
+still open, and what is already settled or not a problem. It is shaping as Basecamp's
+[Shape Up](https://basecamp.com/shapeup/1.1-chapter-02) means it - judging, cutting,
+naming the rabbit holes - never a brainstorm where every idea stands unchallenged.
+
+- **What shaping produces**: a list in chat, one line per item, each with an outline
+  number I can answer by - `1`, `1.a`, `1.a.i` - that never changes once given.
+  Nothing else: no plan document, no contract, no black-box tests, no commits, no
+  incidents table, no questions-and-answers or TBD section. What we want may still
+  change completely, and anything built now is built for a plan that may not survive
+  the conversation.
+- **One line never stands for a bundle.** An item that names another plan, a
+  handed-over list or a run of commits hides every change inside it, and I approve
+  what I cannot see. Each change it delivers is a decision of its own, so it nests
+  under the item as a sub-item - every time the shape is shown, not only when I ask
+  what is in it. The case that taught it, a page
+  column that was in the plan but in no line of the shape:
+
+  ```
+  ❌ 5.d The load-balancing weights plan, on this branch
+  ✅ 5.d The load-balancing weights plan, on this branch
+         i. The weights leave the pin rows and the scaling lock
+         ii. A new name for the scaling page's pins tab
+         iii. A column on that tab showing which way each pin scaled
+  ```
+- **What the rest of this skill is for while shaping**: knowing where the talk is
+  heading. The full plan's sections steer the questions you ask - "what must always be
+  true?", "what has failed here before?", "which known design does this resemble?" -
+  and never become drafts of themselves. "The problem comes first", "Say what is NOT a
+  problem", "Flag what rests on an inference" and "Call it when planning turns into a
+  rabbit hole" hold in both modes.
+- **The full plan** is the document the rest of this skill describes, written when I
+  ask for it, and it starts from what shaping settled. A design doc asked for by name
+  is one.
 
 ## The problem comes first. Always.
 

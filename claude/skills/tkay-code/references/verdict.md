@@ -5,6 +5,27 @@ decide faster when I know what you think before I read it, and a proposal
 with no verdict reads as one you would defend. It comes in two forms, the
 Full Verdict and the TL;DR Verdict, and nothing else is called a verdict.
 
+## The check comes before the verdict
+
+**A verdict sits above the change but is written after the change is
+checked.** Before its first line, run the check I would ask for next - "did
+you check yourself?", "is it good?": read the change against everything it
+touches - the rest of the file a doc edit lands in, the rules next to it,
+the callers of a function - and run every test you can run yourself; a test
+is run, never listed. What the check finds is fixed in the proposal, and
+the verdict judges the fixed version. A verdict that the same check, one
+message later, turns from go into not ready was written before its check.
+
+The case that taught it, a new rule drafted for an instructions file:
+
+```
+❌ ✅ Do it on the draft; asked "is it good?", the next reply found the
+   old rule still standing beside the new one, two rules both claiming
+   the top of the reply, and the rule in the wrong section
+✅ the same three found and fixed before the draft was shown, and the
+   verdict written on the fixed draft
+```
+
 ## The Full Verdict
 
 ```
@@ -82,8 +103,7 @@ The call says what to do, never how sure you are of it.
   not run, but you traced every step in the code or the docs; LIKELY, one
   unchecked inference carries it; 50-50, more than one unchecked inference,
   or you do not know. Below 50-50 the call never says go ahead: never ✅ Do it,
-  ✅ Ship it, ✅ Merge it, 🔧 Merge after fixes or 🔧 Add fix. A test you can
-  run yourself is run before the verdict, not listed.
+  ✅ Ship it, ✅ Merge it, 🔧 Merge after fixes or 🔧 Add fix.
 - **Size is how much the change touches**, one of four: huge, large, medium,
   small. **Difficulty is how hard it is to get right**, one of four: super
   hard, hard, easy, super easy. The two are independent: a one-line change
