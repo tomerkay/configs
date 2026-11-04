@@ -122,6 +122,7 @@ bundle_report() {
 			fi
 			continue
 		fi
+		echo "project-scope update in $dir:" >&2
 		(cd "$dir" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") >&2
 		status=$?
 		after=$(bundle_version "$dir")
