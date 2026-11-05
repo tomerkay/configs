@@ -75,6 +75,13 @@ tests, a gitignored file, a deploy, an HTTP call - each follows my
 permission mode, or "Some commands need my words AND the prompt, every
 time", and the gate has nothing to say about it.
 
+**A gitignored file stays gated where the session's trust lives**:
+anywhere under `~/.claude`, which keeps the gate's own state in files it
+ignores, and in any `.claude/` directory, whose `settings.local.json`
+grants permissions. Writing either would let a session open its own gate
+or widen what it may run, so an ignored file there is held like a tracked
+one.
+
 **You must never ask me for `LFG!` for anything outside a repo.** If you
 catch yourself about to print the refusal line for a read, a scratch
 script or a test run, that is your bug, not my missing token.
@@ -318,6 +325,13 @@ not a plan I approved, not my yes to the previous one:
   process needs no words: `pgrep -fl <pattern>` to see the matches, then
   `kill <pid>`, both with the sandbox off - inside it, `pgrep` lists
   nothing and `kill` reaches no process outside it.
+- A change to a `.env` file - `.env` itself or `.env.<anything>` - by
+  `Edit`, `Write` or a shell write the command spells out;
+  `changes_env_file` in `~/.claude/hooks/tool-gate.py` names the shell
+  routes. Git keeps no copy of an ignored one, so an overwrite is
+  permanent, and the org's managed deny on editing one covers only the
+  session's own directory. Reading one needs no words, and a script that
+  writes one from inside goes unseen.
 
 **Each one runs only when BOTH hold, every single time:**
 

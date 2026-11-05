@@ -129,6 +129,7 @@ GENERIC_DANGER_WORDS = {"delete", "destroy", "remove", "rm", "rb", "terminate", 
 # ----- the gate -----------------------------------------------------------------------
 
 REFUSAL = 'YOU MUST WRITE "LFG!" for me to actually start implementing.'
+CLAUDE_HOME = os.path.realpath(os.path.expanduser("~/.claude")) + "/"
 STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
@@ -1679,6 +1680,22 @@ def rm_paths(args):
     return positionals(args)
 
 
+def cp_paths(args):
+    """The paths a cp may write: its last operand, or with a -t every operand and every value
+    inside a -t flag word, since the target can then stand anywhere on the line."""
+    end = args.index("--") if "--" in args else len(args)
+    operands = positionals(args[:end]) + args[end + 1:]
+    targets = []
+    for a in args[:end]:
+        if a.startswith("--t"):
+            targets.append(a.partition("=")[2])
+        elif a[:1] == "-" and a[1:2] != "-" and "t" in a[1:]:
+            targets.append(a[a.index("t", 1) + 1:])
+    if not targets:
+        return operands[-1:]
+    return operands + [t for t in targets if t]
+
+
 def inside_scratch(path):
     # GOTCHA: a relative path, `~` or `$VAR` is not resolvable here, so it counts as outside.
     return os.path.isabs(path) and os.path.realpath(path).startswith(SCRATCH_ROOTS)
@@ -1734,6 +1751,52 @@ def writes_unnamed_tmp(command, named):
             if program_of(words) in ("cp", "mv"):
                 paths = paths[-1:]
             if any(unnamed_tmp(p, named) for p in paths):
+                return True
+    return False
+
+
+ENV_WRITE_REASON = ("changes a .env file: git keeps no copy of an ignored one, so an "
+                    "overwrite is permanent, and the managed Edit deny covers only the "
+                    f"session's own directory: {ON_WORDS}")
+IN_PLACE_EDITORS = {"sed", "gsed", "perl"}
+
+
+def env_file(path):
+    """True when path names a .env file: `.env` itself or `.env.<anything>`."""
+    name = os.path.basename(path.rstrip("/"))
+    return name == ".env" or name.startswith(".env.")
+
+
+def edits_in_place(args):
+    return any(a.startswith("--in-place") or (a[:1] == "-" and a[1:2] != "-" and "i" in a[1:])
+               for a in args)
+
+
+def changes_env_file(command):
+    """True when a redirect, or a writer the command names, changes a .env file: the target
+    of a cp, either side of an mv, the path of a tee, touch, truncate or rm, or a file an
+    in-place editor rewrites. A cp from one only reads it."""
+    for line in command_lines(command):
+        try:
+            segments, targets = split_line(line)
+        except ValueError:
+            return ".env" in line
+        if any(env_file(t) for t in targets):
+            return True
+        for words in segments:
+            words = strip_prefix(words)
+            if not words:
+                continue
+            prog, args = program_of(words), words[1:]
+            if prog == "cp":
+                paths = cp_paths(args)
+            elif prog in SCRATCH_WRITERS | {"truncate"}:
+                paths = rm_paths(args) if prog == "rm" else positionals(args)
+            elif prog in IN_PLACE_EDITORS and edits_in_place(args):
+                paths = positionals(args)
+            else:
+                continue
+            if any(env_file(p) for p in paths):
                 return True
     return False
 
@@ -2248,6 +2311,9 @@ def gate_blockers(command, cwd):
                 continue
             if prog in SCRATCH_WRITERS:
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
+                # A cp only reads its sources, so a source inside a repo changes nothing there.
+                if prog == "cp":
+                    paths = cp_paths(args)
                 if paths and all(inside_gate_scratch(path_from(here, p)) for p in paths):
                     continue
                 # An rm leaves no file behind to hold to scratch, so outside every repo it
@@ -2304,18 +2370,45 @@ def outside_repos(path):
 
 
 def inside_repo(path):
-    """True when path lies in a git work tree under a repo root, outside the scratch roots."""
+    """True when path lies in a git work tree under a repo root, outside the scratch roots,
+    unless it is an ignored file the session does not trust."""
     if (not isinstance(path, str) or not os.path.isabs(path) or inside_gate_scratch(path)
             or not inside_roots(path)):
         return False
-    here = os.path.dirname(os.path.realpath(path))
+    real = os.path.realpath(path)
+    here = os.path.dirname(real)
     while True:
         if os.path.exists(os.path.join(here, ".git")):
-            return True
+            return not untrusted_ignored(here, real)
         parent = os.path.dirname(here)
         if parent == here:
             return False
         here = parent
+
+
+def untrusted_ignored(repo, path):
+    """True when the repo ignores path and the session trusts nothing kept there.
+
+    GOTCHA: the gate's own state lives in ignored files under ~/.claude, which ignores all
+    it does not track, and a repo's .claude/ holds settings.local.json, whose rules grant
+    permissions; an ignored file in either would let the session open its own gate.
+    """
+    if (path + "/").startswith(CLAUDE_HOME) or ".claude" in os.path.relpath(
+            path, repo).split(os.sep):
+        return False
+    return git_ignores(repo, path)
+
+
+def git_ignores(repo, path):
+    """True when the repo ignores path. git check-ignore never counts a file the index holds,
+    so a tracked file stays guarded whatever the ignore rules say; a git that cannot answer
+    counts as not ignoring it."""
+    try:
+        done = subprocess.run(["git", "-C", repo, "check-ignore", "-q", "--", path],
+                              capture_output=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return done.returncode == 0
 
 
 def tar_extracts_into_scratch(here, args):
@@ -2738,6 +2831,8 @@ def decide_bash(tool_input, gate_open, cwd, named):
     if not isinstance(command, str):
         raise ValueError("Bash call without a command string")
     out = [(DENY, TMP_WRITE_REASON)] if writes_unnamed_tmp(command, named) else []
+    if changes_env_file(command):
+        out.append((ASK, ENV_WRITE_REASON))
     for prog, args in invocations(command):
         out.extend(pin_decisions(prog, args))
         if runs_whole_suite(prog, args):
@@ -2800,6 +2895,8 @@ def decide(tool_name, tool_input, gate_open, cwd=None, named=()):
         path = tool_input.get(PATH_FIELD[tool_name])
         out = [(DENY, TMP_WRITE_REASON)] if isinstance(path, str) and unnamed_tmp(path, named) \
             else []
+        if isinstance(path, str) and env_file(path):
+            out.append((ASK, ENV_WRITE_REASON))
         if not gate_open and inside_repo(path):
             out.append((DENY, REFUSAL))
     elif tool_name == "EnterWorktree":
@@ -3301,6 +3398,23 @@ def selftest():
         (False, "Bash", "ssh-add ~/.ssh/id_ed25519", None),
         (False, "Bash", "ssh-add -D && echo x > /x/f", DENY),
         # A kill by name hides its targets, so it needs the user's words in every state.
+        (True, "Write", {"file_path": "/x/.env.local"}, ASK),
+        (False, "Edit", {"file_path": "/x/.env"}, ASK),
+        (True, "Edit", {"file_path": "/x/env.py"}, None),
+        (True, "Edit", {"file_path": "/x/.envrc"}, None),
+        (True, "Bash", "echo X=1 > /x/.env.local", ASK),
+        (True, "Bash", "echo X=1 >> /x/.env", ASK),
+        (True, "Bash", "printf x | tee -a /x/.env.dev", ASK),
+        (True, "Bash", "cp /y/a /x/.env", ASK),
+        (True, "Bash", "cp /x/.env.local /y/backup", None),
+        (True, "Bash", "mv /x/.env.local /y/b", ASK),
+        (True, "Bash", "mv /y/b /x/.env.local", ASK),
+        (True, "Bash", "sed -i '' s/a/b/ /x/.env.local", ASK),
+        (True, "Bash", "perl -pi -e s/a/b/ /x/.env", ASK),
+        (True, "Bash", "sed -n 1p /x/.env.local", None),
+        (True, "Bash", "cat /x/.env.local", None),
+        (True, "Bash", "rm -f /x/.env.local", ASK),
+        (True, "Bash", "truncate -s 0 /x/.env", ASK),
         (False, "Bash", "pkill -f temporal", ASK),
         (True, "Bash", "pkill -f temporal", ASK),
         (True, "Bash", "killall temporal", ASK),
@@ -3472,6 +3586,8 @@ def selftest():
         (True, "Bash", "echo x > /tmp/a.diff", DENY),
         (True, "Bash", "rm -f /tmp/a.diff", None),
         (False, "Write", {"file_path": f"{home}/.claude/lfg-state/x"}, DENY),
+        (False, "Write", {"file_path": f"{home}/.claude/scratch-paths/x"}, DENY),
+        (False, "Write", {"file_path": f"{home}/.claude/plugins/installed_plugins.json"}, DENY),
         (False, "Edit", {"file_path": f"{home}/repos/x.py"}, None),
         (True, "Edit", {"file_path": f"{home}/repos/x.py"}, None),
         (False, "NotebookEdit", {"notebook_path": f"{scratch}n.ipynb"}, DENY),
@@ -3728,6 +3844,11 @@ def selftest():
             return path
 
         on_main = repo("on-main", "main")
+        with open(os.path.join(on_main, ".gitignore"), "w") as f:
+            f.write("ignored/\n*.log\n.claude/settings.local.json\n")
+        with open(os.path.join(on_main, "tracked.log"), "w") as f:
+            f.write("x\n")
+        subprocess.run(["git", "-C", on_main, "add", "-f", "tracked.log"], check=True)
         on_feature = repo("on-feature", "main")
         subprocess.run(["git", "-C", on_feature, "switch", "-q", "-c", "feat"], check=True)
         on_master = repo("on-master", "master", remote_head=False)
@@ -3802,7 +3923,19 @@ def selftest():
             ("Bash", {"command": f"cd {scratch_dir} && mkdir -p d && touch d/x && cp d/x d/y"},
              None),
             ("Bash", {"command": "touch x"}, DENY),
-            ("Bash", {"command": f"cp a.txt {scratch_dir}/"}, DENY),
+            ("Bash", {"command": f"cp {scratch_dir}/a.txt b.txt"}, DENY),
+            ("Bash", {"command": f"cp a.txt {scratch_dir}/d/"}, None),
+            ("Bash", {"command": f"cp -t {scratch_dir}/d {scratch_dir}/a"}, None),
+            ("Bash", {"command": f"cp -t {scratch_dir}/d {on_main}/a"}, DENY),
+            ("Bash", {"command": f"cp -t{on_main} {scratch_dir}/a"}, DENY),
+            ("Bash", {"command": f"cp --target={on_main} {scratch_dir}/a"}, DENY),
+            ("Bash", {"command": f"cp -r {on_main}/d {scratch_dir}/d"}, None),
+            ("Bash", {"command": f"cp {scratch_dir}/a {on_main}/x"}, DENY),
+            ("Bash", {"command": f"cp -t {on_main} {scratch_dir}/a"}, DENY),
+            ("Bash", {"command": f"cp -rt {on_main} {scratch_dir}/a"}, DENY),
+            ("Bash", {"command": f"cp --target-directory={on_main} {scratch_dir}/a"}, DENY),
+            ("Bash", {"command": f"cp -- {scratch_dir}/a -x"}, DENY),
+            ("Bash", {"command": f"mv {on_main}/README.md {scratch_dir}/r"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && touch ../x"}, DENY),
             # An rm outside every repo passes, unless its path may reach into one.
             ("Bash", {"command": f"rm {not_repo}/x.txt"}, None),
@@ -3843,6 +3976,15 @@ def selftest():
             ("Bash", {"command": f"{not_repo}/tool.sh"}, None),
             ("Edit", {"file_path": f"{on_main}/README.md"}, DENY),
             ("Write", {"file_path": f"{on_main}/sub/new.py"}, DENY),
+            ("Write", {"file_path": f"{on_main}/ignored/new.txt"}, None),
+            ("Edit", {"file_path": f"{on_main}/build.log"}, None),
+            ("Edit", {"file_path": f"{on_main}/tracked.log"}, DENY),
+            ("Edit", {"file_path": f"{on_main}/.gitignore"}, DENY),
+            ("Write", {"file_path": f"{on_main}/.claude/settings.local.json"}, DENY),
+            ("Edit", {"file_path": f"{on_main}/.git/config"}, DENY),
+            ("Bash", {"command": f"rm -f {on_main}/build.log"}, None),
+            ("Bash", {"command": f"rm -f {on_main}/tracked.log"}, DENY),
+            ("Bash", {"command": f"echo x > {on_main}/build.log"}, DENY),
             ("Write", {"file_path": f"{scratch_dir}/note.md"}, None),
             ("Write", {"file_path": f"{not_repo}/note.md"}, None),
             ("EnterWorktree", {}, DENY),

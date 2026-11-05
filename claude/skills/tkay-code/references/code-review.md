@@ -258,14 +258,20 @@ the only summaries allowed in a CR.
 The commits table judges the commits. The bycatch table holds what the review
 turned up on the way that is NOT a finding against a commit: a pre-existing bug
 in a file the branch touched, a stale or false doc next to the change, a trap
-the diff happened to expose. Three columns, under its own heading:
+the diff happened to expose. Four columns, under its own heading:
 
 # Bycatch
 
-| What it is and how bad | Introduced by this branch? | Verdict |
-|---|---|---|
-| <what it is, with `file`, and its severity tag> | `yes <sha>` / `no, pre-existing` | <TL;DR Verdict> |
+| # | What it is and how bad | Introduced by this branch? | Verdict |
+|---|---|---|---|
+| B1 | <what it is, with `file`, and its severity tag> | `yes <sha>` / `no, pre-existing` | <TL;DR Verdict> |
 
+- **#** — `B1`, `B2`, `B3` down the table, so I answer a row by its number
+  instead of describing it back to you. The letter keeps it apart from every
+  other number in the reply, and `B2` in my message names that row and
+  nothing else. A repeat CR in the same session keeps a carried row's number
+  and gives a new row the next free one, so my earlier answers still point
+  at the right rows.
 - **What it is and how bad** — one sentence plus the severity tag, so I can tell a
   lying doc from a typo without re-reading the findings.
 - **Introduced by this branch?** — `yes <sha>` or `no, pre-existing`.

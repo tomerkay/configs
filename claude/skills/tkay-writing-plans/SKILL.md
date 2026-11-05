@@ -267,7 +267,7 @@ so the answer is never buried in a paragraph:
 taken from the plan's own prose.** Solved without a named mechanism is not a status
 it may claim.
 A not solved is written as plainly as a solved: it is the entry the reviewer most needs,
-and it pairs with the risks section or a TBD entry that I agreed to.
+and it pairs with a TBD entry that I agreed to.
 
 ## TBD holds only what we agreed to defer
 
@@ -275,9 +275,26 @@ The TBD section lists work I agreed, with you, to leave out of this plan: a foll
 a cleanup after it ships, a decision we postponed on purpose. Each entry says what and
 when or why later.
 
+**An entry is deferred work the plan does not depend on.** With the entry undone, every
+claim in the plan stays true: the contract holds, each commit leaves the tests passing,
+each incident keeps its status. When I ask to defer something the plan depends on, that
+is not a deferral but a cut, and a cut changes what the plan claims. Say what it
+changes - the invariant that goes unpinned, the incident that turns Not solved, the
+commit that no longer stands on its own - and ask whether I want the cut. If I do, the
+sections it touches say so, and the TBD entry names what the plan now lacks.
+
 **Never add a TBD entry on your own.** Something you find that this plan does not do is
 a finding: it goes below the divider, and you raise it with me. It moves to TBD only
 after I agree to defer it. A TBD you invented reads as a commitment I never made.
+
+**Nothing raised or found falls out of the plan unasked.** Along the way, keep what
+landed nowhere: an item of the shape no section carries, a thing I raised and never
+settled, something you found and we did not chase. A finding that changes what we want
+is raised the moment it is found, as "Executing a plan" says for a hole. Everything
+else is floated once, before the full plan is written: a numbered list in chat, one
+line per item with why it matters, and for each I pick its bucket - in scope, TBD, or
+a rejected decision below the divider. Only then is the plan written, with every item
+in its bucket.
 
 ## Divide it into commits
 
