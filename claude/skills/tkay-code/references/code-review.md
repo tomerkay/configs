@@ -25,8 +25,9 @@ commit judged against the one before it, and nobody judging what lands.
   the review of the commit that should carry the fix, so that commit's verdict
   blocks.
 - **The commit verdicts never read greener than the outcome.** If the branch
-  at HEAD is broken, at least one row of the commits table is neither
-  `✅ Ship it` nor `👌 Fixed later`: a fix that HEAD does not hold is no fix.
+  at HEAD is broken, at least one row of the commits table is none of
+  `✅ Ship it`, `👌 Fixed later` and `🪓 Split`: a fix that HEAD does not
+  hold is no fix.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
@@ -45,7 +46,7 @@ top-level heading:**
    branch overview".
 3. `# Commits` - the verdict table, one row per commit; see "The commits
    table".
-4. `# Bycatch` - what the review turned up on the way; see "The bycatch
+4. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
    table".
 
 The last three are built from the findings: the overview and the commits
@@ -68,12 +69,12 @@ done in this session.
 
 ```
 "CR Summary", after this session's CR of the branch, nothing changed since:
-❌ # Findings, # Branch overview, # Commits, # Bycatch - the CR again
-✅ # Branch overview, # Commits, # Bycatch
+❌ # Findings, # Branch overview, # Commits, # 🎣 Bycatch - the CR again
+✅ # Branch overview, # Commits, # 🎣 Bycatch
 
 "CR Summary", no CR of the branch yet:
-❌ # Branch overview, # Commits, # Bycatch - verdicts no finding stands under
-✅ # Findings, # Branch overview, # Commits, # Bycatch
+❌ # Branch overview, # Commits, # 🎣 Bycatch - verdicts no finding stands under
+✅ # Findings, # Branch overview, # Commits, # 🎣 Bycatch
 ```
 
 ## CRITICAL: IS IT A REAL BUG OR A NIT — AND MUST I FIX IT NOW?
@@ -210,11 +211,11 @@ would follow. Under its own heading:
   do with this part, never whether the branch merges. Its How sure is how
   sure you are that the change works at HEAD.
 - **The call follows the commits it names.** `✅ Keep it` only when every
-  one of them is `✅ Ship it` or `👌 Fixed later`; any other commit call makes
-  it `🔧 Needs fixes`, naming the commit and what it needs, unless the
-  change itself earns `⚖️ Close call`, `✂️ Carve out` or `❌ Drop it`. An
-  entry never reads greener than a commit it lives in, even when that commit
-  changes nothing in the tree. The case that taught it, a branch whose only
+  one of them is `✅ Ship it`, `👌 Fixed later` or `🪓 Split`; any other
+  commit call makes it `🔧 Needs fixes`, naming the commit and what it
+  needs, unless the change itself earns `⚖️ Close call`, `✂️ Carve out`
+  or `❌ Drop it`. An entry never reads greener than a commit it lives in,
+  even when that commit changes nothing in the tree. The case that taught it, a branch whose only
   extra commit was a back-merge of the default branch that carried no change:
 
   ```
@@ -260,9 +261,10 @@ of the last commit's review.
 
 | Call | When |
 |---|---|
-| `✅ Ship it` | 0 MUST HAVE |
+| `✅ Ship it` | 0 MUST HAVE, and it does one thing |
 | `👌 Fixed later (by <sha>)` | its MUST HAVEs are fixed by a later commit on the branch, named in the bracket |
 | `🔧 Needs change` | at least one MUST HAVE, and amending this commit fixes it |
+| `🪓 Split (<the parts>)` | 0 MUST HAVE, but it does more than one thing a revert or a bisect would want apart. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign - the bycatch rule in `references/commits.md`. A commit that also has a MUST HAVE is `🔧 Needs change`, and its reason names the split too |
 | `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
@@ -271,11 +273,12 @@ fix makes it neither a squash nor a ship. It is `🔀 Squash into` the earlier
 commit only when it exists because that one got something wrong, and
 `✅ Ship it` when it stands on its own and fixes the earlier one along the way.
 
-The verdict agrees with that commit's FINDINGS line: never `✅ Ship it` while
-its MUST HAVE count is above zero. `👌 Fixed later` is the one call that
-carries a MUST HAVE, the one its named commit fixes. A single-commit CR still
-has a one-row table. The branch overview, the commits table and the bycatch
-table below are the only summaries allowed in a CR.
+The verdict agrees with that commit's FINDINGS line: never `✅ Ship it` or
+`🪓 Split` while its MUST HAVE count is above zero. `👌 Fixed later` is the
+one call that carries a MUST HAVE, the one its named commit fixes. A
+single-commit CR still has a one-row table. The branch overview, the
+commits table and the bycatch table below are the only summaries allowed
+in a CR.
 
 ### The bycatch table — the last section, every CR
 
@@ -284,7 +287,7 @@ turned up on the way that is NOT a finding against a commit: a pre-existing bug
 in a file the branch touched, a stale or false doc next to the change, a trap
 the diff happened to expose. Four columns, under its own heading:
 
-# Bycatch
+# 🎣 Bycatch
 
 | # | What it is and how bad | Introduced by this branch? | Verdict |
 |---|---|---|---|
@@ -317,7 +320,7 @@ When nothing came up, the heading stays and the table is one line instead:
 - **No severity inflation.** If you cannot write the concrete failure scenario, it is NOT a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG** · MUST HAVE:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED) · MUST HAVE** and state exactly what you couldn't check.
-- **✅ Ship it needs executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the verdict, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
+- **✅ Ship it and 🪓 Split need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the verdict, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
   **Every test you can run yourself is run before the verdict, as `references/verdict.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED) · MUST HAVE** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks ✅ Ship it until it is run or I accept it as untested. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
   Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.

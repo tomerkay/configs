@@ -75,6 +75,8 @@ sentence; nothing else in a verdict carries one.
 - **👌 Fixed later (by `<sha>`)** - a later commit on the branch fixes what
   blocks it; that commit's own call is picked on its own content.
 - **🔧 Needs change** - amending this commit fixes what blocks it.
+- **🪓 Split (<the parts>)** - nothing blocks it, but it does more than one
+  thing; the brackets name the commits it splits into.
 - **🔀 Squash into `<sha>`** - it belongs inside that earlier commit.
 - **🗑 Drop** - the branch is better without it.
 
@@ -94,7 +96,7 @@ follows from the entries, the worst one deciding, in the order ❌, ✂️, ⚖�
 lands:
 
 - **✅ Keep it** - the change is right and every commit it lives in is
-  ✅ Ship it or 👌 Fixed later.
+  ✅ Ship it, 👌 Fixed later or 🪓 Split.
 - **🔧 Needs fixes** - the change is right, and a commit it lives in must
   change first; the brackets name the commit and what it needs.
 - **⚖️ Close call** - keeping and dropping it are both defensible; the text
@@ -104,7 +106,7 @@ lands:
 - **❌ Drop it** - the change itself is wrong or out of scope, whatever its
   commits are called, and the work goes away.
 
-**Bycatch** - something found on the way that is not part of what is being
+**🎣 Bycatch** - something found on the way that is not part of what is being
 judged:
 
 - **🔧 Add fix** - fix it as part of this work.
@@ -121,8 +123,8 @@ The call says what to do, never how sure you are of it.
   not run, but you traced every step in the code or the docs; LIKELY, one
   unchecked inference carries it; 50-50, more than one unchecked inference,
   or you do not know. Below 50-50 the call never says go ahead: never ✅ Do it,
-  ✅ Ship it, 👌 Fixed later, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first,
-  ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
+  ✅ Ship it, 👌 Fixed later, 🪓 Split, ✅ Merge it, 🔧 Merge after fixes,
+  ✂️ Split first, ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
 - **Size is how much the change touches**, one of four: huge, large, medium,
   small. **Difficulty is how hard it is to get right**, one of four: super
   hard, hard, easy, super easy. The two are independent: a one-line change

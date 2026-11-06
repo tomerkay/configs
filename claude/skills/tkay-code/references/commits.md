@@ -224,10 +224,12 @@ purpose: that prefix is not a release, and the guard saying so is correct.
 - `ci:` - CI config changes (None)
 - `chore:` - deps, build tools (None)
 
-**The Body (wrap at 72 chars): three labelled sections, short**
+**The Body (wrap at 72 chars): three labelled sections, short, and Bycatch
+when the commit carries one**
 
 Every body is exactly these three sections, in this order, each its own
-paragraph opening with its label:
+paragraph opening with its label - plus a fourth, Bycatch, only when the
+commit carries one (see "Bycatch in a Commit" below):
 
 ```
 Before: what the code did or lacked, and the problem that caused.
@@ -252,7 +254,38 @@ it delivers.
   satisfies. Impact numbers and how it was verified go here, in a clause. A
   rejected alternative goes here too, in one clause, when the next person
   would otherwise retry it.
-- **Nothing after Why** except the footers.
+- **Nothing after Why** except the Bycatch section and the footers.
+
+**Bycatch in a Commit**
+
+**Bycatch - a fix found on the way, outside the change the commit is for -
+belongs in a commit of its own.** When some rides along anyway, it is
+written down, never left for the reader to find in the diff: a section
+after Why, its label on a line of its own, one bullet per item.
+
+```
+Bycatch:
+- <what was fixed, in one short line>
+```
+
+- **Bullets only.** No Before / Change / Why per item, no CR row, no
+  verdict.
+- **A bullet that is not one simple line is a smell**: an item that needs a
+  reason, a second line or a sub-bullet is a change of its own, and belongs
+  in a commit of its own. Split it out instead of writing a longer bullet.
+- **No bycatch, no section.** A fix for a shipped bug never has one - see
+  "A Fix for a Shipped Bug Stands Alone".
+
+```
+❌ Bycatch:
+   - the retry loop now backs off exponentially instead of retrying at a
+     fixed interval, because the fixed one hammered the API on outages
+✅ Bycatch:
+   - fix a typo in the retry log message
+```
+
+The ❌ bullet is a behaviour change with its own reason: it gets a commit of
+its own.
 
 **Examples (WRONG vs RIGHT):**
 
