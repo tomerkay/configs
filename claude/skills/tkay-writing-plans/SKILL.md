@@ -19,10 +19,10 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
 
 - **What shaping produces**: a list in chat, one line per item, each with an outline
   number I can answer by - `1`, `1.a`, `1.a.i` - that never changes once given.
-  Nothing else: no plan document, no contract, no black-box tests, no commits, no
-  incidents table, no questions-and-answers or TBD section. What we want may still
-  change completely, and anything built now is built for a plan that may not survive
-  the conversation.
+  Nothing else is drafted: no plan document, no contract, no black-box tests, no
+  commits, no incidents table, no questions-and-answers or TBD section. What we want
+  may still change completely, and anything built now is built for a plan that may
+  not survive the conversation.
 - **One line never stands for a bundle.** An item that names another plan, a
   handed-over list or a run of commits hides every change inside it, and I approve
   what I cannot see. Each change it delivers is a decision of its own, so it nests
@@ -37,12 +37,30 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
          ii. A new name for the scaling page's pins tab
          iii. A column on that tab showing which way each pin scaled
   ```
-- **What the rest of this skill is for while shaping**: knowing where the talk is
-  heading. The full plan's sections steer the questions you ask - "what must always be
-  true?", "what has failed here before?", "which known design does this resemble?" -
-  and never become drafts of themselves. "The problem comes first", "Say what is NOT a
-  problem", "Flag what rests on an inference" and "Call it when planning turns into a
-  rabbit hole" hold in both modes.
+- **Shaping thinks as hard as the full plan; only what it writes is smaller.** The
+  full plan's checks run while shaping, and what they find reaches me as items and
+  decisions in chat, never as a drafted section:
+  1. The problem first, in plain words.
+  2. The known architecture: "Start from a known architecture" in full - search
+     outward, bring the candidates with links and your recommendation - before any
+     item rests on a design. The chosen one is an item of the shape.
+  3. What must always be true.
+  4. The questions of "Check security" and "Check high availability", asked of what
+     we are shaping.
+  5. What has failed here before, and which of those the shape must answer.
+  6. What is NOT a problem, what rests on an inference, and when planning turns into
+     a rabbit hole.
+
+  What waits for the full plan is the writing: the document, the contract and its
+  tests, the commits, the incidents table, the questions and answers, and TBD. The
+  case that taught it, a shaping rule that left the architecture search for the
+  full plan:
+
+  ```
+  ❌ shaping asks "which known design does this resemble?" and moves on
+  ✅ shaping brings the known designs it found, with links, and a pick,
+     before any item of the shape rests on one
+  ```
 - **The full plan** is the document the rest of this skill describes, written when I
   ask for it, and it starts from what shaping settled. A design doc asked for by name
   is one.

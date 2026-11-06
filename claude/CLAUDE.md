@@ -554,6 +554,21 @@ showing me, a TL;DR you are about to post yourself, an illustrative snippet of m
 own code. Bracketing those buries the real ones. Two blocks I am meant to copy get
 two bracketed blocks, never one bracket around both.
 
+# A BEFORE AND AFTER IS A SECTION PER SNIPPET, EACH SIDE FENCED
+
+**When I ask to see how a change will look - "the snippets", "before and
+after", "how will it read", in whatever words - each snippet that changes
+is a section of its own**, headed by the file and the place, with a
+`### Before` and a `### After` under it, each a fenced block so it renders,
+and a `---` between sections. A snippet that stays as it is gets no section,
+only a line in the opening that says so. Asked for it "in md", it is a file
+in the session's handoff directory, as "EVERY FILE YOU WRITE" says.
+
+The case that taught it: asked for `=====` before and after each snippet,
+with the text between `"""`, I pasted both literally and nothing rendered.
+A marker I am given is the separator it stands for - a heading, a rule, a
+fence - never text to copy in.
+
 # EVERY QUESTION THAT STOPS THE REPLY OPENS WITH ❓
 
 **A reply that stops because the next step is gated on my answer ends with
@@ -838,6 +853,29 @@ clarification, another round on it - the reply has no tree.
   question text: the questions still end the reply as ❓ lines. A code review
   in the same reply keeps its own shape below the tree.
 
+# EVERY LIST IS NUMBERED, EVERY TABLE HAS A NUMBER COLUMN
+
+**A list in a reply to me is numbered, never bulleted with a dash, and a
+table's first column numbers its rows under a `#` header**, so I answer "3"
+or "row 2" instead of describing the item back to you. The reading list's
+`R<n>`, the questions' `Q<n>`, the bycatch's `B<n>` and the tree's outline
+numbers are this rule with a letter in front; every other list and table
+takes plain numbers. A list of one keeps its dash: the number tells items
+apart, and a single item is named by its heading, so numbers start at two.
+
+- **A nested list numbers its own level afresh**, `1`, `2` under `a` and
+  `a`, `b` under `1`, the way the tree does. A reply that repeats a list or
+  a table from an earlier reply keeps each item's number.
+- **The Full Verdict's label lines keep their dash**, since nobody answers
+  "Verdict" by number; the points under Why Yes and Why Not are numbered
+  from two, so "Why Not 2" names one. The `tkay-code` verdict reference
+  carries the shape, and its review standard numbers the branch overview's
+  entries the same way, inside their paragraph shape.
+- **A row's number is its name in my answer**, and the number column comes
+  first, whatever the table is about.
+- **It is for replies to me in chat** - never a commit message, a Slack post
+  or a file, whose own conventions hold.
+
 # CODE RULES THAT ARE ALWAYS IN FORCE
 
 These apply to every line you write for me - code, chart, dashboard or doc - in
@@ -859,7 +897,9 @@ default or config key is acceptable.
   the change. One you believe is needed is one sentence to me, never built
   first.
 - **YAGNI:** no defensive code for a state the system rules out; validate at the
-  boundary only.
+  boundary only. A state that can occur but never should is made
+  unrepresentable at the boundary, and what remains fails fast at the smallest
+  scope, counted - never a recovery path.
 - **One source of truth:** a value or a piece of logic lives in one place.
   Binaries carry no config defaults, values.yaml holds only what is meant to
   change, and a limit that can be lifted has a stated off value - never a huge
@@ -880,7 +920,16 @@ default or config key is acceptable.
   work inside a transaction, only once it commits.
 - **Parse at the boundary:** raw input becomes a typed value once, where it
   enters.
+- **A check costs what its answer is worth:** a hint - a greyed button, a
+  status column, a precondition shown before the click - reads a stale,
+  partial or on-demand answer, and only the action's own check is fresh and
+  full.
 - **Asyncio:** every task has an owner, and nothing blocks the loop.
+- **One lock at a time:** an in-process lock taken while another is held is a
+  design smell, and nothing runs under a lock but the reads and writes it
+  guards - a deadlock never crashes, logs or counts, so it is the worst
+  failure there is. A race
+  the design cannot remove is better healed by a reconcile than locked harder.
 - **Tests check the contract:** black box through the public interface, mocks
   only at the boundary, and a bug fix carries the test that reproduces it. How a
   test reaches the failure paths is raised with me before it is written.
@@ -1071,6 +1120,13 @@ this line right under it:
 
 No question and no confirmation - the line is a note, not a stop.
 
+**A file I ask for gets a path with no spaces**: every name you choose for
+it - the file and any directory you create for it - joins its words with
+`_`. A copy is no exception: a copy of `Q3 report.md` is `Q3_report.md`,
+never the original name with its spaces kept. The rule is for names you
+choose, never for mine: a file I tell you to edit keeps the name it has,
+and a path I spell out with spaces in it is written with those spaces.
+
 **Anything you create outside the session's handoff directory is yours to
 delete, and you delete it without asking or reporting it** - the same rule as
 a backup branch. A commit-message file in `.git`, a file a tool insists on
@@ -1139,6 +1195,21 @@ own only while a session is working, and a pause in that renewal is enough.
 
 The case that taught it: a KWOK suite over an hour long, left to run with
 the screen dark on a Mac set to sleep soon after.
+
+# A LONG RUN GOES TO THE BACKGROUND WITH ITS LOG
+
+**A command that runs longer than a few minutes runs in the background, with
+its output into a log in the session's handoff directory.** The harness
+wakes me the moment it exits, so a crash reaches me at once; a foreground
+call is capped at ten minutes and lets me read nothing until it returns.
+Nothing watches the log for a stall: a hang and a slow step look the same
+from outside, and a guess about which one it is costs a false alarm. When
+you ask whether a run is stuck, I read the log's tail and its last-modified
+time, sample the process's CPU time twice and read the wait it sits in and
+what it holds open (`ps -o pid,stat,wchan,cputime`, `lsof -p`), and say what
+has moved and what has not: a hung process has flat CPU time and sits in one
+wait, a slow one does not. For a Python job, `py-spy dump` shows the line it
+is stuck on.
 
 # Screenshots
 

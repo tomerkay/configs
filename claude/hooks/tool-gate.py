@@ -154,6 +154,9 @@ MEMORY_ROOT_RE = re.compile(
 NO_HOME_EXPANSION_RE = re.compile(r"""['"\\]~|HOME""")
 # Bash writers whose every positional path the script can read without path-sniffing.
 SCRATCH_WRITERS = {"mkdir", "touch", "cp", "mv", "tee", "rm"}
+# Writers of a mode or an owner, never of content: their first positional is the mode or
+# the owner, and the paths follow it.
+MODE_WRITERS = {"chmod", "chown", "chgrp"}
 # GOTCHA: brace expansion, a variable or a substitution can turn a relative word into an
 # absolute path, so such a word is never joined to the working directory.
 SHELL_EXPANSION_CHARS = set("${`")
@@ -1500,18 +1503,19 @@ def worst(*levels):
 
 def split_line(line):
     """Split one shell line into its command segments and its output-redirect targets."""
-    segments, targets, _ = parse_line(line)
+    segments, targets, _, _ = parse_line(line)
     return segments, targets
 
 
 def parse_line(line):
-    """split_line's segments and targets, and for each segment whether it runs apart from
+    """split_line's segments and targets, for each segment whether it runs apart from
     the line's shell: inside parentheses or a substitution, in a pipeline or in the
-    background, where the shell may give it a process of its own."""
+    background, where the shell may give it a process of its own; and for each target
+    the index of the segment it belongs to, len(segments) for one past the last."""
     lexer = shlex.shlex(DESCRIPTOR_RE.sub("", line), posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     tokens = list(lexer)
-    segments, targets, apart, segment = [], [], [], []
+    segments, targets, apart, segment, target_at = [], [], [], [], []
     # One entry per open `(`: the command a `$(` interrupts, resumed at its `)` so text
     # glued after the `)` stays that command's argument, or None for a subshell or a
     # process substitution, whose `)` ends a segment like any separator. shlex splits
@@ -1549,6 +1553,7 @@ def parse_line(line):
         elif tok in REDIRECT_OUT or tok in (">&", "<", "<<", "<<<", "<&", "<>"):
             if tok in REDIRECT_OUT:
                 targets.append(tokens[i + 1] if i + 1 < len(tokens) else "")
+                target_at.append(len(segments))
             i += 1
         elif tok.startswith(">") or tok.startswith("<"):
             pass
@@ -1564,7 +1569,7 @@ def parse_line(line):
         if held:
             segments.append(held)
             apart.append(True)
-    return segments, targets, apart
+    return segments, targets, apart, target_at
 
 
 def cd_sticks(segments, apart):
@@ -1694,6 +1699,16 @@ def cp_paths(args):
     if not targets:
         return operands[-1:]
     return operands + [t for t in targets if t]
+
+
+def mode_paths(args):
+    """The paths a chmod, chown or chgrp changes: every operand after the mode or the
+    owner, which `--reference` replaces. A mode that starts with `-`, such as `-x`,
+    reads as a flag, so the first path is dropped as the mode and the rest still hold."""
+    operands = rm_paths(args)
+    if has_flag(args, "--reference"):
+        return operands
+    return operands[1:]
 
 
 def inside_scratch(path):
@@ -1993,7 +2008,11 @@ def stripped_bash_input(tool_input):
 # ----- gate decisions -----------------------------------------------------------------
 
 def inside_gate_scratch(path):
-    if not isinstance(path, str) or not os.path.isabs(path):
+    """True when path is a literal absolute path under a gate scratch root. A word the
+    shell expands at run time is never inside one: `$X` after a scratch root can carry
+    `..` back out of it."""
+    if (not isinstance(path, str) or not os.path.isabs(path)
+            or SHELL_EXPANSION_CHARS & set(path)):
         return False
     real = os.path.realpath(path)
     return real.startswith(GATE_SCRATCH_ROOTS) or bool(MEMORY_ROOT_RE.match(real))
@@ -2062,7 +2081,7 @@ def clone_decisions(command, cwd):
     here = cwd
     for line in command_lines(command):
         try:
-            segments, _, apart = parse_line(line)
+            segments, _, apart, _ = parse_line(line)
         except ValueError:
             continue
         for segment, moves in zip(segments, cd_sticks(segments, apart)):
@@ -2096,7 +2115,7 @@ def invocations_with_moves(command):
     command: a nested one, run by `bash -c`, `xargs` or `find -exec`, never does."""
     for line in command_lines(command):
         try:
-            segments, _, apart = parse_line(line)
+            segments, _, apart, _ = parse_line(line)
         except ValueError:
             continue
         for segment, sticks in zip(segments, cd_sticks(segments, apart)):
@@ -2262,21 +2281,28 @@ def gate_blockers(command, cwd):
     gate scratch root, git run in one or outside the repo roots, an `rm` of literal files
     outside every repo, and a write whose working directory and every named path lie outside
     the repo roots all pass; any other write is held to scratch. The working directory
-    follows every `cd`, as for commits, and is unknown after one that may not stick.
+    follows every `cd`, as for commits, and is unknown after one that may not stick; a
+    relative redirect target counts from it as it stands where the redirect opens.
     """
     blockers, here = [], cwd
     for line in command_lines(command):
         try:
-            segments, targets, apart = parse_line(line)
+            segments, targets, apart, target_at = parse_line(line)
         except ValueError:
             return [None]
         sticks = cd_sticks(segments, apart)
         if not NO_HOME_EXPANSION_RE.search(command):
             segments = [[expand_home(w) for w in segment] for segment in segments]
             targets = [expand_home(t) for t in targets]
-        blockers.extend(["tee", t] for t in targets
-                        if t not in HARMLESS_TARGETS and not inside_gate_scratch(t))
-        for words, moves in zip(segments, sticks):
+        targets_of = {}
+        for t, at in zip(targets, target_at):
+            targets_of.setdefault(at, []).append(t)
+        for index, (words, moves) in enumerate(zip(segments, sticks)):
+            # The shell opens a segment's redirects before it runs, so a `cd` in the
+            # segment itself moves nothing for them.
+            blockers.extend(["tee", t] for t in targets_of.pop(index, ())
+                            if t not in HARMLESS_TARGETS
+                            and not inside_gate_scratch(path_from(here, t)))
             words = strip_prefix(words)
             if not words or program_of(words) in LOOP_HEADERS:
                 continue
@@ -2309,17 +2335,19 @@ def gate_blockers(command, cwd):
                     continue
                 blockers.append(words)
                 continue
-            if prog in SCRATCH_WRITERS:
+            if prog in SCRATCH_WRITERS | MODE_WRITERS:
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
                 # A cp only reads its sources, so a source inside a repo changes nothing there.
                 if prog == "cp":
                     paths = cp_paths(args)
+                if prog in MODE_WRITERS:
+                    paths = mode_paths(args)
                 if paths and all(inside_gate_scratch(path_from(here, p)) for p in paths):
                     continue
-                # An rm leaves no file behind to hold to scratch, so outside every repo it
-                # is not the gate's.
-                if prog == "rm" and paths and all(outside_repos(path_from(here, p))
-                                                  for p in paths):
+                # An rm or a mode change leaves no file behind to hold to scratch, so
+                # outside every repo it is not the gate's.
+                if prog in MODE_WRITERS | {"rm"} and paths and all(
+                        outside_repos(path_from(here, p)) for p in paths):
                     continue
             if prog == "tar" and tar_extracts_into_scratch(here, args):
                 continue
@@ -2343,9 +2371,14 @@ def gate_blockers(command, cwd):
                 continue
             # go generate and go work sync write where directives and the workspace say, so
             # go keeps the rules above.
-            if prog not in SCRATCH_WRITERS | {"go"} and writes_outside_roots(here, args):
+            if prog not in SCRATCH_WRITERS | MODE_WRITERS | {"go"} \
+                    and writes_outside_roots(here, args):
                 continue
             blockers.append(words)
+        # A redirect with no command of its own opens where the line ends.
+        blockers.extend(["tee", t] for ts in targets_of.values() for t in ts
+                        if t not in HARMLESS_TARGETS
+                        and not inside_gate_scratch(path_from(here, t)))
     return blockers
 
 
@@ -2766,7 +2799,7 @@ def script_decisions(command, cwd):
     here = cwd
     for line in command_lines(command):
         try:
-            segments, _, apart = parse_line(line)
+            segments, _, apart, _ = parse_line(line)
         except ValueError:
             continue
         for segment, moves in zip(segments, cd_sticks(segments, apart)):
@@ -3922,6 +3955,15 @@ def selftest():
             ("Bash", {"command": f"cd {scratch_dir}/d && git archive HEAD | tar -x -C ."}, None),
             ("Bash", {"command": f"cd {scratch_dir} && mkdir -p d && touch d/x && cp d/x d/y"},
              None),
+            ("Bash", {"command": f"cd {scratch_dir} && echo x > out"}, None),
+            ("Bash", {"command": f"cd {scratch_dir}; echo x > out"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && cat > out <<'EOF'\nx\nEOF"}, None),
+            ("Bash", {"command": "echo x > out"}, DENY),
+            ("Bash", {"command": f"echo x > out && cd {scratch_dir}"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && echo x > {on_main}/out"}, DENY),
+            ("Bash", {"command": f"cd $(echo {scratch_dir}) && echo x > out"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} | echo x > out"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} > out"}, DENY),
             ("Bash", {"command": "touch x"}, DENY),
             ("Bash", {"command": f"cp {scratch_dir}/a.txt b.txt"}, DENY),
             ("Bash", {"command": f"cp a.txt {scratch_dir}/d/"}, None),
@@ -3939,6 +3981,21 @@ def selftest():
             ("Bash", {"command": f"cd {scratch_dir} && touch ../x"}, DENY),
             # An rm outside every repo passes, unless its path may reach into one.
             ("Bash", {"command": f"rm {not_repo}/x.txt"}, None),
+            # A mode or owner change names no content: the mode is not a path, and like
+            # an rm it passes in scratch or outside every repo.
+            ("Bash", {"command": f"chmod +x {scratch_dir}/x.sh"}, None),
+            ("Bash", {"command": f"chmod 755 {scratch_dir}/x.sh"}, None),
+            ("Bash", {"command": f"chmod -R u+x {scratch_dir}/d"}, None),
+            ("Bash", {"command": f"chmod --reference={scratch_dir}/a {scratch_dir}/b"}, None),
+            ("Bash", {"command": f"chown u:g {scratch_dir}/x.sh"}, None),
+            ("Bash", {"command": f"chmod +x {not_repo}/x.txt"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && chmod +x x.sh"}, None),
+            ("Bash", {"command": f"chmod +x {on_main}/x.sh"}, DENY),
+            ("Bash", {"command": "chmod +x x.sh"}, DENY),
+            ("Bash", {"command": f"chmod +x {scratch_dir}/a {on_main}/b"}, DENY),
+            ("Bash", {"command": f"chmod -R +x {root}"}, DENY),
+            ("Bash", {"command": f"chmod +x {scratch_dir}/$X"}, DENY),
+            ("Bash", {"command": "chmod +x"}, DENY),
             ("Bash", {"command": f"cd {not_repo} && rm -f x.txt"}, None),
             ("Bash", {"command": f"rm -f {on_main}/README.md"}, DENY),
             ("Bash", {"command": f"rm -rf {root}"}, DENY),
@@ -3946,6 +4003,14 @@ def selftest():
             ("Bash", {"command": f"rm {not_repo}/$X"}, DENY),
             ("Bash", {"command": f"touch {not_repo}/x.txt"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && touch $X"}, DENY),
+            # A run-time word under a scratch root can carry `..` back out of it.
+            ("Bash", {"command": f"touch {scratch_dir}/$X"}, DENY),
+            ("Bash", {"command": f"rm {scratch_dir}/$X"}, DENY),
+            ("Bash", {"command": f"cp a.txt {scratch_dir}/$X"}, DENY),
+            ("Bash", {"command": f"echo x > {scratch_dir}/$X"}, DENY),
+            ("Bash", {"command": f"git -C {on_main} archive -o {scratch_dir}/$X.tar HEAD"},
+             DENY),
+            ("Bash", {"command": f"tar -x -C {scratch_dir}/$D"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && touch {{{on_main}/x,a}}"}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && mv {on_main}/README.md ."}, DENY),
             ("Bash", {"command": f"cd {scratch_dir} && tar -x -C d -C ../.."}, DENY),

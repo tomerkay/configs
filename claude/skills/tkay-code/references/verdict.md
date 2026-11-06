@@ -38,7 +38,9 @@ The case that taught it, a new rule drafted for an instructions file:
 
 Its first line is the TL;DR Verdict after `**Verdict:**`. Every line is a list
 item, so a terminal keeps each on its own line wherever the verdict stands -
-under a question, above a proposal, in a commit's review.
+under a question, above a proposal, in a commit's review. The points under
+Why Yes and Why Not are numbered from the second on, so one is answered as
+"Why Not 2"; a single point keeps its dash and is named by its heading.
 
 ## The TL;DR Verdict
 
@@ -70,21 +72,37 @@ sentence; nothing else in a verdict carries one.
 **A commit** under review:
 
 - **✅ Ship it** - the commit goes in as it is.
+- **👌 Fixed later (by `<sha>`)** - a later commit on the branch fixes what
+  blocks it; that commit's own call is picked on its own content.
 - **🔧 Needs change** - amending this commit fixes what blocks it.
 - **🔀 Squash into `<sha>`** - it belongs inside that earlier commit.
 - **🗑 Drop** - the branch is better without it.
 
+**A branch** under review, on the one line that opens its overview. It
+follows from the entries, the worst one deciding, in the order ❌, ✂️, ⚖️,
+🔧, ✅:
+
+- **✅ Merge it** - every entry is ✅ Keep it.
+- **🔧 Merge after fixes** - an entry is 🔧 Needs fixes, and none is ✂️ or ❌.
+- **✂️ Split first** - an entry is ✂️ Carve out; the rest merges once it is
+  moved.
+- **⚖️ Close call** - an entry is ⚖️ Close call and it decides the branch.
+- **❌ Don't merge** - an entry is ❌ Drop it, or the branch's purpose is
+  wrong.
+
 **A branch overview entry** - one thing a branch under review does, as it
 lands:
 
-- **✅ Merge it** - the change is right and every commit it lives in is
-  ✅ Ship it.
-- **🔧 Merge after fixes** - the change is right, and a commit it lives in
-  must change first; the brackets name the commit and what it needs.
-- **⚖️ Close call** - merging and not merging are both defensible; the text
+- **✅ Keep it** - the change is right and every commit it lives in is
+  ✅ Ship it or 👌 Fixed later.
+- **🔧 Needs fixes** - the change is right, and a commit it lives in must
+  change first; the brackets name the commit and what it needs.
+- **⚖️ Close call** - keeping and dropping it are both defensible; the text
   around the verdict says which way you lean and why.
-- **❌ Don't merge** - the change itself is wrong or out of scope, whatever
-  its commits are called.
+- **✂️ Carve out** - the work is sound but does not belong in this branch;
+  it moves to a branch of its own.
+- **❌ Drop it** - the change itself is wrong or out of scope, whatever its
+  commits are called, and the work goes away.
 
 **Bycatch** - something found on the way that is not part of what is being
 judged:
@@ -103,7 +121,8 @@ The call says what to do, never how sure you are of it.
   not run, but you traced every step in the code or the docs; LIKELY, one
   unchecked inference carries it; 50-50, more than one unchecked inference,
   or you do not know. Below 50-50 the call never says go ahead: never ✅ Do it,
-  ✅ Ship it, ✅ Merge it, 🔧 Merge after fixes or 🔧 Add fix.
+  ✅ Ship it, 👌 Fixed later, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first,
+  ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
 - **Size is how much the change touches**, one of four: huge, large, medium,
   small. **Difficulty is how hard it is to get right**, one of four: super
   hard, hard, easy, super easy. The two are independent: a one-line change
@@ -136,7 +155,33 @@ against.
   ```
   ❌ - The hook goes live in every open session the moment it's copied.
   ❌ - Commands already running that call it start getting the 🟠 rating.
-  ✅ - none: every existing selftest case keeps its decision.
+  ✅ - none (checked: every existing selftest case keeps its decision)
+  ```
+
+- **Every Why Not point passes four tests before it is written**, and a point
+  that fails one is cut, not softened:
+  1. **Is it the change working?** Its effect, the way it goes live, and
+     what was written before it under the old shape are the change taking
+     effect.
+  2. **Would it be true of any change this size or of this kind?** "One more
+     section", "the file grows", "it is rewritten, not extended" are its
+     Size, which the Verdict line already gives.
+  3. **Could I fix it in the proposal instead?** A flaw in the draft - a
+     weak example, a wrong word, a missing case - is fixed before the
+     verdict, never listed under it.
+  4. **Does it name what goes wrong, and for whom?** A real point names a
+     case that breaks, a cost someone pays or a door that closes. A point
+     that only describes the change does none of these.
+
+  The case that taught it, a rewrite of the branch overview's calls:
+
+  ```
+  ❌ - the overview section and the branch calls are rewritten, not extended
+  ❌ - CRs written before the change use the old entry calls
+  ❌ - one more section in a file every session loads
+  ❌ - the example is illustrative, not from a session
+  ✅ - none (checked: every place that names the old calls is in the two
+       files the change rewrites)
   ```
 
 - **Each point is one short clause**, and a list holds as many points as the
@@ -151,7 +196,9 @@ against.
   ```
 
 - **No list is padded to match the other**: one with no such point says
-  "none", and an empty Why Not adds what you checked.
+  "none", and an empty Why Not adds what you checked in a bracket -
+  `none (checked: <what was checked>)` - so the bracket reads as the proof
+  of the "none", never as a drawback.
 
 **Independent parts get a verdict each.** One verdict over parts you rate
 differently hides the weak one.

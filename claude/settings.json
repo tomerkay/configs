@@ -26,14 +26,20 @@
       "Bash(cp /Users/tkay/.cache/claude-handoff/* /Users/tkay/.claude/hooks/*)"
     ],
     "ask": [
-      "Bash(python3 *board.py publish *)"
+      "Bash(python3 *board.py publish *)",
+      "Bash(python3 *backoffice.py *cell *)",
+      "Bash(python3 *backoffice.py *component upgrade *)",
+      "Bash(python3 *backoffice.py *component install *)",
+      "Bash(python3 *backoffice.py *component uninstall *)",
+      "Bash(python3 *backoffice.py *deployment *)",
+      "Bash(python3 *backoffice.py *scaling *)"
     ],
     "additionalDirectories": [
       "/tmp",
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "fable",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {

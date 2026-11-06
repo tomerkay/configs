@@ -25,7 +25,8 @@ commit judged against the one before it, and nobody judging what lands.
   the review of the commit that should carry the fix, so that commit's verdict
   blocks.
 - **The commit verdicts never read greener than the outcome.** If the branch
-  at HEAD is broken, at least one row of the commits table is not `✅ Ship it`.
+  at HEAD is broken, at least one row of the commits table is neither
+  `✅ Ship it` nor `👌 Fixed later`: a fix that HEAD does not hold is no fix.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
@@ -154,7 +155,7 @@ The MUST-HAVE roll-up lists EVERY MUST HAVE item, including any 🟡/⚪ you pro
 
 - **Its call is the one its commits-table row gives**, under the rules in "The commits table" below. The row is this verdict's TL;DR, so the two never disagree.
 - **How sure is how sure you are that the commit does what it claims at HEAD once its MUST HAVEs are fixed.** A known bug is in the findings and the call, never in How sure.
-- **Why Yes and Why Not hold what the change gains and costs** - behaviour it introduces, alerts it shifts, doors it closes - never its findings, which the roll-up already lists. When nothing is left beyond them, Why Not says "none, beyond the findings above".
+- **Why Yes and Why Not hold what the change gains and costs** - behaviour it introduces, alerts it shifts, doors it closes - never its findings, which the roll-up already lists. When nothing is left beyond them, Why Not says "none beyond the findings above (checked: <what was checked>)".
 
 Then exactly two buckets, in this order, with the divider, each under a `###` heading inside its commit. **The buckets split on BROKEN vs NOT BROKEN - severity, not importance.** Importance is what the MUST HAVE tag decides, and a promoted MUST HAVE lives in the second bucket while still blocking the merge. Within each bucket, MUST HAVE items come first:
 
@@ -180,43 +181,57 @@ would follow. Under its own heading:
 # Branch overview
 
 ```
-• <one thing the branch does, in plain words>
-✅ Merge it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+✂️ Split first (carve out 2) · **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** easy
+
+• 1 <one thing the branch does, in plain words>
+✅ Keep it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
 **Commits:** `<sha>`, `<sha>`
 
-• <the next thing the branch does>
-⚖️ Close call · **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** hard
+• 2 <the next thing the branch does>
+✂️ Carve out · **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** hard
 **Commits:** `<sha>`
 ```
 
+- **One line for the whole branch comes first**: a TL;DR Verdict with the
+  branch calls of `references/verdict.md`, answering whether the branch
+  merges. It follows from the entries below it and is never a judgement of
+  its own: the worst entry decides it, in the order ❌, ✂️, ⚖️, 🔧, ✅, and
+  its bracket names the entries that decided it.
 - **One entry per distinct thing the branch does.** A branch that does one
   thing gets one entry; several changes get one each, never folded into one
   entry where a weak part hides behind a strong one.
-- **Each entry is a `•` paragraph, never a markdown list item**: the
-  sentence, then the TL;DR Verdict, then the Commits line, one per line,
-  and a blank line before the next entry. A terminal drops the blank line
-  between list items, and the entries run together.
+- **Each entry is a `•` paragraph opening with its number, never a markdown
+  list item**: `• 1`, the sentence, then the TL;DR Verdict, then the Commits
+  line, one per line, and a blank line before the next entry. A terminal
+  drops the blank line between list items, and the entries run together;
+  the number is how I answer an entry.
 - **Each entry carries a TL;DR Verdict on that change as it stands at HEAD**,
-  in the shape and with the branch calls of `references/verdict.md`. Its How
-  sure is how sure you are that the change works at HEAD.
-- **The call follows the commits it names.** `✅ Merge it` only when every
-  one of them is `✅ Ship it`; any other commit call makes it `🔧 Merge after
-  fixes`, naming the commit and what it needs, unless the change itself
-  earns `⚖️ Close call` or `❌ Don't merge`. An entry never reads greener
-  than a commit it lives in, even when that commit changes nothing in the
-  tree. The case that taught it, a branch whose only extra commit was a
-  back-merge of the default branch that carried no change:
+  in the shape and with the entry calls of `references/verdict.md`: what to
+  do with this part, never whether the branch merges. Its How sure is how
+  sure you are that the change works at HEAD.
+- **The call follows the commits it names.** `✅ Keep it` only when every
+  one of them is `✅ Ship it` or `👌 Fixed later`; any other commit call makes
+  it `🔧 Needs fixes`, naming the commit and what it needs, unless the
+  change itself earns `⚖️ Close call`, `✂️ Carve out` or `❌ Drop it`. An
+  entry never reads greener than a commit it lives in, even when that commit
+  changes nothing in the tree. The case that taught it, a branch whose only
+  extra commit was a back-merge of the default branch that carried no change:
 
   ```
   ❌ ✅ Do it · **How sure:** LIKELY · ...
      with `<sha>` 🗑 Drop (carries no change) in the commits table
-  ✅ 🔧 Merge after fixes (drop the back-merge `<sha>`) · **How sure:** LIKELY · ...
+  ✅ 🔧 Needs fixes (drop the back-merge `<sha>`) · **How sure:** LIKELY · ...
   ```
+
+- **✂️ Carve out is the split recommendation.** Work that is sound but does
+  not land with this branch moves to a branch of its own, and the rest
+  merges once it is moved. The review recommends the split; whether to make
+  it is mine.
 
 - **The Commits line names every commit the change lives in**, in branch
   order. A commit that serves two entries is on both lines.
 - **These verdicts judge the outcome, so a broken branch shows up here.** A
-  `❌ Don't merge`, or How sure below `CONFIDENT`, under a commits table of
+  `❌ Drop it`, or How sure below `CONFIDENT`, under a commits table of
   nothing but `✅ Ship it` means the commits above are missing a finding or a
   `🗑 Drop`: find it on the commits the entry names and put it on the one
   that should carry it.
@@ -229,10 +244,12 @@ of the last commit's review.
 
 # Commits
 
-| What the commit does | Score | Verdict |
-|---|---|---|
-| `<sha>` <one sentence> | <n>/10 | <TL;DR Verdict> |
+| # | What the commit does | Score | Verdict |
+|---|---|---|---|
+| 1 | `<sha>` <one sentence> | <n>/10 | <TL;DR Verdict> |
 
+- **#** — `1`, `2`, `3` down the table in branch order, so I answer a row by
+  its number.
 - **What the commit does** — one sentence on what the diff actually does,
   verified against it. Never the subject line pasted in: the subject may be the
   very claim the review flagged as false.
@@ -244,14 +261,21 @@ of the last commit's review.
 | Call | When |
 |---|---|
 | `✅ Ship it` | 0 MUST HAVE |
+| `👌 Fixed later (by <sha>)` | its MUST HAVEs are fixed by a later commit on the branch, named in the bracket |
 | `🔧 Needs change` | at least one MUST HAVE, and amending this commit fixes it |
 | `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
+The later commit's call is picked by its own row of this table: carrying the
+fix makes it neither a squash nor a ship. It is `🔀 Squash into` the earlier
+commit only when it exists because that one got something wrong, and
+`✅ Ship it` when it stands on its own and fixes the earlier one along the way.
+
 The verdict agrees with that commit's FINDINGS line: never `✅ Ship it` while
-its MUST HAVE count is above zero. A single-commit CR still has a one-row
-table. The branch overview, the commits table and the bycatch table below are
-the only summaries allowed in a CR.
+its MUST HAVE count is above zero. `👌 Fixed later` is the one call that
+carries a MUST HAVE, the one its named commit fixes. A single-commit CR still
+has a one-row table. The branch overview, the commits table and the bycatch
+table below are the only summaries allowed in a CR.
 
 ### The bycatch table — the last section, every CR
 
@@ -488,7 +512,7 @@ Score: 4/10
 - **Why Yes?**
   - every lookup drops from O(n) to O(1)
 - **Why Not?**
-  - none, beyond the findings above - checked that hashY keeps the key format
+  - none beyond the findings above (checked: hashY keeps the key format)
 
 ### 🔴🟠 REAL ISSUES — the code is wrong or hazardous
 
@@ -527,9 +551,9 @@ Doesn't say: hashX did O(n) iteration → CPU spikes; hashY is O(1).
 "Reduce" → "reduce".
 
 #### ✅ Correct:
-- Type is right: perf
-- Has scope: (validator)
-- The hashY swap itself is correct - the algorithm change is sound
+1. Type is right: perf
+2. Has scope: (validator)
+3. The hashY swap itself is correct - the algorithm change is sound
 ```
 
 And when it's clean, the FINDINGS line says so plainly - don't make a pile of nits look like danger:
@@ -545,7 +569,7 @@ Score: 9/10
 - **Why Yes?**
   - a request with no auth header gets a 401 instead of a 500
 - **Why Not?**
-  - none - grepped every caller, none relied on the exception
+  - none (checked: grepped every caller, none relied on the exception)
 
 ### 🔴🟠 REAL ISSUES
 None - no 🔴 and no 🟠. I traced both new branches in `extract_token()` and the
