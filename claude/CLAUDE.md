@@ -1093,11 +1093,18 @@ says a checkout of it is needed.
 
 # EVERY FILE YOU WRITE GOES UNDER ~/.cache/claude-handoff
 
-**Every file you write for your own work goes in this session's own directory
-under `~/.cache/claude-handoff`**, named `<YYYY-MM-DD>-<slug>` after the day
-and the session's work: scratch, intermediate output, a script, a snapshot, a
-staged copy, a message file. Nothing is written at the top level of
-`~/.cache/claude-handoff`. Create the directory if it is missing.
+**Every file you write for your own work goes in your fork's subdirectory of
+this session's directory under `~/.cache/claude-handoff`**: scratch,
+intermediate output, a script, a snapshot, a staged copy, a message file.
+The session directory is named `<YYYY-MM-DD>-<slug>` after the day and the
+session's work, and the fork's subdirectory is the first 8 characters of
+the session ID in the harness's scratchpad path. A new session is one
+fork. A forked session inherits the conversation and the session
+directory's name, but gets a session ID of its own, so it writes in a
+subdirectory of its own. A subagent is not a fork: it writes in the
+subdirectory of the fork that spawned it. Nothing is written at the top
+level of `~/.cache/claude-handoff` or of the session directory. Create
+either directory if it is missing.
 
 **Nothing you write goes under `/private/tmp/claude`** - not the session
 scratchpad, not `$TMPDIR`, whatever your harness says about them. That
@@ -1140,15 +1147,19 @@ stays until the work is over**, because a handoff waits on me and the org
 policy prompts on every `rm`. Never offer to clear it unprompted - not
 mid-task, not when the work looks finished. Only when I ask whether we are
 done, what is left over, or whether I can exit - in whatever words - say what
-this session's directory holds and give me both ways to delete it: you run
-the `rm -r` of that directory, which prompts me, or a bracketed `! rm -r` I
-paste. The path is the directory's full name, never a glob. A plan or
-write-up in it worth keeping is named first, with the repo it belongs in, so
-I decide whether it moves there before the directory goes.
+your fork's subdirectory holds and give me both ways to delete: you run the
+`rm -r`, which prompts me, or a bracketed `! rm -r` I paste. When other
+forks' subdirectories remain, it deletes only yours and says "Delete this
+fork (other forks still live)"; when yours is the last, it deletes the
+whole session directory and says "Delete the whole directory (no other
+fork left)". The path is the directory's full name, never a glob. A plan or write-up in it worth keeping is named first, with the repo
+it belongs in, so I decide whether it moves there before the directory goes.
 `~/.cache/claude-handoff` itself stays.
 
-**Other sessions' directories are not yours.** Never list them, never say what
-they hold, never offer to delete them.
+**Other sessions' directories are not yours, and neither are other forks'
+subdirectories.** Never list another session's, never say what either
+holds, never offer to delete them. Listing the session directory to see
+whether another fork's subdirectory remains is the one look allowed.
 
 **The offer is a ❓ question**, so it is the last thing in the reply. It
 comes only once the work leaves nothing open: while a leftover of it, a
