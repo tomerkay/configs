@@ -224,6 +224,9 @@ purpose: that prefix is not a release, and the guard saying so is correct.
 - `ci:` - CI config changes (None)
 - `chore:` - deps, build tools (None)
 
+**A change to a Grafana board is scoped `grafana`**, and typed by what it
+does: `fix(grafana):`, `feat(grafana):`, `style(grafana):`.
+
 **The Body (wrap at 72 chars): three labelled sections, short, and Bycatch
 when the commit carries one**
 

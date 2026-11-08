@@ -962,22 +962,23 @@ def classify_python(args):
 
 def classify_board(args):
     """The grafana-dashboards skill's board.py: fetch and diff read the live board, fetch
-    writes it where --out says, publish writes its next version, login saves a browser
-    session locally."""
+    and shot write a file where --out says, publish writes its next version, login saves a
+    browser session locally."""
     pos = positionals(args)
     sub = pos[0] if pos else ""
     if sub == "diff":
         return READ
     if sub == "fetch":
-        return READ if board_fetch_out(args) is None else WRITE
+        return READ if board_out(args) is None else WRITE
     if sub == "publish":
         return DANGER
     return WRITE
 
 
-def board_fetch_out(args):
-    """The --out path of a board.py fetch, or None when it is not a fetch or writes no file."""
-    if positionals(args)[:1] != ["fetch"]:
+def board_out(args):
+    """The --out path of a board.py fetch or shot, the only subcommands that write a local
+    file, or None when it writes none."""
+    if positionals(args)[:1] not in (["fetch"], ["shot"]):
         return None
     out = next((a.split("=", 1)[1] for a in args if a.startswith("--out=")), None)
     if out is None and "--out" in args[:-1]:
@@ -2352,8 +2353,10 @@ def gate_blockers(command, cwd):
             if prog == "tar" and tar_extracts_into_scratch(here, args):
                 continue
             if PYTHON_RE.fullmatch(prog) and args and os.path.basename(args[0]) == "board.py":
-                out = board_fetch_out(args[1:])
-                if out is not None and inside_gate_scratch(path_from(here, out)):
+                # Its only file in a repo can be the --out of a fetch or shot: login saves the
+                # browser session under ~/.agent-browser, and publish writes to Grafana.
+                out = board_out(args[1:])
+                if out is None or inside_gate_scratch(path_from(here, out)):
                     continue
             if prog == "go" and go_writes_into_scratch(here, args):
                 continue
@@ -3460,8 +3463,11 @@ def selftest():
         (False, "Bash", f"cd {scratch}d && python3 /x/board.py fetch g --org 2 --out $u.json",
          DENY),
         (False, "Bash", "python3 /x/board.py diff g /x/g.json --org 2", None),
-        (False, "Bash", "python3 /x/board.py login", DENY),
-        (True, "Bash", "python3 /x/board.py publish g /x/g.json --org 2 --message m", None),
+        (False, "Bash", "python3 /x/board.py login", None),
+        (False, "Bash", "python3 /x/board.py publish g /x/g.json --org 2 --message m", None),
+        (False, "Bash", f"python3 /x/board.py shot g --org 2 --out {scratch}g.png", None),
+        (False, "Bash", "python3 /x/board.py shot g --org 2 --out /x/g.png", DENY),
+        (False, "Bash", f"cd {rx} && python3 /x/board.py shot g --org 2 --out g.png", DENY),
         (False, "Bash", "bash -c 'rm -rf /x' --help", DENY),
         (False, "Bash", "kubectl get pods --help", None),
         (False, "Bash", "helm upgrade --help", None),

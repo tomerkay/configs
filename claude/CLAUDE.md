@@ -867,8 +867,8 @@ apart, and a single item is named by its heading, so numbers start at two.
   `a`, `b` under `1`, the way the tree does. A reply that repeats a list or
   a table from an earlier reply keeps each item's number.
 - **The Full Verdict's label lines keep their dash**, since nobody answers
-  "Verdict" by number; the points under Why Yes and Why Not are numbered
-  from two, so "Why Not 2" names one. The `tkay-code` verdict reference
+  "Verdict" by number; two or more points under Why Yes or Why Not are all
+  numbered, so "Why Not 2" names one. The `tkay-code` verdict reference
   carries the shape, and its review standard numbers the branch overview's
   entries the same way, inside their paragraph shape.
 - **A row's number is its name in my answer**, and the number column comes

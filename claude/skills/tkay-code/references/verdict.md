@@ -38,9 +38,14 @@ The case that taught it, a new rule drafted for an instructions file:
 
 Its first line is the TL;DR Verdict after `**Verdict:**`. Every line is a list
 item, so a terminal keeps each on its own line wherever the verdict stands -
-under a question, above a proposal, in a commit's review. The points under
-Why Yes and Why Not are numbered from the second on, so one is answered as
-"Why Not 2"; a single point keeps its dash and is named by its heading.
+under a question, above a proposal, in a commit's review. Two or more
+points under Why Yes or Why Not are all numbered, so one is answered as
+"Why Not 2"; a single point keeps its dash.
+
+```
+❌ - <first>        ✅ 1. <first>
+   b. <second>         2. <second>
+```
 
 ## The TL;DR Verdict
 

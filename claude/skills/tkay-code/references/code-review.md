@@ -283,9 +283,10 @@ in a CR.
 ### The bycatch table — the last section, every CR
 
 The commits table judges the commits. The bycatch table holds what the review
-turned up on the way that is NOT a finding against a commit: a pre-existing bug
-in a file the branch touched, a stale or false doc next to the change, a trap
-the diff happened to expose. Four columns, under its own heading:
+turned up on the way that is NOT a finding against a commit and is still open
+at HEAD: a pre-existing bug in a file the branch touched, a stale or false doc
+next to the change, a trap the diff happened to expose. Four columns, under
+its own heading:
 
 # 🎣 Bycatch
 
@@ -311,7 +312,25 @@ the diff happened to expose. Four columns, under its own heading:
   the branch's scope, another owner's file, not worth the review cost today.
   How sure, Size and Difficulty are the fix's, even when it is left for now.
 
-When nothing came up, the heading stays and the table is one line instead:
+**A problem the branch already fixes is not bycatch.** Its fix is part of
+the commit that carries it - a commit of its own, or a `Bycatch:` line in
+another commit's message, the bycatch rule in `references/commits.md` - and
+is reviewed in that commit's findings. It never gets a row, and "fixed" is
+never a Verdict - both calls are work still to do. A row the branch fixes
+in part keeps only the part still open, worded as though the fixed part
+was never there. A repeat CR drops a row the branch has fixed since; the
+rows left keep their numbers.
+
+The case that taught it, a CR whose branch had already fixed two of its
+three rows:
+
+```
+❌ | B1 | Panel 12 double-counted during a pod overlap. 🟡 | no, pre-existing | Fixed by `<sha>`. |
+   | B3 | Standby passes stamp the last-pass timestamp. The board side is now covered by tile 30. The code half is still open. 🟠 | no, pre-existing | ⏸ Leave for now (...) |
+✅ | B3 | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). 🟠 | no, pre-existing | ⏸ Leave for now (...) |
+```
+
+When nothing is open, the heading stays and the table is one line instead:
 "No bycatch." Never skip it silently - an absent section reads as
 "did not look".
 
