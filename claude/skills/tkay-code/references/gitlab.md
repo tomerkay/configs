@@ -53,11 +53,24 @@ project path is URL-encoded, `crusoeenergy%2Fatero%2F<repo>`.
 
 - The MR and its description: `glab mr view <iid>`.
 - Review threads, with the file and line each anchors to:
-  `glab api "projects/<project>/merge_requests/<iid>/discussions?per_page=100"`.
+  `glab api --paginate "projects/<project>/merge_requests/<iid>/discussions?per_page=100"`.
+  **The reviews of an MR are every discussion on it, read together**: the
+  inline findings, the reviewer's summary note, the replies under each and
+  every human comment. A `#note_<id>` on the link I give you is where
+  the browser scrolls, never a filter on what to read: a finding read
+  alone cannot say whether it was answered, resolved or restated, and a
+  summary read alone lists findings whose own thread holds the replies.
+  `--paginate` follows every page and prints one JSON array per page, so
+  an MR with more discussions than one page holds is still read whole.
   A note with `system: true` is GitLab's own activity line, not a review;
   `resolvable` and `resolved` say which threads still stand, and
   `position.new_path` with `position.new_line` says where. The AI
-  reviewer's findings arrive as collapsed `<details>` blocks in `body`.
+  reviewer's findings arrive as collapsed `<details>` blocks in `body`:
+  one thread per inline finding, and a "Review complete" summary in a
+  thread of its own with no position, whose details list the findings
+  together. The case that taught it: a link anchored at one inline
+  finding, with the summary sitting in a separate thread the anchor never
+  pointed at.
 - The MR's pipelines: `projects/<project>/merge_requests/<iid>/pipelines`.
   The one the MR has to pass runs on `refs/merge-requests/<iid>/merge`,
   the merged result, so its sha is not the branch tip's.
