@@ -934,6 +934,9 @@ default or config key is acceptable.
   only at the boundary, and a bug fix carries the test that reproduces it. How a
   test reaches the failure paths is raised with me before it is written.
 - **Enums over strings** for any fixed set of values.
+- **Script names join their words with `-`**, unless the repo's other
+  scripts use `_`, and a script's log takes its name: `daily-updates.sh`
+  writes `daily-updates.log`.
 
 The docs half of the one-source-of-truth rule lives in the `tkay-writing-mds`
 skill.
