@@ -235,14 +235,14 @@ last commit's review.
 
 | # | What the commit does | Findings | Verdict |
 |---|---|---|---|
-| 1 | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> · **How sure:** <level> |
-| | **Commit:** **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | |
+| 1 | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> |
+| | **Commit:** **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Verdict:** **How sure:** <level> |
 
-- **The head row** is the commit, its findings and its call. **The second
-  row** puts the Commit line under the commit and the two Fix lines under
-  the findings they answer; its `#` and Verdict cells stay empty, which is
-  what makes it read as part of the row above. A table cell cannot hold a
-  line break, so the lines are rows.
+- **The head row** is the commit, its findings and its call, nothing else.
+  **The second row** puts the Commit line under the commit, the two Fix
+  lines under the findings they answer, and the call's How sure under the
+  call; its `#` cell stays empty, which is what makes it read as part of the
+  row above. A table cell cannot hold a line break, so the lines are rows.
 - **#** — `1`, `2`, `3` down the table in branch order, so I answer a row by
   its number.
 - **What the commit does** — one sentence on what the diff actually does,
@@ -250,9 +250,11 @@ last commit's review.
   very claim the review flagged as false.
 - **Findings** — the commit's FINDINGS line without the word: `🔴 1 · 🟡 2`,
   or `none`.
-- **Verdict** — the call of that commit's Full Verdict and its How sure, in
-  the shape of `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md`, with the reason in a few words for
-  anything other than ✅ Ship it. The commit call is picked by these rules:
+- **Verdict** — the call of that commit's Full Verdict on the head row, with
+  the reason in a few words for anything other than ✅ Ship it, and
+  `**Verdict:** **How sure:** <level>` on the second row, in the shape of
+  `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md`. The commit call
+  is picked by these rules:
 
 | Call | When |
 |---|---|
@@ -260,7 +262,7 @@ last commit's review.
 | `👌 Fixed later (by <sha>)` | its 🔴 or 🟠 are fixed by a later commit on the branch, named in the bracket |
 | `🔧 Needs change` | a 🔴 or 🟠 in the code, and amending this commit fixes it |
 | `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md`. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
-| `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message is false or misleading - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing |
+| `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message is false or misleading - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing. When the message and the code disagree, the review says which side is wrong before it picks the call: the code right and the message not is this call; the message describing what the code should have done and the code not doing it is a 🔴 or 🟠 on the code and `🔧 Needs change`; and no way to tell which was meant is a 🟠 on the commit and `🔧 Needs change (message and code disagree)`, the finding stating both readings, what would settle it, and a fix for each |
 | `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
@@ -296,8 +298,8 @@ The same two rows per item as the commits table, under its own heading:
 
 | # | What the bycatch is | Findings | Verdict |
 |---|---|---|---|
-| B1 | <what it is, with `file`> | 🟠 1 | <call> · **How sure:** <level> |
-| | **Bycatch:** **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** none | |
+| B1 | <what it is, with `file`> | 🟠 1 | <call> |
+| | **Bycatch:** **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** none | **Verdict:** **How sure:** <level> |
 
 - **#** — `B1`, `B2`, `B3` down the table, so I answer a row by its number
   instead of describing it back to you. The letter keeps it apart from every
@@ -310,10 +312,11 @@ The same two rows per item as the commits table, under its own heading:
 - **Findings** — its colour and a count of one, in the commits table's
   form: `🟠 1`.
 - **Verdict** — what you think I should do, as a recommendation I can
-  overrule: the bycatch calls of `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` and the call's How
-  sure. 🔧 Add fix is a new commit on this branch; ⏸ Leave for now carries
-  the reason in a few words - out of the branch's scope, another owner's
-  file, not worth the review cost today.
+  overrule: the bycatch calls of
+  `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` on the head row,
+  and the call's How sure on the second. 🔧 Add fix is a new commit on this
+  branch; ⏸ Leave for now carries the reason in a few words - out of the
+  branch's scope, another owner's file, not worth the review cost today.
 - **The second row**: the Bycatch line is the problem as it sits in the
   code - how sure you are it is real as described, how much it touches,
   how hard it is to understand; the Fix lines are the fix, as in the
@@ -334,8 +337,8 @@ three rows:
 
 ```
 ❌ | B1 | Panel 12 double-counted during a pod overlap. | 🟡 1 | Fixed by `<sha>`. |
-   | B3 | Standby passes stamp the last-pass timestamp. The board side is now covered by tile 30. The code half is still open. | 🟠 1 | ⏸ Leave for now (...) · **How sure:** CONFIDENT |
-✅ | B3 | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). | 🟠 1 | ⏸ Leave for now (...) · **How sure:** CONFIDENT |
+   | B3 | Standby passes stamp the last-pass timestamp. The board side is now covered by tile 30. The code half is still open. | 🟠 1 | ⏸ Leave for now (...) |
+✅ | B3 | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). | 🟠 1 | ⏸ Leave for now (...) |
 ```
 
 When nothing is open, the heading stays and the table is one line instead:
@@ -355,7 +358,7 @@ When nothing is open, the heading stays and the table is one line instead:
   - **Sure with it** - a How sure level, and what would still be unproven after the test passes.
 - **State confidence when you're unsure**, as a How sure level from `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
 - **Where the borderline cases land:**
-  - Weak/vague commit message → 🟡. Commit message making a FALSE CLAIM about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
+  - Weak/vague commit message → 🟡. Commit message making a FALSE CLAIM about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commits table says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
   - A name that holds more than its words say, is named for a cause instead of a meaning, or kept its name after its meaning changed (see "A NAME MEANS ONE THING, LITERALLY" in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md`) → 🟡. A reader already acting on the literal word and doing the wrong thing → 🔴 for that reader, with the rename as the fix. A label (enum, metric label value, status word) whose words are false for some case that produces it → 🟡.

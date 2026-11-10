@@ -9,7 +9,9 @@ command - `git status`, each dirty file's mtime and size, HEAD and every branch,
 and stash ref - and compares it after, whether the command succeeded or failed. A
 difference is reported to the user and to Claude, and git holds the undo. It is a broken
 gate when the command made it; the snapshot cannot tell, so a change another session
-made in the same repo while the command ran is reported the same way.
+made in the same repo while the command ran is reported the same way. A tag a
+`git fetch` brought in is not reported when the command runs nothing the gate rates a
+write: the gate passes a fetch, and the tags on the commits it brings are part of it.
 
 Only the repo the command starts in is watched; a script that writes into a second repo
 is not seen. A repo under a gate scratch root is outside the gate and never watched.
@@ -99,14 +101,28 @@ def snapshot(repo):
             "head": f"{(head or '').strip()} {(head_oid or '').strip()}"}
 
 
-def changes(before, after):
-    """What differs between two snapshots, one line per change."""
+def read_only_fetch(command):
+    """True when the command runs a `git fetch` and nothing the gate rates a write."""
+    return tool_gate.classify_command(command) == tool_gate.READ and any(
+        prog == "git" and tool_gate.git_subcommand_args(args)[:1] == ["fetch"]
+        for prog, args in tool_gate.invocations(command))
+
+
+def changes(before, after, fetched=False):
+    """What differs between two snapshots, one line per change.
+
+    A tag a fetch brought in is not one: the gate lets through only a fetch that moves
+    no local branch, and the tags on the commits it brings are what it is for. A tag
+    that moved or went away is still a change, fetch or not.
+    """
     out = []
     if before["head"] != after["head"]:
         out.append(f"HEAD {before['head'].strip()} -> {after['head'].strip()}")
     for key in ("refs", "status", "content"):
         gone = [line for line in before[key] if line not in after[key]]
         new = [line for line in after[key] if line not in before[key]]
+        if key == "refs" and fetched:
+            new = [line for line in new if not line.startswith("refs/tags/")]
         out += [f"- {line}" for line in gone] + [f"+ {line}" for line in new]
     return out
 
@@ -149,7 +165,8 @@ def handle(payload, gate_open, watch_dir):
     except FileNotFoundError:
         return None
     os.remove(path)
-    found = changes(recorded["before"], snapshot(recorded["repo"]))
+    command = (payload.get("tool_input") or {}).get("command") or ""
+    found = changes(recorded["before"], snapshot(recorded["repo"]), read_only_fetch(command))
     if not found:
         return None
     shown = "\n".join(found[:10]) + ("\n..." if len(found) > 10 else "")
@@ -205,8 +222,9 @@ def selftest():
         subprocess.run(["git", "-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", "-c",
                         "commit.gpgsign=false", "commit", "-q", "-m", "x"], check=True)
 
-        def run(cwd, gate_open, action, after="PostToolUse"):
-            base = {"session_id": "s", "tool_use_id": "t", "tool_name": "Bash", "cwd": cwd}
+        def run(cwd, gate_open, action, after="PostToolUse", command=""):
+            base = {"session_id": "s", "tool_use_id": "t", "tool_name": "Bash", "cwd": cwd,
+                    "tool_input": {"command": command}}
             handle({**base, "hook_event_name": "PreToolUse"}, gate_open, watch_dir)
             action()
             result = handle({**base, "hook_event_name": after}, gate_open, watch_dir)
@@ -223,6 +241,17 @@ def selftest():
         def branch():
             subprocess.run(["git", "-C", repo, "branch", "feat"], check=True)
 
+        remote = os.path.join(root, "remote.git")
+        subprocess.run(["git", "clone", "-q", "--bare", repo, remote], check=True)
+        subprocess.run(["git", "-C", remote, "tag", "v1"], check=True)
+        subprocess.run(["git", "-C", repo, "remote", "add", "origin", remote], check=True)
+
+        def fetch():
+            subprocess.run(["git", "-C", repo, "fetch", "-q", "origin"], check=True)
+
+        def tag(name):
+            return lambda: subprocess.run(["git", "-C", repo, "tag", name], check=True)
+
         # A repo under a scratch root is never watched; the cases that expect a report run
         # with the scratch roots emptied.
         check("repo under a scratch root", run(repo, False, edit_tracked), None)
@@ -238,6 +267,15 @@ def selftest():
                   run(repo, False, edit_tracked, "PostToolUseFailure"), "reported")
             check("edit of a tracked file, gate open", run(repo, True, edit_tracked), None)
             check("cwd outside any repo", run(plain, False, edit_tracked), None)
+            check("tag brought in by a fetch, gate closed",
+                  run(repo, False, fetch, command="git fetch origin"), None)
+            check("tag made with no fetch in the command, gate closed",
+                  run(repo, False, tag("v2"), command="./release.sh"), "reported")
+            check("tag made by a script beside a fetch, gate closed",
+                  run(repo, False, tag("v3"), command="git fetch origin && ./release.sh"),
+                  "reported")
+            check("edit beside a fetch, gate closed",
+                  run(repo, False, edit_tracked, command="git fetch origin"), "reported")
             check("no state left behind", os.listdir(watch_dir), [])
         finally:
             setattr(tool_gate, "GATE_SCRATCH_ROOTS", saved_roots[0])

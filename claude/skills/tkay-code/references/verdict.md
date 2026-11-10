@@ -94,8 +94,8 @@ summary entry:
 The reason goes in brackets right after the call, and only when the call
 needs one. A TL;DR Verdict never carries Why Yes or Why Not. A proposal's
 carries the call's How sure and the change's Size and Difficulty on its one
-line, since it cannot nest; a CR's carries the call and its How sure, and
-the Commit and Fix lines follow it where the table has room for them.
+line, since it cannot nest; a CR's is the call alone on a table's head row,
+and the Commit, Fix and `Verdict: How sure` lines fill the row under it.
 
 ## The call
 

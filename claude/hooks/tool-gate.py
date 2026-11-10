@@ -38,7 +38,11 @@ alongside anything outside the scratch root is forced to prompt instead, so that
 `rm -rf /private/tmp/claude/x ~/repos` or `rm -rf /private/tmp/claude/../..` never
 passes as scratch cleanup. A write under /tmp is denied in every state, since a file there
 can vanish mid-session, unless it lands in a path the user's message named, as
-scratch-paths.py records it: the session's handoff directory holds what is written.
+scratch-paths.py records it: the session's handoff directory holds what is written. A
+path a command assigns to a variable in its first statement, unquoted and absolute, is
+read in place of every `$NAME` after it, so `D=/abs && mkdir -p $D` is judged on the
+path; any other word the shell builds at run time holds the gate, since it cannot tell
+where the write lands.
 
 CLI: `tool-gate.py [--open] <command>...` prints the rating and the decision for each
 Bash command with the gate closed (default) or open; `--tool <name> <field>=<value>...`
@@ -2940,10 +2944,37 @@ def runs_whole_suite(prog, args):
     return False
 
 
+# A statement of its own, ending the way the shell ends one, whose value is an absolute path
+# holding nothing the shell expands: no quote, no `$`, no backtick, no glob, no `~`.
+ASSIGNED_PATH_RE = re.compile(
+    r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(/[A-Za-z0-9_./+@%:,-]*)\s*(?:;|&&|\n)\s*")
+
+
+def with_assigned_path(command):
+    """The command with the path its first statement assigns to a variable written in
+    place of every `$NAME` and `${NAME}` after it, or the command as it is.
+
+    The shell puts that path wherever the variable stands, so the gate judges the command
+    the shell runs. Only when it is sure: the name recurs nowhere but as the variable - not
+    reassigned, exported, read or looped over - and no single quote is in the command,
+    since inside one the shell expands nothing.
+    """
+    m = ASSIGNED_PATH_RE.match(command)
+    if not m:
+        return command
+    name, path, rest = m.group(1), m.group(2), command[m.end():]
+    if "'" in rest or re.search(rf"(?<![$A-Za-z0-9_{{]){name}(?![A-Za-z0-9_])", rest):
+        return command
+    # The assignment stays: a variable the shell itself reads, HOME among them, changes
+    # how the rest of the command runs, and the checks that know it look for the name.
+    return command[:m.end()] + re.sub(rf"\$\{{{name}\}}|\${name}(?![A-Za-z0-9_])", path, rest)
+
+
 def decide_bash(tool_input, gate_open, cwd, named):
     command = tool_input.get("command")
     if not isinstance(command, str):
         raise ValueError("Bash call without a command string")
+    command = with_assigned_path(command)
     out = [(DENY, TMP_WRITE_REASON)] if writes_unnamed_tmp(command, named) else []
     if rm_chained(command):
         out.append((DENY, RM_CHAINED_REASON))
@@ -3277,6 +3308,9 @@ def selftest():
         (True, "Bash", f"mkdir -p {scratch}d", DENY),
         (True, "Bash", f"cp {home}/x {scratch}x", DENY),
         (True, "Bash", f"cp {scratch}x {home}/.cache/x", None),
+        (False, "Bash", f"D={home}/.cache/d && mkdir -p $D && git archive HEAD | tar -x -C $D",
+         None),
+        (False, "Bash", f"D={home}/.cache/d\nmkdir -p ${{D}}/m", None),
         (True, "Bash", f"diff -q {scratch}x {home}/.cache/x", None),
         (False, "Bash", f"touch {home}/.cache/x", None),
         (False, "Bash", "mkdir -p ~/.cache/claude-handoff/d", None),
@@ -3862,7 +3896,18 @@ def selftest():
               f"{shown} -> {got_kind}" + ("" if ok else f" (want {expected})"))
     reason_cases = [
         # (command, expected reason) with the gate closed
-        ("D=/x; mkdir -p $D/old", SHELL_PATH_REASON),
+        # The path a first statement assigns is read in place of its variable, so the gate
+        # judges the path - a repo path gets the refusal - and every other shape holds.
+        (f"D={rx}; mkdir -p $D/old", REFUSAL),
+        (f"D={rx}; cd $D && printf a > mod/go.mod", REFUSAL),
+        (f'D="{home}/.cache/d"; mkdir -p $D', SHELL_PATH_REASON),
+        (f"D={home}/.cache/d mkdir -p $D", SHELL_PATH_REASON),
+        (f"D={home}/.cache/d | mkdir -p $D", SHELL_PATH_REASON),
+        (f"D={home}/.cache/d; D={rx}; mkdir -p $D", SHELL_PATH_REASON),
+        (f"D={home}/.cache/d; read D; mkdir -p $D", SHELL_PATH_REASON),
+        (f"D={home}/.cache/d; mkdir -p $D '$D'", SHELL_PATH_REASON),
+        (f"D={home}/.cache/d; mkdir -p $DIR", SHELL_PATH_REASON),
+        (f"D={home}/.cache/d; mkdir -p $D$(echo /x)", SHELL_PATH_REASON),
         (f"cd {rx} && git archive HEAD | tar -x -C $D/old", SHELL_PATH_REASON),
         (f"cp $SRC {rx}/f", REFUSAL),
         ('git commit -m "$MSG"', REFUSAL),
@@ -3870,7 +3915,6 @@ def selftest():
         ("echo hi > $TMPDIR/x", SHELL_PATH_REASON),
         ("echo hi > out.txt", REFUSAL),
         (f"echo hi > $D/x; echo hi > {rx}/f", REFUSAL),
-        ("D=/x; cd $D && printf a > mod/go.mod", SHELL_PATH_REASON),
         (f"go test ./x; rm {rx}/zz_test.go; git status --short", RM_CHAINED_REASON),
         (f"rm {rx}/a && echo done", RM_CHAINED_REASON),
         (f"find {rx} -name '*.orig' -exec rm {{}} +", RM_CHAINED_REASON),

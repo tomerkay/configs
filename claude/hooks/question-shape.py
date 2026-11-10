@@ -179,10 +179,10 @@ def selftest():
          "- **Fix 🔴🟠:** add a client timeout · **How sure:** LIKELY · **Size:** small · "
          "**Difficulty:** easy\n"
          "- **Fix 🟡⚪:** none\n- **Why Yes?**\n  - a\n- **Why Not?**\n  - none\n\n"
-         "| 1 | `a1b2c3d` thing | 🔴 1 · 🟡 2 | 🔧 Needs change (hangs) · **How sure:** CONFIDENT |\n"
+         "| 1 | `a1b2c3d` thing | 🔴 1 · 🟡 2 | 🔧 Needs change (hangs) |\n"
          "| | **Commit:** **How sure:** VERIFIED · **Size:** medium · **Difficulty:** hard | "
          "**Fix 🔴🟠:** add a timeout · **How sure:** LIKELY · **Size:** small · **Difficulty:** "
-         "easy · **Fix 🟡⚪:** none | |\n\n"
+         "easy · **Fix 🟡⚪:** none | **Verdict:** **How sure:** CONFIDENT |\n\n"
          "❓ Q1 Install it into `x` and commit?\n", False),
         ("Drop and Leave for now, with and without the variation selector",
          "- **Verdict:** 🗑 Drop · **How sure:** CONFIDENT\n"

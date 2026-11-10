@@ -33,7 +33,10 @@ code's author is not independent, and code written with this standard in
 context is written to the rubric rather than to the problem. When the code
 skill is already loaded in the session, or the session wrote the branch under
 review, say so and ask for the review to run in a fresh session; do not
-review.
+review. The one exemption is a session working on my Claude config itself,
+under `~/.claude`: this standard cannot be edited without being read, and
+what such a session writes is the rubric, not code the rubric judges, so it
+reviews its own staged changes in place.
 
 ## The repo's conventions win
 
