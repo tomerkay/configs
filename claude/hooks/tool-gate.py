@@ -21,7 +21,14 @@ it; and the pin rules for kubectl, helm and helmfile are enforced. A program the
 classifier does not know asks instead of denying, so a read it has not met never gets the
 refusal line. A commit, merge, cherry-pick, revert or am that lands on a repo's default
 branch is denied in every state, outside the repos in DEFAULT_BRANCH_EXEMPT, which are
-committed on main by design.
+committed on main by design. A rebase in any form, a pull that rebases and a reset that
+moves the branch back ask in every state: history below HEAD is rewritten only on the
+user's words, while amending HEAD is free.
+
+For Skill and Read it keeps the code skill and the CR skill out of one session: loading
+either while the other is already loaded asks with a ⚠️ warning, outside ~/.claude, so
+the code is not written to the review rubric and the review is not by the code's author.
+The skills a session loaded are recorded beside its gate state.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -134,6 +141,13 @@ STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
 GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
+# The two skills that never share a session, and how each is loaded: the Skill tool, or a
+# Read of the skill's own files. The shared references under tkay-code load neither.
+SKILL_TOOLS = {"Skill", "Read"}
+SKILL_STATE_SUFFIX = ".skills"
+TKAY_SKILLS = os.path.realpath(os.path.expanduser("~/.claude/skills")) + "/"
+SKILL_KINDS = {"tkay-code": "code", "tkay-review": "CR"}
+SKILL_OVERFIT = {"code": "code overfit to the CR", "CR": "CR overfit to the code"}
 PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebook_path"}
 
 # Writes here never need the gate: scratch, plan mode and memory are harness bookkeeping.
@@ -1734,6 +1748,17 @@ def rm_escapes_scratch(command):
     return False
 
 
+RM_CHAINED_REASON = ("rm runs in a call of its own: the org policy prompts on every rm, so an rm "
+                     "chained with other work puts the whole command behind that prompt")
+
+
+def rm_chained(command):
+    """True when an rm shares the command with a program other than rm, a cd or a no-op."""
+    progs = [prog for prog, _ in invocations(command)
+             if prog not in CHDIR_PROGRAMS | {"true", ":"}]
+    return "rm" in progs and any(prog != "rm" for prog in progs)
+
+
 TMP_WRITE_REASON = ("/tmp can vanish mid-session: write the file under this session's "
                     "~/.cache/claude-handoff/<YYYY-MM-DD>-<slug>/ directory, or pipe it into "
                     "the next command")
@@ -2273,7 +2298,7 @@ def go_writes_into_scratch(here, args):
         d = parent
 
 
-def gate_blockers(command, cwd):
+def gate_blockers(command, cwd, run_time_dir=None):
     """The words of each program the gate holds, a `tee` of each redirect target outside
     scratch, or [None] for a line it cannot parse; empty when nothing changes a repo by a
     route the text shows.
@@ -2284,6 +2309,8 @@ def gate_blockers(command, cwd):
     the repo roots all pass; any other write is held to scratch. The working directory
     follows every `cd`, as for commits, and is unknown after one that may not stick; a
     relative redirect target counts from it as it stands where the redirect opens.
+    run_time_dir, when given, stands for the directory a `cd` moves to when only the shell
+    knows it.
     """
     blockers, here = [], cwd
     for line in command_lines(command):
@@ -2309,7 +2336,7 @@ def gate_blockers(command, cwd):
                 continue
             prog, args = program_of(words), words[1:]
             if prog in CHDIR_PROGRAMS:
-                here = cd_target(here, prog, args) if moves else None
+                here = (cd_target(here, prog, args) or run_time_dir) if moves else None
                 continue
             if classify_program(prog, args) == READ:
                 continue
@@ -2494,6 +2521,14 @@ def held_for_shell_paths(blockers):
         "\n".join(shlex.join(words) for words in rewritten), None)
 
 
+def held_for_shell_dir(command, cwd):
+    """True when the command would pass with every `cd` the shell resolves at run time
+    landing in a gate scratch root, and with every write path the shell builds standing for
+    one, so only words the shell builds stop it."""
+    rest = gate_blockers(command, cwd, GATE_SCRATCH_ROOTS[0] + "x")
+    return not rest or held_for_shell_paths(rest)
+
+
 def only_unknown_writes(blockers):
     """True when every program the gate holds is a write only because the classifier has
     never met it; a known write, an unparsed line or an untrusted redirect is not."""
@@ -2501,11 +2536,50 @@ def only_unknown_writes(blockers):
         return all(words is not None and classify_words(words) == READ for words in blockers)
 
 
+# A rewrite below HEAD changes commits the user has already read; amending HEAD is free, and
+# so is finishing or abandoning a rebase already begun, which the words that started it cover.
+REWRITE_REASON = ("rewrites commits below HEAD: run it only when the user's message allowed "
+                  "this rewrite in words, with their answer to one ❓ on whether it may reword, "
+                  "squash and split; otherwise print it as `! <command>`")
+REBASE_CONTINUATIONS = {"--continue", "--abort", "--quit", "--skip"}
+RESET_MODES = {"--soft", "--mixed", "--hard", "--merge", "--keep"}
+# What a reset target looks like when it is a commit and not a path: a ref with a ~ or ^
+# step, a reflog entry, a bare HEAD or a SHA.
+REF_LIKE_RE = re.compile(r"^(?:HEAD|ORIG_HEAD|FETCH_HEAD|@)(?:[~^].*|@\{.*\})?$"
+                         r"|^[0-9a-f]{7,40}$|^.+[~^]\d*$|^.+@\{.*\}$")
+
+
+def rewrites_history(prog, args):
+    """True for a git command that rewrites commits below HEAD: a rebase in any form, a
+    pull that rebases, a reset that moves the branch back, a history filter."""
+    if prog != "git":
+        return False
+    rest = git_subcommand_args(args)
+    if not rest:
+        return False
+    sub, rest = rest[0], rest[1:]
+    if sub == "rebase":
+        return not any(a in REBASE_CONTINUATIONS for a in rest)
+    if sub == "pull":
+        return has_flag(rest, "-r", "--rebase") or any(a.startswith("--rebase=") for a in rest)
+    if sub in ("filter-branch", "filter-repo"):
+        return True
+    if sub == "reset":
+        before_paths = rest[:rest.index("--")] if "--" in rest else rest
+        if any(a in RESET_MODES for a in before_paths):
+            return True
+        pos = positionals(before_paths)
+        return "--" not in rest and bool(pos) and REF_LIKE_RE.match(pos[0]) is not None
+    return False
+
+
 def pin_decisions(prog, args):
     """The rows that apply in every gate state, for one program invocation."""
     out = []
     if help_only(prog, args):
         return out
+    if rewrites_history(prog, args):
+        out.append((ASK, REWRITE_REASON))
     if ((HANDLERS.get(prog) is classify_docker and pushes_image(args))
             or (prog == "skopeo" and skopeo_pushes(args))):
         out.append((ASK, "pushes an image to a registry, where a moved tag reaches every "
@@ -2728,6 +2802,9 @@ SCRIPT_WORDS_RES = (
                rf"|label|annotate|taint|cordon|uncordon|drain|evict|expose|autoscale|exec"
                rf"|attach|cp|rollout{WORD_SEP}(?:restart|undo))(?![\w-])"),
     re.compile(rf"\bgit{WORD_SEP}push\b"),
+    re.compile(rf"\bgit{WORD_SEP}(?:rebase(?!{WORD_SEP}--(?:continue|abort|quit|skip))"
+               rf"|pull{WORD_SEP}(?:-r|--rebase)|filter-(?:branch|repo)"
+               rf"|reset{WORD_SEP}--(?:soft|mixed|hard|merge|keep))\b"),
     re.compile(rf"\b(?:docker|podman|buildah){WORD_SEP}push\b|\bbuildx\b.*--push\b"),
     re.compile(rf"\bglab{WORD_SEP}(?:release{WORD_SEP}create"
                rf"|mr{WORD_SEP}(?:create|merge|approve|note))\b"),
@@ -2833,8 +2910,9 @@ def script_decisions(command, cwd):
 
 CARGO_VALUE_FLAGS = {"-p", "--package", "--features", "-F", "--target", "-j", "--jobs",
                      "--manifest-path", "--profile", "--test", "--bench", "--bin", "--example"}
-SHELL_PATH_REASON = ("a write path is built by the shell at run time, so the gate cannot tell "
-                     "whether it lands in a repo: write the path out literally")
+SHELL_PATH_REASON = ("a write path, or the directory a cd before it moves to, is built by the "
+                     "shell at run time, so the gate cannot tell whether it lands in a repo: "
+                     "write it out literally")
 SUITE_REASON = ("runs a whole test suite: ask before it starts, and run the tests the change "
                 "touches unless the user asked for the suite")
 
@@ -2867,6 +2945,8 @@ def decide_bash(tool_input, gate_open, cwd, named):
     if not isinstance(command, str):
         raise ValueError("Bash call without a command string")
     out = [(DENY, TMP_WRITE_REASON)] if writes_unnamed_tmp(command, named) else []
+    if rm_chained(command):
+        out.append((DENY, RM_CHAINED_REASON))
     if changes_env_file(command):
         out.append((ASK, ENV_WRITE_REASON))
     for prog, args in invocations(command):
@@ -2881,7 +2961,7 @@ def decide_bash(tool_input, gate_open, cwd, named):
     if blockers:
         if only_unknown_writes(blockers):
             out.append((ASK, "unclassified - fix the handler in tool-gate.py"))
-        elif held_for_shell_paths(blockers):
+        elif held_for_shell_paths(blockers) or held_for_shell_dir(command, cwd):
             out.append((DENY, SHELL_PATH_REASON))
         else:
             out.append((DENY, REFUSAL))
@@ -2968,8 +3048,76 @@ def named_scratch_paths(session_id):
         return ()
 
 
+def skill_kind(tool_name, tool_input):
+    """Which of the two skills a tool call loads: "code", "CR" or None."""
+    if tool_name == "Skill":
+        return SKILL_KINDS.get(tool_input.get("skill"))
+    if tool_name == "Read":
+        path = tool_input.get("file_path")
+        if not isinstance(path, str):
+            return None
+        real = os.path.realpath(os.path.expanduser(path))
+        if real.startswith(TKAY_SKILLS + "tkay-review/"):
+            return "CR"
+        if real == TKAY_SKILLS + "tkay-code/SKILL.md":
+            return "code"
+    return None
+
+
+def skill_clash(kind, loaded, cwd):
+    """The ask when `kind` loads while the other skill already is, outside ~/.claude, where
+    the CR skill cannot be edited without being read and nothing written is code it judges."""
+    other = {"code": "CR", "CR": "code"}[kind]
+    in_claude_home = isinstance(cwd, str) and (os.path.realpath(cwd) + "/").startswith(CLAUDE_HOME)
+    if other not in loaded or in_claude_home:
+        return None
+    return (ASK, f"⚠️ The {kind} skill has been loaded, although the {other} skill already is "
+                 f"in this session. That can make the {SKILL_OVERFIT[kind]}. I recommend "
+                 "rewinding; do you want to proceed?")
+
+
+def loaded_skills(session_id):
+    try:
+        with open(session_file(STATE_DIR, session_id) + SKILL_STATE_SUFFIX) as f:
+            return set(f.read().split())
+    except FileNotFoundError:
+        return set()
+
+
+def record_skill(session_id, kind):
+    os.makedirs(STATE_DIR, exist_ok=True)
+    with open(session_file(STATE_DIR, session_id) + SKILL_STATE_SUFFIX, "a") as f:
+        f.write(kind + "\n")
+
+
+def skill_hook_output(payload, tool_name):
+    """The decision for a Skill or Read call, or None; a failure here never denies a read."""
+    try:
+        tool_input = payload.get("tool_input")
+        session_id = payload.get("session_id")
+        if not isinstance(tool_input, dict) or not isinstance(session_id, str) or not session_id:
+            return None
+        kind = skill_kind(tool_name, tool_input)
+        if kind is None:
+            return None
+        loaded = loaded_skills(session_id)
+        decision = skill_clash(kind, loaded, payload.get("cwd"))
+        if kind not in loaded:
+            record_skill(session_id, kind)
+    except Exception as exc:
+        print(f"tool-gate: skill state: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return None
+    if decision is None:
+        return None
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                   "permissionDecision": decision[0],
+                                   "permissionDecisionReason": decision[1]}}
+
+
 def hook_output(payload):
     tool_name = payload.get("tool_name")
+    if tool_name in SKILL_TOOLS:
+        return skill_hook_output(payload, tool_name)
     gated = tool_name in GATED_TOOLS or (isinstance(tool_name, str) and tool_name.startswith("mcp__"))
     if not gated:
         return None
@@ -3197,6 +3345,10 @@ def selftest():
         (False, "Bash", f"touch {scratch}../x", DENY),
         (True, "Bash", f"rm -rf {scratch}x {home}/.cache/x", ASK),
         (True, "Bash", f"rm -rf {scratch}x", None),
+        (True, "Bash", "make test; rm /x/a", DENY),
+        (True, "Bash", "cd /x && rm a", None),
+        (True, "Bash", "rm /x/a; rm /x/b", None),
+        (True, "Bash", "rm -f /x/a || true", None),
         (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", ASK),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", ASK),
         (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
@@ -3267,6 +3419,23 @@ def selftest():
         (True, "Bash", "git push origin v1.2.3", DENY),
         (True, "Bash", "git commit -m 'push it' && git push -f", DENY),
         (True, "Bash", "git commit -m 'git push later'", None),
+        (True, "Bash", "git rebase main", ASK),
+        (True, "Bash", "git rebase -i HEAD~3", ASK),
+        (True, "Bash", "GIT_SEQUENCE_EDITOR=true git rebase -S -i abc1234~1", ASK),
+        (True, "Bash", "git -C /x rebase main", ASK),
+        (True, "Bash", "git rebase --continue", None),
+        (True, "Bash", "git rebase --abort", None),
+        (True, "Bash", "git pull --rebase", ASK),
+        (True, "Bash", "git pull -r origin main", ASK),
+        (True, "Bash", "git pull", None),
+        (True, "Bash", "git reset --soft HEAD~1", ASK),
+        (True, "Bash", "git reset HEAD~2", ASK),
+        (True, "Bash", "git reset abc1234def", ASK),
+        (True, "Bash", "git reset -- file.py", None),
+        (True, "Bash", "git reset file.py", None),
+        (True, "Bash", "git reset", None),
+        (True, "Bash", "git commit --amend --no-edit", None),
+        (True, "Bash", "git filter-repo --path x", ASK),
         (True, "Bash", "glab mr create --fill", ASK),
         (False, "Bash", "glab mr create --fill", ASK),
         (True, "Bash", "glab -R g/p mr merge 3", ASK),
@@ -3701,6 +3870,13 @@ def selftest():
         ("echo hi > $TMPDIR/x", SHELL_PATH_REASON),
         ("echo hi > out.txt", REFUSAL),
         (f"echo hi > $D/x; echo hi > {rx}/f", REFUSAL),
+        ("D=/x; cd $D && printf a > mod/go.mod", SHELL_PATH_REASON),
+        (f"go test ./x; rm {rx}/zz_test.go; git status --short", RM_CHAINED_REASON),
+        (f"rm {rx}/a && echo done", RM_CHAINED_REASON),
+        (f"find {rx} -name '*.orig' -exec rm {{}} +", RM_CHAINED_REASON),
+        ("mkdir -p $D/m && cd $D && printf a > m/f", SHELL_PATH_REASON),
+        (f"cd $D && printf a > {rx}/f", REFUSAL),
+        (f"cd {rx} || cd /x; printf a > f", REFUSAL),
     ]
     for command, expected in reason_cases:
         got = decide("Bash", {"command": command}, False, os.path.join(REPO_ROOTS[0], "no-repo"))
@@ -3720,6 +3896,43 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} payload {payload} -> {got}"
               + ("" if ok else f" (want {expected})"))
+    sid = "tool-gate-selftest-skills"
+    skills_path = session_file(STATE_DIR, sid) + SKILL_STATE_SUFFIX
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(skills_path)
+    repo_cwd = os.path.join(REPO_ROOTS[0], "p")
+
+    def skill_call(skill, cwd=repo_cwd):
+        return {"tool_name": "Skill", "session_id": sid, "tool_input": {"skill": skill}, "cwd": cwd}
+
+    def read_call(path, cwd=repo_cwd):
+        return {"tool_name": "Read", "session_id": sid, "tool_input": {"file_path": path},
+                "cwd": cwd}
+
+    skill_cases = [
+        # in order: the state the earlier cases leave is the point
+        ("an unrelated skill loads nothing", skill_call("tkay-writing-plans"), None),
+        ("a shared reference loads nothing",
+         read_call(TKAY_SKILLS + "tkay-code/references/clean-code.md"), None),
+        ("the code skill alone", skill_call("tkay-code"), None),
+        ("the code skill again", skill_call("tkay-code"), None),
+        ("the CR skill after the code skill", skill_call("tkay-review"), ASK),
+        ("the CR skill's reference after the code skill",
+         read_call(TKAY_SKILLS + "tkay-review/references/code-review.md"), ASK),
+        ("the code skill after the CR skill", read_call(TKAY_SKILLS + "tkay-code/SKILL.md"), ASK),
+        ("both loaded, under ~/.claude", skill_call("tkay-review", CLAUDE_HOME + "x"), None),
+        ("an unrelated read", read_call("/x"), None),
+        ("no session id", {"tool_name": "Skill", "tool_input": {"skill": "tkay-review"}}, None),
+    ]
+    for name, payload, expected in skill_cases:
+        result = hook_output(payload)
+        got = (result or {}).get("hookSpecificOutput", {}).get("permissionDecision")
+        ok = got == expected
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} skill {name} -> {got}"
+              + ("" if ok else f" (want {expected})"))
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(skills_path)
     s = SCRATCH_ROOTS[0]
     strip_cases = [
         # (command, expected command after the strip)

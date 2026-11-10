@@ -3,13 +3,15 @@
 
 Checks, on the reply's text outside code fences:
 - a ❓ line with a Verdict line nested under it is a proposal: the Verdict carries one of the
-  change calls, and How sure, Size, Difficulty, Why Yes and Why Not are nested too;
+  change calls and its How sure, and a Change line with How sure, Size and Difficulty, Why
+  Yes and Why Not are nested too;
 - a ❓ line flagged ⚠️ has a Verdict nested under it, since only a question whose yes changes
   something can warn;
 - every Verdict line carries one of the calls, so a call in an old or misspelt shape never
   passes unchecked;
-- a reply with a change-call Verdict anywhere carries How sure, Size, Difficulty, Why Yes and
-  Why Not somewhere, so a ❓ phrased as a preference question cannot shed them;
+- a reply with a change-call Verdict anywhere carries How sure on that line and a Change line,
+  Size, Difficulty, Why Yes and Why Not somewhere, so a ❓ phrased as a preference question
+  cannot shed them;
 - the old shapes are sent back: a call as a tag on the ❓ line, a `VERDICT:` header, and an
   emoji before Why Yes or Why Not.
 
@@ -33,14 +35,15 @@ QUESTION_RE = re.compile(r"^❓ Q\d+ ")
 WARNING_QUESTION_RE = re.compile(r"^❓ Q\d+ ⚠️? ")
 TAGGED_QUESTION_RE = re.compile(r"^❓ Q\d+ (⚠️? )?\*\*.+?\*\* \[")
 CHANGE_CALL = r"(✅ Do it|⚖️? Close call|❌ Don't)"
-ANY_CALL = (r"(✅ Do it|⚖️? Close call|❌ Don't|✅ Ship it|🔧 Needs change|🔀 Squash into"
-            r"|🗑️? Drop|🔧 Add fix|⏸️? Leave for now)")
+ANY_CALL = (r"(✅ Do it|⚖️? Close call|❌ Don't|✅ Ship it|👌 Fixed later|🔧 Needs change"
+            r"|🪓 Split|📝 Reword|🔀 Squash into|🗑️? Drop|🔧 Add fix|⏸️? Leave for now)")
 VERDICT_LINE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*Verdict:\*\* ")
 KNOWN_VERDICT_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*Verdict:\*\* {ANY_CALL}\b")
 CHANGE_VERDICT_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*Verdict:\*\* {CHANGE_CALL}")
+HOW_SURE_RE = re.compile(r" · \*\*How sure:\*\* ")
 OLD_HEADER_RE = re.compile(r"^(Q\d+\. )?VERDICT: ")
 OLD_WHY_RE = re.compile(r"^\s*- \S+ \*\*Why (Yes|Not)\?\*\*")
-REQUIRED = ("**How sure:**", "**Size:**", "**Difficulty:**", "**Why Yes?**", "**Why Not?**")
+REQUIRED = ("**Change:**", "**Size:**", "**Difficulty:**", "**Why Yes?**", "**Why Not?**")
 
 
 def prose_lines(text):
@@ -92,6 +95,8 @@ def problems(text):
         if VERDICT_LINE_RE.match(line) and not KNOWN_VERDICT_RE.match(line):
             found.append(f"{line.strip()[:60]}... carries no call, or one not in its "
                          "emoji-and-word shape")
+        if CHANGE_VERDICT_RE.match(line) and not HOW_SURE_RE.search(line):
+            found.append(f"{line.strip()[:60]}... carries no How sure on the Verdict line")
         if OLD_HEADER_RE.match(line):
             found.append(f"{line[:60]}... is the old VERDICT: header; the call goes on a "
                          "**Verdict:** list item")
@@ -118,14 +123,14 @@ def main():
               + "; ".join(found)
               + ". Resend only what is wrong, with nothing on the ❓ line but the decision and "
                 "the question, and the Full Verdict as list items under it: **Verdict:** with "
-                "the call, How sure, Size and Difficulty on one line, then **Why Yes?** and "
-                "**Why Not?** with no emoji before them.")
+                "the call and its How sure, **Change:** with How sure, Size and Difficulty, "
+                "then **Why Yes?** and **Why Not?** with no emoji before them.")
     print(json.dumps({"decision": "block", "reason": reason}))
 
 
 def selftest():
-    verdict = ("  - **Verdict:** ✅ Do it · **How sure:** CONFIDENT · **Size:** small · "
-               "**Difficulty:** easy\n")
+    verdict = ("  - **Verdict:** ✅ Do it · **How sure:** CONFIDENT\n"
+               "  - **Change:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n")
     whys = "  - **Why Yes?**\n    - a\n  - **Why Not?**\n    - b\n"
     good_question = ("Q1. The proposal\n\n"
                      "❓ Q1 **Split fixes**: is that the line you want?\n" + verdict + whys)
@@ -139,9 +144,13 @@ def selftest():
         ("proposal missing Why Not",
          "❓ Q1 **X**: ok?\n" + verdict.replace("✅ Do it", "⚖️ Close call")
          + "  - **Why Yes?**\n    - a\n", True),
-        ("proposal missing How sure",
-         "❓ Q1 **X**: ok?\n  - **Verdict:** ✅ Do it · **Size:** small · **Difficulty:** easy\n"
+        ("proposal missing How sure on the Verdict line",
+         "❓ Q1 **X**: ok?\n  - **Verdict:** ✅ Do it\n"
+         "  - **Change:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n"
          + whys, True),
+        ("proposal in the old one-line shape, no Change line",
+         "❓ Q1 **X**: ok?\n  - **Verdict:** ✅ Do it · **How sure:** CONFIDENT · **Size:** small"
+         " · **Difficulty:** easy\n" + whys, True),
         ("Close call with no variation selector, full shape",
          good_question.replace("✅ Do it", "⚖ Close call"), False),
         ("call with no emoji", good_question.replace("✅ Do it", "Do it"), True),
@@ -160,22 +169,33 @@ def selftest():
         ("Q-part Verdict above an untagged ❓, items nowhere",
          "Q1. - **Verdict:** ❌ Don't · **Size:** small\n\n❓ Q1 **X**: ok?\n", True),
         ("standalone proposal verdict with every field",
-         "- **Verdict:** ⚖️ Close call · **How sure:** LIKELY · **Size:** small · "
-         "**Difficulty:** easy\n- **Why Yes?**\n  - a\n- **Why Not?**\n  - none\n", False),
-        ("review verdicts, TL;DR rows and install question",
-         "FINDINGS: ✅ NO REAL ISSUES — 0 MUST HAVE\n\n"
-         "- **Verdict:** ✅ Ship it · **How sure:** CONFIDENT · **Size:** small · "
-         "**Difficulty:** easy\n- **Why Yes?**\n  - a\n- **Why Not?**\n  - none\n\n"
-         "| `a1b2c3d` thing | 9/10 | ✅ Ship it · **How sure:** CONFIDENT |\n\n"
+         "- **Verdict:** ⚖️ Close call · **How sure:** LIKELY\n"
+         "- **Change:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n"
+         "- **Why Yes?**\n  - a\n- **Why Not?**\n  - none\n", False),
+        ("review verdicts with Commit and Fix lines, table rows and install question",
+         "FINDINGS: 🔴 1 · 🟡 2\n\n"
+         "- **Verdict:** 🔧 Needs change (hangs on timeout) · **How sure:** CONFIDENT\n"
+         "- **Commit:** **How sure:** VERIFIED · **Size:** medium · **Difficulty:** hard\n"
+         "- **Fix 🔴🟠:** add a client timeout · **How sure:** LIKELY · **Size:** small · "
+         "**Difficulty:** easy\n"
+         "- **Fix 🟡⚪:** none\n- **Why Yes?**\n  - a\n- **Why Not?**\n  - none\n\n"
+         "| 1 | `a1b2c3d` thing | 🔴 1 · 🟡 2 | 🔧 Needs change (hangs) · **How sure:** CONFIDENT |\n"
+         "| | **Commit:** **How sure:** VERIFIED · **Size:** medium · **Difficulty:** hard | "
+         "**Fix 🔴🟠:** add a timeout · **How sure:** LIKELY · **Size:** small · **Difficulty:** "
+         "easy · **Fix 🟡⚪:** none | |\n\n"
          "❓ Q1 Install it into `x` and commit?\n", False),
         ("Drop and Leave for now, with and without the variation selector",
          "- **Verdict:** 🗑 Drop · **How sure:** CONFIDENT\n"
          "- **Verdict:** 🗑️ Drop · **How sure:** CONFIDENT\n"
          "- **Verdict:** ⏸ Leave for now (out of scope) · **How sure:** LIKELY\n"
          "- **Verdict:** ⏸️ Leave for now (out of scope) · **How sure:** LIKELY\n", False),
+        ("Split, Fixed later and Reword commit verdicts",
+         "- **Verdict:** 🪓 Split (the guard, the rename) · **How sure:** CONFIDENT\n"
+         "- **Verdict:** 👌 Fixed later (by `a1b2c3d`) · **How sure:** CONFIDENT\n"
+         "- **Verdict:** 📝 Reword (subject claims a speedup) · **How sure:** CONFIDENT\n",
+         False),
         ("Needs change verdict with a reason",
-         "- **Verdict:** 🔧 Needs change (crashes) · **How sure:** CONFIDENT · "
-         "**Size:** small · **Difficulty:** easy\n", False),
+         "- **Verdict:** 🔧 Needs change (crashes) · **How sure:** CONFIDENT\n", False),
         ("broken shape inside a code fence is an example",
          "```\nVERDICT: ✅ DO IT\n❓ Q1 **X** [✅ DO IT]: ok?\n  - 👍 **Why Yes?**\n```\n", False),
     ]

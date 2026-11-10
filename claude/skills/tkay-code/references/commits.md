@@ -9,47 +9,81 @@ or open its key database, so signing fails and a signature check reports
 `%G?` as `E` (cannot check) on a good signature. Run both the commit and the
 check outside the sandbox, and never commit without the signature.
 
-## Squash or New Commit - Decide Every Time, and Say Which
+## Commits Serve the Branch - One Thing Each, and No More Cuts Than That
 
 **Commits serve the branch's final outcome, never the other way round.** What
 ships is the tree at the top of the branch; the commits are how a reader
-understands it and how a bisect finds a fault in it. Every squash-or-new
-decision is judged by that.
+understands it, how a bisect finds a fault in it and how a revert takes one
+change out of it. A commit is never a target of its own.
 
-**Before every commit, work out which of the two it is and tell me in one
-line.** Do not default to a new commit.
+**A commit does one thing when a reader, a bisect and a revert each want it
+whole.** A reader follows the branch commit by commit without assembling a
+change from several; a bisect that lands on it finds one cause; a revert
+takes out one change and nothing else. That is the test for every boundary,
+squash and split alike - never the size of the diff, the number of files or
+the length of a bullet.
 
-- **Squash it into the earlier commit** when the change only exists because
-  that commit got something wrong or left it half done: it corrects a claim
-  that commit made, rewrites prose that commit added, or finishes what it
-  should have carried. My history must not record you writing a rationale
-  badly and then rewriting it three commits later.
-- **Squash two commits that read better as one**, even when neither got
-  anything wrong: apart they hide what the branch does - one is broken or
-  meaningless until the other lands, or the reader has to assemble the change
-  from both. The version bump keeps its own commit regardless; see "A Version
-  Bump Is Its Own Commit, at the Top of the Branch". A fix for a shipped bug
-  is never one of the two; see "A Fix for a Shipped Bug Stands Alone".
-- **Make it a new commit** when it stands on its own: a different change for a
-  different reason, one that would still make sense if the earlier commit were
-  reverted.
+**Every boundary costs something, so it must earn itself.** One more commit
+is one more message to write and verify, one more row in a CR, and one more
+place a change is spread across. A cut none of the three wants is that cost
+with no return: a branch of twenty immaculate two-line commits is harder to
+read than one of five that each mean something. Both halves of the test
+bite - a commit that mixes two things a revert would want apart, and two
+commits that are one thing a reader has to reassemble.
 
-**Doc edits are where this goes wrong most.** A doc fix to wording an earlier
-commit on this branch introduced belongs IN that commit - see "Documentation
-Sync on Every Commit" below. A standalone `docs:` commit for it is the very
-drift that rule exists to prevent.
+**Which commit a change belongs in is judged by the test, and said in one
+line before the commit.** The three cases:
 
-**Never choose "new commit" because rewriting history is inconvenient for
-you.** That is my history, not your convenience. When a squash or an amend
-needs a rewrite: branch a backup first, do it, then check `git diff <backup>
-HEAD`. It must show exactly the change you meant to make - nothing for a squash
-or a reword, only the intended edits for an amend that changes content. When it
-does, the rewrite is proven: **delete the backup branch straight away, WITHOUT
-asking permission** - no question in chat, no offer, no backup left behind for
-me to clean up - with `git branch -D` (rewritten commits never count as merged,
-so `-d` refuses), and report the `Deleted branch ... (was <sha>)` line. Only a
-diff carrying something you did not intend keeps the backup: stop and show me
-that diff.
+- **It belongs in an earlier commit** when it only exists because that commit
+  got something wrong or left it half done: it corrects a claim that commit
+  made, rewrites prose that commit added, or finishes what it should have
+  carried. A doc fix to wording an earlier commit introduced is the usual
+  case - see "Documentation Sync on Every Commit".
+- **Two commits are one thing** when apart they hide what the branch does:
+  one is broken or meaningless until the other lands, or the reader has to
+  assemble the change from both. The version bump keeps its own commit
+  regardless; see "A Version Bump Is Its Own Commit, at the Top of the
+  Branch". A fix for a shipped bug is never one of the two; see "A Fix for a
+  Shipped Bug Stands Alone".
+- **It stands on its own** when it is a different change for a different
+  reason, one that would still make sense if the earlier commit were reverted.
+
+**Where it lands is a different question, and history below HEAD is mine to
+rewrite.** A change that belongs in HEAD is amended into HEAD - that needs
+no word from me. A change that belongs in a commit below HEAD lands as a new
+commit on top, with its own subject, and the CR says `🔀 Squash into <sha>`
+or `🪓 Split`; the rewrite that folds it in happens when I allow it, never
+on the verdict alone. Until then the history records the fix as a commit of
+its own, and that is the intended state, not a failure of the rule above.
+
+## A Rewrite Below HEAD Waits for My Word
+
+**Every rewrite of the branch below HEAD needs my words that time, plus the
+prompt**: a rebase in any form, onto a new base included, and a reset that
+moves the branch back. Amending HEAD is free: it is the one commit nothing is
+stacked on. Nothing rewrites on a CR verdict alone, however clear the squash.
+
+- **Before a rebase, one ❓ with three parts**: may this rebase reword,
+  squash, split? My answer scopes that one rebase; with no answer it is a
+  plain replay.
+- **Reword is free only for a commit whose SHA changes anyway in that
+  rebase.** Onto a new base that is every commit; in a squash of the third
+  commit it is the third and everything above it, and the commits below keep
+  their SHAs, so rewording one of them is a rewrite of its own and needs my
+  word.
+- **Squash and split only on my yes** to that question, or my words naming
+  them, and **from a CR of the branch at HEAD in this session**: its commits
+  table says what folds into what. With no such CR, the CR comes first.
+
+**When a rewrite runs: branch a backup first, do it, then check
+`git diff <backup> HEAD`.** It must show exactly the change you meant to
+make - nothing for a squash or a reword, only the intended edits for an
+amend that changes content. When it does, the rewrite is proven: **delete
+the backup branch straight away, WITHOUT asking permission** - no question in
+chat, no offer, no backup left behind for me to clean up - with `git branch
+-D` (rewritten commits never count as merged, so `-d` refuses), and report
+the `Deleted branch ... (was <sha>)` line. Only a diff carrying something you
+did not intend keeps the backup: stop and show me that diff.
 
 **A branch you created for your own work is yours to delete, never mine.** A
 backup, a scratch branch, a throwaway for an experiment: once it has done its
@@ -57,23 +91,16 @@ job, delete it in the same session without asking, and never leave it for me
 to find later. Ask only before deleting a branch you did not create.
 
 **The rewrite itself is scripted, because no interactive editor exists in this
-harness, and autosquash is the first tool.** `git commit --fixup=<sha>` folds
-content into a commit below HEAD, and a commit whose subject is
-`amend! <target subject>` replaces that commit's content and message at once;
-`git commit -S -F <file>` writes one - `--amend` when the change is already
-HEAD - with the new message under that first line, which is why
-`--fixup=amend:<sha>` and `--fixup=reword:<sha>` - both refuse `-m` and `-F` -
-are never needed. Then
-`GIT_SEQUENCE_EDITOR=true git rebase -S -i --autosquash <sha>~1` applies them,
-as its own command with nothing chained to it: the harness's permission
-classifier judges the command text, and the bare shape has passed where a
-bundled one was refused as destructive. What autosquash cannot express - a
-reorder, a drop - takes a `GIT_SEQUENCE_EDITOR` script that edits the todo and
-a `GIT_EDITOR` one that overwrites the message file it is handed. Edit the todo
-by SHA - `s/^pick <sha>/reword <sha>/` - never by subject: the todo line may
-carry a comment marker between SHA and subject, and a pattern that matches
-nothing leaves every `pick` in place, so the rebase "succeeds" with nothing
-changed. Verify the new SHAs appeared before trusting it. `-S` re-signs every
+harness.** `GIT_SEQUENCE_EDITOR=true git rebase -S -i <base>` runs as its own
+command with nothing chained to it: the harness's permission classifier
+judges the command text, and the bare shape has passed where a bundled one
+was refused as destructive. A squash, a reword, a reorder or a drop takes a
+`GIT_SEQUENCE_EDITOR` script that edits the todo and a `GIT_EDITOR` one that
+overwrites the message file it is handed. Edit the todo by SHA -
+`s/^pick <sha>/squash <sha>/` - never by subject: the todo line may carry a
+comment marker between SHA and subject, and a pattern that matches nothing
+leaves every `pick` in place, so the rebase "succeeds" with nothing changed.
+Verify the new SHAs appeared before trusting it. `-S` re-signs every
 rewritten commit - confirm with `git log --format='%h %G? %s'` before deleting
 the backup. When a permission layer refuses such a script as destructive, hand
 me the command to run; never reach the same rewrite by another route.
@@ -86,6 +113,37 @@ reason to leave a bad message standing. **A branch someone else also pushes to
 or builds on is different**: rewriting what is already on its remote breaks
 their copy, so ask before touching any commit that is there. When you cannot
 tell which kind the branch is, ask once.
+
+## Two Suits: a Fix Stands Alone, a Feature Is a Series
+
+**A commit is cut by what it is for.** A fix for a shipped bug is one commit
+built to travel - the next section. A feature is a series, in this order,
+each commit leaving the build and the tests green so any prefix of it is
+correct on its own - the shape of the Linux kernel's
+[Submitting patches](https://www.kernel.org/doc/html/latest/process/submitting-patches.html)
+("Separate your changes") and git's own
+[SubmittingPatches](https://git-scm.com/docs/SubmittingPatches):
+
+1. **Preparatory refactors**, one per commit, `refactor:` - each changes no
+   behaviour, so a reader checks it by eye and a bisect never lands on it.
+   Make the change easy before making the easy change.
+2. **The behaviour**, `feat:` (or `fix:`, `perf:`), with the tests that pin
+   it in the same commit. Several behaviour commits when a reader, a bisect
+   or a revert would want them apart - the one-thing test above - and one
+   when they would not.
+3. **Docs** the behaviour makes true, `docs:` - or inside the behaviour
+   commit when the two lines of a README would stand on their own in no
+   reader's eyes.
+4. **The version bump**, last - see "A Version Bump Is Its Own Commit, at the
+   Top of the Branch".
+
+**A refactor and a behaviour change never share a commit.** The one
+exception is a rename the behaviour change cannot land without, and then the
+body's Change names the rename as such.
+
+A CR calls a mixed commit 🪓 Split, and a series out of order 🟡: the branch
+works either way, and the cost is the reader's. `chore:`, `ci:`, `style:`
+and `test:` commits are neither suit and stand alone as they do today.
 
 ## A Fix for a Shipped Bug Stands Alone
 
@@ -109,10 +167,11 @@ default branch whenever the repo has a remote.
   the bug**, when it can be found.
 
 **A bug introduced earlier on this unmerged branch is not a shipped-bug
-fix.** It never ran anywhere, so its fix squashes into the commit that
-introduced it, as the first bullet of "Squash or New Commit" says. A
-follow-up to a shipped-bug fix while that fix is still unmerged squashes
-into the fix the same way.
+fix.** It never ran anywhere, so its fix belongs in the commit that
+introduced it, as the first case of "Commits Serve the Branch" says: amended
+in when that commit is HEAD, otherwise a new commit the CR marks
+`🔀 Squash into` it. A follow-up to a shipped-bug fix while that fix is
+still unmerged belongs in the fix the same way.
 
 The case that taught it: one fix commit to a shipped hook carried a second,
 unrelated selftest with it.
@@ -270,9 +329,11 @@ Bycatch:
 
 - **Bullets only.** No Before / Change / Why per item, no CR row, no
   verdict.
-- **A bullet that is not one simple line is a smell**: an item that needs a
-  reason, a second line or a sub-bullet is a change of its own, and belongs
-  in a commit of its own. Split it out instead of writing a longer bullet.
+- **A bullet that is not one simple line is a sign to apply the one-thing
+  test**: an item that needs a reason, a second line or a sub-bullet is
+  probably a change a reader, a bisect or a revert would want apart. When
+  one of them would, it is a commit of its own; when none would, the longer
+  bullet is the cheaper cut.
 - **No bycatch, no section.** A fix for a shipped bug never has one - see
   "A Fix for a Shipped Bug Stands Alone".
 

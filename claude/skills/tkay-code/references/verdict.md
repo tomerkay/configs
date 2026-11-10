@@ -9,12 +9,15 @@ Full Verdict and the TL;DR Verdict, and nothing else is called a verdict.
 
 **A verdict sits above the change but is written after the change is
 checked.** Before its first line, run the check I would ask for next - "did
-you check yourself?", "is it good?": read the change against everything it
-touches - the rest of the file a doc edit lands in, the rules next to it,
-the callers of a function - and run every test you can run yourself; a test
-is run, never listed. What the check finds is fixed in the proposal, and
-the verdict judges the fixed version. A verdict that the same check, one
-message later, turns from go into not ready was written before its check.
+you check yourself?", "is it good?", "are you sure about this verdict?" -
+asked of yourself as if I had asked it: read the change against everything
+it touches - the rest of the file a doc edit lands in, the rules next to
+it, the callers of a function - and run every test you can run yourself; a
+test is run, never listed. What the check finds is fixed in the proposal,
+and the verdict judges the fixed version. If my question one message later
+would flip the verdict, the verdict was written too early, and each flip
+costs me a round of ping-pong. The check is not a CR: it never loads the
+review standard.
 
 The case that taught it, a new rule drafted for an instructions file:
 
@@ -26,10 +29,15 @@ The case that taught it, a new rule drafted for an instructions file:
    verdict written on the fixed draft
 ```
 
+**The check starts with whether the change is worth making**: what leaving
+it costs, read from the code, before any design is drawn. When leaving it is
+cheap and the change is not, the call says so and no design is polished.
+
 ## The Full Verdict
 
 ```
-- **Verdict:** ✅ Do it · **How sure:** LIKELY · **Size:** medium · **Difficulty:** hard
+- **Verdict:** ✅ Do it · **How sure:** LIKELY
+- **Change:** **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** hard
 - **Why Yes?**
   - <an advantage of making the change>
 - **Why Not?**
@@ -47,6 +55,32 @@ points under Why Yes or Why Not are all numbered, so one is answered as
    b. <second>         2. <second>
 ```
 
+**The call and the thing judged are two lines, because they are two
+claims**: whether to do it, and whether it is correct. A staged change can
+be verified by its tests while doing it is a close call, and a commit whose
+code is verified can still need splitting. The Verdict line carries the
+call and how sure you are of it; the line under it carries the thing - its
+How sure, Size and Difficulty - under the name of what it is:
+
+- **Change**, for a proposal: the change as drafted, or the design when
+  nothing is drafted yet.
+- **Commit** or **Bycatch**, in a CR: the thing as it sits in the code.
+  Then one line per fix, each naming what to do in a few words with the How
+  sure, Size and Difficulty of doing it: `Fix 🔴🟠` is what unblocks the
+  merge, `Fix 🟡⚪` the clean-up left to my judgement, and one with
+  nothing to do reads `none`.
+
+```
+- **Verdict:** 🔧 Needs change (hangs on timeout) · **How sure:** CONFIDENT
+- **Commit:** **How sure:** VERIFIED · **Size:** medium · **Difficulty:** hard
+- **Fix 🔴🟠:** add a client timeout · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+- **Fix 🟡⚪:** rename the two helpers · **How sure:** VERIFIED · **Size:** small · **Difficulty:** super easy
+- **Why Yes?**
+  ...
+```
+
+All of them are siblings of the Verdict line, never nested under it.
+
 ## The TL;DR Verdict
 
 One line, for a place with no room for Why Yes and Why Not - a table cell, a
@@ -54,11 +88,14 @@ summary entry:
 
 ```
 ✅ Do it · **How sure:** LIKELY · **Size:** medium · **Difficulty:** hard
-🔧 Needs change (<the reason in a few words>) · **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy
+🔧 Needs change (<the reason in a few words>) · **How sure:** CONFIDENT
 ```
 
 The reason goes in brackets right after the call, and only when the call
-needs one. A TL;DR Verdict never carries Why Yes or Why Not.
+needs one. A TL;DR Verdict never carries Why Yes or Why Not. A proposal's
+carries the call's How sure and the change's Size and Difficulty on its one
+line, since it cannot nest; a CR's carries the call and its How sure, and
+the Commit and Fix lines follow it where the table has room for them.
 
 ## The call
 
@@ -82,6 +119,8 @@ sentence; nothing else in a verdict carries one.
 - **🔧 Needs change** - amending this commit fixes what blocks it.
 - **🪓 Split (<the parts>)** - nothing blocks it, but it does more than one
   thing; the brackets name the commits it splits into.
+- **📝 Reword (<the reason in a few words>)** - nothing blocks it, but its
+  message is false or misleading; a new message fixes it.
 - **🔀 Squash into `<sha>`** - it belongs inside that earlier commit.
 - **🗑 Drop** - the branch is better without it.
 
@@ -101,7 +140,8 @@ follows from the entries, the worst one deciding, in the order ❌, ✂️, ⚖�
 lands:
 
 - **✅ Keep it** - the change is right and every commit it lives in is
-  ✅ Ship it, 👌 Fixed later or 🪓 Split.
+  ✅ Ship it, 👌 Fixed later, 🪓 Split or 📝 Reword - the four calls whose
+  code is right, which differ only in what the commit needs.
 - **🔧 Needs fixes** - the change is right, and a commit it lives in must
   change first; the brackets name the commit and what it needs.
 - **⚖️ Close call** - keeping and dropping it are both defensible; the text
@@ -121,19 +161,23 @@ The call says what to do, never how sure you are of it.
 
 ## How sure, Size and Difficulty
 
-- **How sure is how sure you are that the thing is right and does what it
-  claims** - for a bycatch row, that the fix you name would be - not how sure
-  you are of the call or that I will agree. One of four, each defined by what
-  backs it: VERIFIED, you ran it or tested the exact behaviour; CONFIDENT,
-  not run, but you traced every step in the code or the docs; LIKELY, one
-  unchecked inference carries it; 50-50, more than one unchecked inference,
-  or you do not know. Below 50-50 the call never says go ahead: never ✅ Do it,
-  ✅ Ship it, 👌 Fixed later, 🪓 Split, ✅ Merge it, 🔧 Merge after fixes,
-  ✂️ Split first, ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
-- **Size is how much the change touches**, one of four: huge, large, medium,
+- **How sure is how sure you are of the claim on its line**: on the
+  Verdict line, that the call is right - on a commit, that its findings
+  are real and in the right colour, since the call follows from them; on a
+  Change, Commit or Bycatch line, that the thing does what it claims; on a
+  Fix line, that the fix would work. Never how sure you are that I will
+  agree. One of four, each defined by what backs it: VERIFIED, you ran it
+  or tested the exact behaviour; CONFIDENT, not run, but you traced every
+  step in the code or the docs; LIKELY, one unchecked inference carries it;
+  50-50, more than one unchecked inference, or you do not know. Below 50-50
+  the call never says go ahead: never ✅ Do it, ✅ Ship it, 👌 Fixed later,
+  🪓 Split, 📝 Reword, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first,
+  ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
+- **Size is how much the thing touches**, one of four: huge, large, medium,
   small. **Difficulty is how hard it is to get right**, one of four: super
   hard, hard, easy, super easy. The two are independent: a one-line change
-  to a lock is small and super hard.
+  to a lock is small and super hard. On a Change, Commit or Bycatch line
+  they describe the thing as it is; on a Fix line, the fix.
 - **Never a time estimate** - no minutes, hours or days, for a change, a part
   or a plan step. You cannot know how long the work takes, and the guess
   reads as a fact. Size and difficulty are what I get instead.

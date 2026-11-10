@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Standards for code reviews (CR), commit messages, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo, plus the clean-code rules for every line of code. Use whenever asked to review code, a branch, a PR or commits, including a CR asked for on an MR or PR link, or for a CR Summary; to propose a change or give a verdict on one, an option or an idea; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable.
+description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to propose a change or give a verdict on one, an option or an idea; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
 ---
 
 # Code standards
@@ -13,7 +13,6 @@ standards.
 
 | Task | Read first |
 |---|---|
-| A code review / CR / "review my branch, PR, commits", a CR asked for on an MR or PR link, or a CR Summary | `references/code-review.md`, `references/verdict.md` and `references/clean-code.md` — **before writing a single finding** |
 | Anything on a GitLab MR - its review threads, its pipeline, a job log - or any `glab` call | `references/gitlab.md` — **before the first glab call** |
 | Writing or amending ANY commit message, or committing at all | `references/commits.md` — **before you type the message** |
 | Creating or naming a branch | `references/commits.md` — "Branch Names", **before you pick the name** |
@@ -27,13 +26,20 @@ not need costs seconds. Skipping one costs me a bad review or a false commit
 message, and git history is permanent.
 
 **Never answer from memory of a reference you have not read this session.** If
-you catch yourself recalling what my review format is, or how my commit bodies
-are structured, STOP and read the file. A remembered version of my standards is
-the same failure as not having them.
+you catch yourself recalling how my commit bodies are structured, STOP and
+read the file. A remembered version of my standards is the same failure as
+not having them.
 
-A CR and a commit almost always travel together — a review whose first
-checklist item is the commit message needs `references/commits.md` too. Read
-both rather than guessing which half applies.
+## A code review is another skill, and another session
+
+**This skill writes code; it never reviews it.** The CR standard lives in
+the `tkay-review` skill, handed out together with this one, which reads
+`references/clean-code.md`, `references/verdict.md` and
+`references/commits.md` from here. The two are never loaded in one session:
+code written with the review rubric in context is written to the rubric,
+and a review by the code's author is not independent. When asked for a CR in
+a session that has this skill loaded, say so and ask for the review to run
+in a fresh session.
 
 ## The repo's conventions win
 

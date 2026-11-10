@@ -1,6 +1,6 @@
 ---
 name: tkay-writing-plans
-description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked for a plan, design doc or implementation write-up, to update, re-check or keep alive one, and when implementing an agreed plan. A plan is shaped first - talked through, nothing built - and becomes a document only when a full plan is asked for in those words.
+description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked for a plan, a TL;DR plan, a design doc or an implementation write-up, to update, re-check or keep alive one, and when implementing an agreed plan. A plan is shaped first - talked through, nothing built - becomes a TL;DR plan in chat when one is asked for in those words, and a document only when a full plan is asked for in those words.
 ---
 
 # Writing Plans
@@ -9,9 +9,9 @@ When I ask for a full plan, this is the shape I want. Write it to a directory th
 survives the session unless I name somewhere else - never `/tmp` or a session
 scratchpad, which can vanish while the plan is still in use.
 
-## Two modes: shaping, then a full plan
+## Three modes: shaping, a TL;DR plan, a full plan
 
-**A plan is shaped until I ask for a full plan in those words.** Shaping settles what
+**A plan is shaped until I ask for a TL;DR plan or a full plan in those words.** Shaping settles what
 we want: the problem in plain words, what is in scope and what is out, the decisions
 still open, and what is already settled or not a problem. It is shaping as Basecamp's
 [Shape Up](https://basecamp.com/shapeup/1.1-chapter-02) means it - judging, cutting,
@@ -61,9 +61,35 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
   ✅ shaping brings the known designs it found, with links, and a pick,
      before any item of the shape rests on one
   ```
+- **The TL;DR plan** is what I need before work starts and nothing that is itself
+  work, sent in chat when I ask for a "TL;DR plan" - never a file, and built from what
+  shaping settled, so it needs no document to exist first; when a full plan exists it
+  is cut from that instead. A few bullets under each of these headings, in this
+  order, and no other:
+  1. **Problem and motivation** - one heading; two only when the motivation is not
+     the problem.
+  2. **The design it follows** - one bullet: the known architecture picked, with its
+     link.
+  3. **What we are going to do.**
+  4. **The contract** - only what the plan adds, changes or removes, plus the
+     invariants the change rests on, and the test that pins each, by a name that
+     states the behaviour. The existing API that stays as it is goes unmentioned,
+     and the tests are named, never written.
+  5. **High availability** and 6. **Security** - the answers to the questions those
+     sections ask, "not needed, because" included.
+  7. **Risks** - what has failed here before, and what the new design could break.
+  8. **Questions and answers** - only the few whose other answer would change the
+     design.
+  9. **TBD** - only what I agreed to defer.
+
+  Tests, commits, the glossary, the incidents table and the reference material stay
+  out: they are the full plan's work. A TL;DR plan hands off to implementation with
+  the commits shaped as we go, one at a time, each proposed before it is written;
+  a change large enough to want its commits fixed in advance is a reason to ask for
+  the full plan instead.
 - **The full plan** is the document the rest of this skill describes, written when I
-  ask for it, and it starts from what shaping settled. A design doc asked for by name
-  is one.
+  ask for it, and it starts from what shaping settled, or from the TL;DR plan when
+  one was sent. A design doc asked for by name is one.
 
 ## The problem comes first. Always.
 
@@ -317,11 +343,20 @@ in its bucket.
 ## Divide it into commits
 
 Not a pile of edits. One section per commit, each independently correct and leaving the
-tests passing - so any prefix of the list is correct on its own. Where the repo requires a
-version bump, the bump is the last commit and the one that releases. For each one:
-the subject line, the files, the tests, and **what the commit body has to say**.
-Each black-box test of the contract lands in the commit that delivers the behaviour
-it pins, so no prefix of the list claims a promise nothing tests.
+tests passing - so any prefix of the list is correct on its own. The series takes the
+shape of the Linux kernel's
+[Submitting patches](https://www.kernel.org/doc/html/latest/process/submitting-patches.html)
+("Separate your changes"), and a fix for a shipped bug is one commit outside it:
+
+1. Preparatory refactors first, one per commit, each changing no behaviour.
+2. Then the behaviour, with the tests that pin it in the same commit.
+3. Then the docs the behaviour makes true.
+4. Where the repo requires a version bump, the bump last, the one that releases.
+
+A refactor and a behaviour change never share a commit. For each one: the subject
+line, the files, the tests, and **what the commit body has to say**. Each black-box
+test of the contract lands in the commit that delivers the behaviour it pins, so no
+prefix of the list claims a promise nothing tests.
 
 Call out whatever a commit touches that is easy to miss: a doc whose wording it
 invalidates, a rule it deliberately reverses, a config list it has to join.

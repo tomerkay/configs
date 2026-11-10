@@ -83,8 +83,8 @@ draft note, resolving or reopening a thread, or anything else that writes
 to the MR is a message sent on my behalf: run it only when my message
 allows that command in plain words, and otherwise print it, the note's
 full text included, for me to run myself. A review I asked for on an MR
-link writes nothing to it either - see "A CR asked for on a link" in
-`references/code-review.md`.
+link writes nothing to it either - the `tkay-review` skill's standard says
+so under "A CR asked for on a link".
 
 ## Uploading a file
 
@@ -112,6 +112,16 @@ It declares `allowed_domains` in auto mode like every call above.
 
 An upload is a write on my behalf, like a note: run it only when my
 message allows it in plain words.
+
+**A screenshot I ask to upload to an MR goes into its description.** The
+upload alone shows nowhere on the MR: the image appears only once its
+markdown is in the description or a note. So the ask covers both steps -
+the upload, then one `PUT projects/<project>/merge_requests/<iid>` with a
+JSON body whose `description` is the current text, read from the MR
+right before, with the markdown appended under a `## Screenshots`
+heading and a caption per view. A note gets it only when I name a note.
+The case that taught it: twelve screenshots uploaded, their links handed
+back in chat, and the MR page still showing none of them.
 
 **An upload outlives the text that links it.** Replacing an image in a
 description stores the new file beside the old one: the old one leaves

@@ -320,6 +320,16 @@ not a plan I approved, not my yes to the previous one:
 - A Slack message anywhere other than the alert thread I linked. Here my words
   cover the thread they name, not only the one message - "Alert investigation
   is ungated END TO END" says so.
+- A rewrite of history below HEAD: `git rebase` in any form, onto a new
+  base included, `git pull --rebase`, a `git reset` that moves the branch
+  back, and the history filters; `rewrites_history` in
+  `~/.claude/hooks/tool-gate.py` names the shapes. Amending HEAD is free: it
+  is the one commit nothing is stacked on. Before a rebase, one ❓ asks
+  whether it may reword, squash and split, and my answer scopes that one
+  rebase; a reword is free only for a commit whose SHA changes anyway, and a
+  squash or split runs from a CR of the branch at HEAD. Until I allow the
+  rewrite, a fix for a commit below HEAD lands as a new commit the CR marks
+  for squashing - the `tkay-code` commit standard says how.
 - A kill by name, pattern or file: `pkill`, `killall`, `fuser -k`. It hits
   every process that matches, other sessions' included. Stopping your own
   process needs no words: `pgrep -fl <pattern>` to see the matches, then
@@ -352,6 +362,13 @@ you run a script - yours or mine - the hook reads it; a line holding one of
 these commands, written out, makes it ask once for the whole run, naming the
 lines. That prompt is enough. In a script you write, spell each such command
 out: one built at run time, such as `helm "$1"`, is invisible to the scan.
+
+**Several of them in one request are offered as a script first.** When one
+request of mine takes more than one of these commands - the screenshots of
+an MR, one upload each - ask, before the first one runs, whether to write
+them into one script, so the prompt comes once for the run instead of once
+per command. The case that taught it: twelve screenshots uploaded as twelve
+`glab api` calls, each with its own prompt.
 
 None of them waits for `LFG!`: they need my words and the prompt with the gate
 open or closed, and an open gate unlocks none of them. Rule 7 under
@@ -406,21 +423,25 @@ action of that kind.**
 
 | When I ask for, or you are about to do | Invoke |
 |---|---|
-| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary | `tkay-code` |
+| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary - and only when I ask for one in those words, in a session that did not write the code | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
 | write an MR or PR description | `tkay-code` |
 | create or name a git branch | `tkay-code` |
 | create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
-| a plan - shaped by default, a full plan only when I say FULL PLAN - a design doc or an implementation write-up | `tkay-writing-plans` |
+| a plan - shaped by default, a TL;DR plan or a full plan only when I say TL;DR PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
 | build, edit, fetch or publish a Grafana dashboard, panel or template variable | `atero-skills:grafana-dashboards`, plus `dashboarding` when building or debugging the JSON |
 | investigate a fired alert | `atero-skills:investigate-alert` |
 
-`tkay-code` then routes to its own reference file for the specific task - read
-the one it names before writing a single finding or commit message.
+`tkay-code` and `tkay-review` then route to their own reference file for the
+specific task - read the one it names before writing a single finding or
+commit message. **The two never share a session**: `tkay-review` loaded
+beside `tkay-code` makes the code fit the rubric and the review the author's
+own, and the gate hook asks with a ⚠️ before the second of them loads,
+anywhere but `~/.claude`.
 
 **If you are unsure whether a row applies, invoke the skill.** Loading one I did
 not need costs seconds. Skipping one costs me a bad review, a false commit
@@ -629,7 +650,8 @@ line, and none of it goes on the line itself:
 
 ```
 ❓ Q1 **<the decision>**: <what you propose>. <the question>?
-  - **Verdict:** ✅ Do it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+  - **Verdict:** ✅ Do it · **How sure:** LIKELY
+  - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
   - **Why Yes?**
     - <an advantage of making the change>
   - **Why Not?**
@@ -649,7 +671,8 @@ The case that taught the first half, a commit rule drafted for my sign-off:
    you want, instead of "bug-fix commits are never squashed"?
 ✅ ❓ Q1 **Split bug fixes into shipped and in-branch**: is that the line
    you want?
-     - **Verdict:** ✅ Do it · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+     - **Verdict:** ✅ Do it · **How sure:** CONFIDENT
+     - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
      - **Why Yes?**
        - a shipped fix reverts and backports alone
      - **Why Not?**
@@ -682,9 +705,9 @@ and the ❌ Don't under it reads as a double negative:
 ```
 ❌ ❓ Q3 **Validate the cluster type on update**: leave it out of this
    branch?
-     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT
 ✅ ❓ Q3 **Validate the cluster type on update**: add it to this branch?
-     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT
 ```
 
 **A ❓ whose yes is hard to undo, or reaches past what we discussed, opens
@@ -700,7 +723,8 @@ shrinking another:
    nodes?
 ✅ ❓ Q1 ⚠️ **Make room for the replay**: pin the second endpoint down by
    10 nodes?
-     - **Verdict:** ✅ Do it · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
+     - **Verdict:** ✅ Do it · **How sure:** LIKELY
+     - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
      - **Why Yes?**
        - it frees the nodes the replay is waiting for
      - **Why Not?**
@@ -733,7 +757,7 @@ not. Both forms of a verdict, their calls and every field in them are the
 @~/.claude/skills/tkay-code/references/verdict.md
 
 - **A claim you could not test is UNVERIFIED and says so**, with the Cost,
-  Sure without it and Sure with it lines the `tkay-code` review standard
+  Sure without it and Sure with it lines the `tkay-review` standard
   defines.
 - **The Full Verdict nested under a ❓ line has no copy above it.** What the
   nest cannot carry - the lean of a ⚖️ Close call, what you would do instead
@@ -1037,15 +1061,15 @@ task, work out which of its steps this session cannot do itself:
 - an edit auto mode refuses as self-modification - the settings, the
   permission rules, and a hook by any route other than the `cp` its install
   rule names;
-- a history rewrite below HEAD, which auto mode judges by the command's
-  text, not its effect: the plain autosquash shape in `tkay-code`'s
-  commits reference, run as its own call with nothing chained to it, has
-  passed where a rebase bundled with other mutations, or driven by a
-  sequence-editor script that deletes `pick` lines, was refused as
-  destructive. Order the work so it never arises: fix a
-  commit's message or content while it is still HEAD, where an amend does
-  it, before stacking anything on top. When it does arise, shape it the
-  plain way first; a refusal of that shape is then mine.
+- a history rewrite below HEAD, which needs my words in any case - see
+  "Some commands need my words AND the prompt, every time" - and which auto
+  mode judges by the command's text, not its effect: the plain
+  sequence-editor shape in `tkay-code`'s commits reference, run as its own
+  call with nothing chained to it, has passed where a rebase bundled with
+  other mutations, or driven by a script that deletes `pick` lines, was
+  refused as destructive. A fix to HEAD is an amend and needs none of this;
+  when a rewrite I allowed does arise, shape it the plain way first, and a
+  refusal of that shape is then mine.
 
 Then say up front which steps are mine, do everything else first, and hand me
 the rest once, at the end, in the order it must run - one bracketed block per
@@ -1137,20 +1161,31 @@ never the original name with its spaces kept. The rule is for names you
 choose, never for mine: a file I tell you to edit keeps the name it has,
 and a path I spell out with spaces in it is written with those spaces.
 
-**Anything you create outside the session's handoff directory is yours to
-delete, and you delete it without asking or reporting it** - the same rule as
-a backup branch. A commit-message file in `.git`, a file a tool insists on
-reading from beside its input: write it there only when the handoff directory
-does not work for that tool, and the moment it has done its job, remove it in
-its own `rm` before the turn ends. Never leave my Mac carrying files I did not
-ask for and do not know exist.
+**A file a tool must find somewhere else reaches it from the handoff
+directory first.** A throwaway test a Go package must compile goes in through
+`go test -overlay`, mapping its path in the package to the copy in the
+handoff directory. A Python one runs where it is, with the repo's source and
+test directories on `PYTHONPATH`, the repo's fixtures loaded by
+`pytest -p conftest`, and `PYTHONDONTWRITEBYTECODE=1`. A commit message goes
+through `git commit -F` with its handoff path. Only when no such route
+exists does the file go where the tool reads it, and inside a repo only when
+the work cannot be done any other way:
+a repo holds the change I asked for and no throwaway file of yours.
+
+**Such a file stays where it is until the work is over**, the same as the
+handoff directory: the org policy prompts on every `rm`, so a mid-task delete
+is a prompt I must be awake for. Never stage or commit it. The cleanup offer
+below names each one by its full path and deletes it in the same `rm` as
+the directory. Never leave my Mac carrying files I did not ask for and do
+not know exist.
 
 **Nothing inside the session's handoff directory is deleted file by file: it
 stays until the work is over**, because a handoff waits on me and the org
 policy prompts on every `rm`. Never offer to clear it unprompted - not
 mid-task, not when the work looks finished. Only when I ask whether we are
 done, what is left over, or whether I can exit - in whatever words - say what
-your fork's subdirectory holds and give me both ways to delete: you run the
+your fork's subdirectory holds, and every file of yours left outside it,
+and give me both ways to delete: you run the
 `rm -r`, which prompts me, or a bracketed `! rm -r` I paste. When other
 forks' subdirectories remain, it deletes only yours and says "Delete this
 fork (other forks still live)"; when yours is the last, it deletes the
@@ -1181,6 +1216,11 @@ given, and a single line per bullet.
 **Never put `rm` in a command that does real work.** The org's policy prompts
 on every `rm`, scratch included, and an allow rule cannot override an ask
 rule, so an `rm` bundled into a chain prompts the whole chain.
+
+**A tracked file the change deletes goes through `git rm`**, which the org's
+`rm` rule does not match, so it runs without that prompt and stages the
+deletion with the rest of the change. A plain `rm` is left for files git
+does not track.
 
 **Never redirect into a variable path** like `$TMPDIR`. The harness cannot
 resolve the variable, so `> $TMPDIR/x` prompts however harmless the
@@ -1275,12 +1315,16 @@ is owned by someone different:
    only the first is the LFG gate:
    - **The gate:** denies a change to a git repo before `LFG!`.
    - **Every state, whatever the gate:** denies an unpinned cluster
-     command and a push.
+     command, a push, a commit on the default branch of a repo not worked
+     on it by design, a write under `/tmp` that I did not name, and an
+     `rm` chained with other work.
    - **The words rule:** asks for every command in "Some commands need my
      words AND the prompt, every time".
 
-   It says nothing for a read. It can add a deny or an ask; it never
-   removes a prompt.
+   It says nothing for a read, and it can add a deny or an ask. The one
+   prompt it removes is a chained `rm` of the harness scratch under
+   `/tmp/claude`: it drops that `rm` from the command, so nothing is left
+   for the policy to prompt on.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
    permission mode takes over" after `LFG!` means.
@@ -1510,9 +1554,10 @@ never the text again.
   (`git ls-tree`, `git show`) - it reads objects, not the directory, and
   works inside the sandbox.
 
-Commit message standards, the verification protocol, documentation sync and the
-squash-or-new-commit decision are in the `tkay-code` skill - load it before you
-write or amend any commit message.
+Commit message standards, the verification protocol, documentation sync, the
+one-thing test that cuts a commit and the rule that a rewrite below HEAD waits
+for my word are in the `tkay-code` skill - load it before you write or amend
+any commit message.
 
 **Every commit message carries a description (the body under the subject).** A
 repo convention about the subject line, its prefix or its format does NOT remove

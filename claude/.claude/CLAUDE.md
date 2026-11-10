@@ -15,7 +15,7 @@ one:
 
 1. **Stage it.** Copy the file into this session's handoff directory and make
    every edit to the copy.
-2. **Review the staged diff with the `tkay-code` review standard**, in the
+2. **Review the staged diff with the `tkay-review` standard**, in the
    full shape that standard gives a one-commit branch: the FINDINGS line and
    the commit's Full Verdict, both buckets, the branch overview, the
    commits table and the bycatch table. The diff stands in for the
@@ -163,7 +163,11 @@ session that has never seen a CLAUDE.md of mine or any other skill. When you
 write or edit one:
 
 - **It points at nothing outside itself** - no CLAUDE.md, no other skill, no
-  path on my machine. Its own `references/` are fine.
+  path on my machine. Its own `references/` are fine. The one exception is
+  the pair `tkay-code` and `tkay-review`, handed out together: the review
+  skill reads the clean-code, verdict and commit references from
+  `${CLAUDE_SKILL_DIR}/../tkay-code/references/`, a path that holds wherever
+  the two are installed side by side, so neither carries a copy that drifts.
 - **It states every rule it relies on**, in its own words: a cluster command
   in it carries `--context`/`--kube-context` and `-n`, a safety rule it
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine

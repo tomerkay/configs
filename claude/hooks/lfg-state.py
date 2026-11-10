@@ -2,7 +2,9 @@
 """UserPromptSubmit, SessionStart and SessionEnd hook: records whether the `LFG!` gate is open.
 
 One file per session under ~/.claude/lfg-state/, read by tool-gate.py. The file holds
-"open" or "one-turn". Nothing is ever written to stdout: on UserPromptSubmit, stdout is
+"open" or "one-turn". Beside it, tool-gate.py keeps the skills the session loaded in a
+`.skills` file, which starts and ends with the session like the gate file and outlives
+a compaction. Nothing is ever written to stdout: on UserPromptSubmit, stdout is
 added to the prompt as context. Exit 2 is never used either, because on UserPromptSubmit
 it erases the prompt; a failure exits 1 and leaves the gate as it was.
 """
@@ -14,6 +16,7 @@ import sys
 
 STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 OPEN, ONE_TURN = "open", "one-turn"
+SKILL_STATE_SUFFIX = ".skills"
 
 # A `<tag …>…</tag>` block is text the user did not type: pasted text arrives wrapped in
 # pasted_content, and the harness wraps scheduled prompts, subagent reports and messages
@@ -83,9 +86,11 @@ def main():
     if event == "SessionStart":
         if payload.get("source") not in KEEPS_GATE_SOURCES:
             remove(path)
+            remove(path + SKILL_STATE_SUFFIX)
         return
     if event == "SessionEnd":
         remove(path)
+        remove(path + SKILL_STATE_SUFFIX)
         return
     if event != "UserPromptSubmit":
         return

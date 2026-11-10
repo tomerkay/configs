@@ -39,11 +39,11 @@
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "fable",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "^(Bash|Edit|Write|NotebookEdit|EnterWorktree|mcp__.*)$",
+        "matcher": "^(Bash|Edit|Write|NotebookEdit|EnterWorktree|Skill|Read|mcp__.*)$",
         "hooks": [
           {
             "type": "command",
