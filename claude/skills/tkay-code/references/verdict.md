@@ -47,12 +47,19 @@ cheap and the change is not, the call says so and no design is polished.
 Its first line is the TL;DR Verdict after `**Verdict:**`. Every line is a list
 item, so a terminal keeps each on its own line wherever the verdict stands -
 under a question, above a proposal, in a commit's review. Two or more
-points under Why Yes or Why Not are all numbered, so one is answered as
-"Why Not 2"; a single point keeps its dash.
+points under Why Yes or Why Not are numbered `1`, `2`, however deep the
+verdict sits, so one is answered as "Why Not 2"; a single point keeps its
+dash. The case that taught it, a verdict nested under a question:
 
 ```
-❌ - <first>        ✅ 1. <first>
-   b. <second>         2. <second>
+❌ - <the question the verdict nests under>
+     - **Why Yes?**
+       a. <first>
+       b. <second>
+✅ - <the question the verdict nests under>
+     - **Why Yes?**
+       1. <first>
+       2. <second>
 ```
 
 **The call and the thing judged are two lines, because they are two

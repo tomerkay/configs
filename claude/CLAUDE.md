@@ -887,9 +887,13 @@ numbers are this rule with a letter in front; every other list and table
 takes plain numbers. A list of one keeps its dash: the number tells items
 apart, and a single item is named by its heading, so numbers start at two.
 
-- **A nested list numbers its own level afresh**, `1`, `2` under `a` and
-  `a`, `b` under `1`, the way the tree does. A reply that repeats a list or
-  a table from an earlier reply keeps each item's number.
+- **Every list starts with numbers, wherever it sits.** Its first level is
+  `1`, `2`, and only an item's own sub-items go `a`, `b`, then `i`, `ii`,
+  the way the tree does. Depth counts from the list's own top, never from
+  the reply's margin: a list under a label line, a question or a dashed
+  line is a list of its own and starts at `1` again, however deep that
+  line sits. A reply that repeats a list or a table from an earlier reply
+  keeps each item's number.
 - **The Full Verdict's label lines keep their dash**, since nobody answers
   "Verdict" by number; two or more points under Why Yes or Why Not are all
   numbered, so "Why Not 2" names one. The `tkay-code` verdict reference
