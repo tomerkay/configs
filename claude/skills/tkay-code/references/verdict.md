@@ -49,7 +49,10 @@ item, so a terminal keeps each on its own line wherever the verdict stands -
 under a question, above a proposal, in a commit's review. Two or more
 points under Why Yes or Why Not are numbered `1`, `2`, however deep the
 verdict sits, so one is answered as "Why Not 2"; a single point keeps its
-dash. The case that taught it, a verdict nested under a question:
+dash. A proposal's Full Verdict ends with its alternatives when it has
+any, also siblings of the Verdict line; "Alternatives" below gives their
+shape. The case that taught the numbering, a verdict nested under a
+question:
 
 ```
 ❌ - <the question the verdict nests under>
@@ -99,11 +102,12 @@ summary entry:
 ```
 
 The reason goes in brackets right after the call, and only when the call
-needs one. A TL;DR Verdict never carries Why Yes or Why Not. A proposal's
-carries the call's How sure and the change's Size and Difficulty on its one
-line, since it cannot nest; a CR's is the call alone on a table's head row,
-and the Commit or Bycatch line, the Fix lines and the call's How sure fill
-the row under it, each without a label its column already gives.
+needs one. A TL;DR Verdict never carries Why Yes, Why Not or
+alternatives. A proposal's carries the call's How sure and the change's
+Size and Difficulty on its one line, since it cannot nest; a CR's is the
+call alone on a table's head row, and the Commit or Bycatch line, the Fix
+lines and the call's How sure fill the row under it, each without a label
+its column already gives.
 
 ## The call
 
@@ -117,7 +121,9 @@ sentence; nothing else in a verdict carries one.
 - **✅ Do it** - you would make it.
 - **⚖️ Close call** - both ways are defensible; the text around the verdict
   says which way you lean and why.
-- **❌ Don't** - you advise against it, and say what you would do instead.
+- **❌ Don't** - you advise against it and name what you would do
+  instead: on a proposal or one of its alternatives, the Better
+  Alternative; anywhere else, the text around the verdict.
 
 **A commit** under review:
 
@@ -258,6 +264,60 @@ against.
   "none", and an empty Why Not adds what you checked in a bracket -
   `none (checked: <what was checked>)` - so the bracket reads as the proof
   of the "none", never as a drawback.
+
+## Alternatives
+
+**A proposal shows every other way as good as it or better**, so a real
+choice never hides behind the one you picked. Only a Change has
+alternatives: a Commit or Bycatch verdict judges what already sits in the
+code.
+
+- **Two kinds, each a field of its own, in this order:**
+  1. **Better Alternatives** - a better call than the proposal. Only a
+     proposal that is mine, a change I asked for, can have one.
+  2. **Equivalent Alternatives** - the same call as the proposal.
+- **Each one looks exactly like the proposal**: its own Verdict, Change,
+  Why Yes and Why Not, held to every rule above. Two or more are
+  numbered as Why Yes and Why Not are, so one is answered as
+  "Equivalent 2".
+- **A worse way is left out, and so is a field with nothing in it** - I
+  ask for the rest when I want them. A proposal with neither kind ends at
+  its Why Not, and a fix to the draft goes into the draft, never into an
+  alternative.
+- **Beside an equivalent alternative, one sentence above the question
+  says why the proposal comes first**, where the lean of a ⚖️ Close call
+  goes: when two carry the same call, the order is the real choice.
+
+The shape of an equivalent alternative; a better one is the same under
+its own label:
+
+```
+- **Equivalent Alternatives:**
+  - **<another way>**
+    - **Verdict:** ✅ Do it · **How sure:** LIKELY
+    - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+    - **Why Yes?**
+      - <an advantage of making it>
+    - **Why Not?**
+      - <a drawback, a cost or a risk of making it>
+```
+
+The case that taught it, a router timeout proposed with every way it beat
+listed under it, until the lists read as clutter:
+
+```
+❌ - **Why Not?**
+     - <its drawbacks>
+   - **Lesser Alternatives:**
+     1. a circuit breaker per decode pod
+     2. a shorter readiness probe period
+✅ <one sentence: why the client timeout comes before `asyncio.wait_for`>
+   - **Why Not?**
+     - <its drawbacks>
+   - **Equivalent Alternatives:**
+     - **`asyncio.wait_for` around the call**
+       - <its own Verdict, Change, Why Yes and Why Not>
+```
 
 **Independent parts get a verdict each.** One verdict over parts you rate
 differently hides the weak one.

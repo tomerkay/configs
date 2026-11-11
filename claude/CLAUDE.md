@@ -780,8 +780,10 @@ not. Both forms of a verdict, their calls and every field in them are the
   Sure without it and Sure with it lines the `tkay-review` standard
   defines.
 - **The Full Verdict nested under a ❓ line has no copy above it.** What the
-  nest cannot carry - the lean of a ⚖️ Close call, what you would do instead
-  of a ❌ Don't, a verdict per part - stays in the proposal above it.
+  nest cannot carry - the lean of a ⚖️ Close call, why the proposal comes
+  before an equivalent alternative, a verdict per part - stays in the
+  proposal above it. What you would do instead of a ❌ Don't is its Better
+  Alternative, inside the nest.
 - **A fix shown under a review finding** carries that finding's tags, not a
   verdict.
 
@@ -869,7 +871,8 @@ ask for it; a single-topic exchange has none.
 
 **It appears only when the item in hand changes**: a new question opens, which
 grows the tree, or one is settled and we move to the next - and whenever I ask
-to see it. While we are still talking about the same item - a follow-up, a
+to see it, or ask whether we are done while anything is still open. While we
+are still talking about the same item - a follow-up, a
 clarification, another round on it - the reply has no tree.
 
 - **An indented list, one item per line under its parent**, as a document's
@@ -1227,11 +1230,16 @@ holds, never offer to delete them. Listing the session directory to see
 whether another fork's subdirectory remains is the one look allowed.
 
 **The offer is a ❓ question**, so it is the last thing in the reply. It
-comes only once the work leaves nothing open: while a leftover of it, a
-pending step or a drawback still waits on me, the reply carries those and the
-offer waits for a later one. An item I have answered - accepted, waved off,
-told you to leave - is closed, so once I have answered each one the offer
-comes next.
+comes only once the work leaves nothing open, and whether it does is
+checked when I ask, never answered from memory: every ❓ question of the
+session with no answer, every step staged or waiting on me, every drawback
+I have not answered, every change left uncommitted in a repo the session
+touched, every background run still going. While any is open, the reply
+opens with the open-issues tree, right after the reading list when it has
+one, written in full whatever its size, and the offer waits for a later
+reply. An item I have answered - accepted, waved off, told you to leave -
+is closed, and so is a question a later one replaced, so once I have
+answered each one the offer comes next.
 
 **When nothing is left - I have answered the offer, or nothing was staged -
 the reply opens with "Yes, you can exit now."** Under it comes "Here's a

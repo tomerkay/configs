@@ -246,6 +246,32 @@ never happen in practice gets no recovery path of its own. In order:
   whose point is the size of what crashes, not the crash.
 - **The counter is the alert.** It says what happened and how often;
   nothing more is built until it says it happens.
+- **Watching can be the whole answer.** For a state only a write past the
+  system's own routes reaches - a hand edit of a row, a request that
+  skipped the API - a counter and a log line where the code meets it, with
+  the code left as it is, may be enough - even when what the code does
+  there is a recovery path the rule above would not have written. Weigh
+  it against the refusal for the case in hand: what the existing path
+  does to the state meanwhile, and how much code the refusal adds. It
+  fits when that path does no harm a counter cannot catch in time, and
+  not when it corrupts data or breaks an invariant others rely on.
+
+  ```go
+  // a fallback a hand edit of the row alone reaches: watched instead of
+  // replaced by a skip, since per-side placement of one endpoint is
+  // harmless for the time an alert takes to fire
+  for _, ep := range endpoints {
+      ratio, whole := ep.wholeBundles()
+      if !whole {
+          perSidePlaced.WithLabelValues(ReasonNotWholeBundles).Inc()
+          log.Warn().Str("endpoint", ep.ID).Str("target", ep.Target.String()).
+              Msg("target is not whole bundles of the ratio, placed per side")
+          placePerSide(ep)
+          continue
+      }
+      placeBundles(ep, ratio)
+  }
+  ```
 - **A Python `assert` is never the refusal**: `-O` strips it
   (https://docs.python.org/3/using/cmdline.html#cmdoption-O). Raise.
 
