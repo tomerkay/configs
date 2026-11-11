@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to propose a change or give a verdict on one, an option or an idea; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
+description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to propose a change or give a verdict on one, an option or an idea; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; to take screenshots of UI work; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
 ---
 
 # Code standards
@@ -30,16 +30,33 @@ you catch yourself recalling how my commit bodies are structured, STOP and
 read the file. A remembered version of my standards is the same failure as
 not having them.
 
+## Screenshots of UI work show every state the change touches
+
+**When I ask for screenshots of UI work, every state whose rendering the
+change touches gets a screenshot of its own** - each variant of a changed
+component, and each condition it renders differently in: empty, loading,
+error, populated, disabled, expanded, a value long enough to wrap or
+truncate. Find them in the diff before the first shot: every branch the
+change adds or edits in what renders - a condition, a variant, a prop - is
+a state, and a style it edits touches every state that style applies to. A
+state the change leaves as it was gets none.
+
+- **Each screenshot is captioned with the state it shows**, so a missing
+  state shows in the list of captions.
+- **A state you cannot reach is named, never skipped** - no data that
+  triggers it, a backend you cannot make fail: say which state has no
+  screenshot and what it takes to reach it.
+
 ## A code review is another skill, and another session
 
 **This skill writes code; it never reviews it.** The CR standard lives in
 the `tkay-review` skill, handed out together with this one, which reads
 `references/clean-code.md`, `references/verdict.md` and
-`references/commits.md` from here. The two are never loaded in one session:
+`references/commits.md` from here. The two belong in separate sessions:
 code written with the review rubric in context is written to the rubric,
 and a review by the code's author is not independent. When asked for a CR in
-a session that has this skill loaded, say so and ask for the review to run
-in a fresh session.
+a session that has this skill loaded, load the review skill anyway; it says
+how its CR warns that it is not independent.
 
 ## The repo's conventions win
 

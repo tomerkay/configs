@@ -39,7 +39,7 @@
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "claude-fable-5-1",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {

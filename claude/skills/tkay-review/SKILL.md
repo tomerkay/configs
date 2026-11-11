@@ -1,6 +1,6 @@
 ---
 name: tkay-review
-description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, or a CR Summary - never while writing code, which the tkay-code skill owns, and never in the session that wrote the code under review.
+description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, or a CR Summary - never while writing code, which the tkay-code skill owns. In the session that wrote the code under review it still runs, and opens with a warning that the review is not independent.
 ---
 
 # Code review
@@ -25,18 +25,34 @@ than carrying copies that would drift:
 Read all three before the first finding. **Never answer from memory of a
 reference you have not read this session.**
 
-## Never in the session that writes the code
+## The author's own session warns, and reviews anyway
 
-**A CR runs in a session that did not write the code and has not loaded
+**A CR belongs in a session that did not write the code and has not loaded
 `tkay-code`.** Two reasons, and either alone is enough: a review by the
 code's author is not independent, and code written with this standard in
-context is written to the rubric rather than to the problem. When the code
-skill is already loaded in the session, or the session wrote the branch under
-review, say so and ask for the review to run in a fresh session; do not
-review. The one exemption is a session working on my Claude config itself,
-under `~/.claude`: this standard cannot be edited without being read, and
-what such a session writes is the rubric, not code the rubric judges, so it
-reviews its own staged changes in place.
+context is written to the rubric rather than to the problem.
+
+**When I ask for one in a session that wrote the branch, or has the code
+skill loaded, write the CR, never a refusal.** It opens with one bold ⚠️
+line, above everything else in it, that names what holds - the session
+wrote the branch, has the code skill loaded, or both - and says the review
+is not independent, so I decide whether to rerun it in a fresh session.
+The case that taught it, a CR asked for in the session that wrote the
+branch:
+
+```
+❌ I can't review this branch here: this session wrote it, and it has
+   tkay-code loaded. Open a fresh session and ask it for this:
+   CR branch <branch>
+✅ ⚠️ **Not an independent CR: this session wrote the branch and has
+   tkay-code loaded.** For one, ask a fresh session for `CR branch <branch>`.
+   <the CR>
+```
+
+The one exemption is a session working on my Claude config itself, under
+`~/.claude`: this standard cannot be edited without being read, and what
+such a session writes is the rubric, not code the rubric judges, so it
+reviews its own staged changes in place, with no ⚠️ line.
 
 ## The repo's conventions win
 

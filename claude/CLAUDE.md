@@ -423,12 +423,13 @@ action of that kind.**
 
 | When I ask for, or you are about to do | Invoke |
 |---|---|
-| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary - and only when I ask for one in those words, in a session that did not write the code | `tkay-review` |
+| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary - and only when I ask for one in those words | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-code` |
 | write or amend ANY commit message, or commit at all | `tkay-code` |
 | write an MR or PR description | `tkay-code` |
 | create or name a git branch | `tkay-code` |
+| take screenshots of UI work - the first one of them | `tkay-code` |
 | create or edit a repo `CLAUDE.md`, a README, a design doc or a `SKILL.md` - including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan - shaped by default, a TL;DR plan or a full plan only when I say TL;DR PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
@@ -438,10 +439,12 @@ action of that kind.**
 
 `tkay-code` and `tkay-review` then route to their own reference file for the
 specific task - read the one it names before writing a single finding or
-commit message. **The two never share a session**: `tkay-review` loaded
-beside `tkay-code` makes the code fit the rubric and the review the author's
-own, and the gate hook asks with a ⚠️ before the second of them loads,
-anywhere but `~/.claude`.
+commit message. **The two belong in separate sessions**: `tkay-review`
+loaded beside `tkay-code` makes the code fit the rubric and the review the
+author's own, and the gate hook asks with a ⚠️ before the second of them
+loads, anywhere but `~/.claude`. That ⚠️ is a warning, never a refusal: a CR
+I ask for in the session that wrote the code is written, and opens with the
+⚠️ line the review standard gives.
 
 **If you are unsure whether a row applies, invoke the skill.** Loading one I did
 not need costs seconds. Skipping one costs me a bad review, a false commit
@@ -601,14 +604,31 @@ settled, not asked. A question you would proceed past under an assumption is
 stated as the assumption, in prose, and the reply goes on. Anything else is
 not a ❓.
 
-**Questions are numbered Q1, Q2, Q3 afresh in each reply**, so I answer one
-by its number; the Q keeps it apart from the reading list's `R<n>` and from
-the outline numbers of the open-issues tree.
+**Questions are numbered Q1, Q2, Q3 across the whole session**, so I
+answer any question ever asked by its number; the Q keeps it apart from the
+reading list's `R<n>` and from the outline numbers of the open-issues tree.
+A new question takes the next free number, whatever reply it is in, and a
+question asked again keeps its number. After a context summary, numbering
+goes on from the highest `Q<n>` still in the context.
 When a question rests on material above it - a diff, a doubt, a risk, the
 steps it would take - that part of the reply is headed `Q<n>. <the decision>`
 with the same number, and the shared number is the whole reference: the
 question line never says "see above". Those numbered parts are the
 elaboration; no separate section repeats them.
+
+**An earlier question is referred to by its own `Q<n>`**, in any later
+reply, and a new question never reuses one. The case that taught it, a
+reply that handed off my answers to the previous Q1 and Q2 and then asked
+about cleanup:
+
+```
+❌ Q1: paste into a new session opened in <repo>: ...
+   Q2: paste into a new session opened in ~/.claude: ...
+   ❓ Q1 Delete the whole directory (no other fork left): ...
+✅ Q1: paste into a new session opened in <repo>: ...
+   Q2: paste into a new session opened in ~/.claude: ...
+   ❓ Q3 Delete the whole directory (no other fork left): ...
+```
 
 **`Q<n>` in my message names a question; `1)` does not.** An item of mine
 that says `Q1` or `q1` is the answer to Q1 and nothing else. A numbered list
@@ -1117,10 +1137,13 @@ ask where the reader will be standing when they follow it, and whether that
 is true every time.** Is this file only ever used from inside its own repo,
 or is it installed and run from anywhere? A path relative to the current
 directory is right only in the first case. A skill is the second: it runs
-from whatever repo the session opened and is installed into a cache, so its
-own files are `${CLAUDE_SKILL_DIR}/...`, never `.claude/skills/...` or
-`~/.claude/skills/...`. A path into a different repo names that repo and
-says a checkout of it is needed.
+from whatever repo the session opened and is installed into a cache, so it
+never names its files as `.claude/skills/...` or `~/.claude/skills/...`. Its
+SKILL.md names them relative to its own directory, or as
+`${CLAUDE_SKILL_DIR}/...` where a command needs the full path. The harness
+fills that variable in SKILL.md alone: a reference file names a file by the
+name SKILL.md gives it, never by the variable. A path into a different repo
+names that repo and says a checkout of it is needed.
 
 # EVERY FILE YOU WRITE GOES UNDER ~/.cache/claude-handoff
 

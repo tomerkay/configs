@@ -1,6 +1,10 @@
 # Code Review Standards
 
-**Read `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md` before the first finding.** It defines clean
+tkay-code's `clean-code.md`, `verdict.md` and `commits.md` are the shared
+references this skill's SKILL.md lists with their full paths; read them from
+there.
+
+**Read tkay-code's `clean-code.md` before the first finding.** It defines clean
 code; this file says how to report a departure from it and how bad each one is.
 
 ## How I Want Code Reviews Done
@@ -35,7 +39,7 @@ commit judged against the one before it, and nobody judging what lands.
   commit got anything wrong. A commit earns its place by making the outcome
   easier to understand or to bisect, not by existing. The review recommends
   every squash and split; the rewrite itself waits for my word, as
-  `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md` says.
+  tkay-code's `commits.md` says.
 
 ## ONE CR PER REPO
 
@@ -53,8 +57,8 @@ top-level heading:**
 
 1. `# Findings` - every commit's review, in branch order, in the shape
    "Mandatory output shape per commit" gives.
-2. `# Branch overview` - what the branch does as a whole at HEAD; see "The
-   branch overview".
+2. `# Repo <repo> branch <branch> Overview` - what the branch does as a
+   whole at HEAD; see "The branch overview".
 3. `# Commits` - the verdict table, one row per commit; see "The commits
    table".
 4. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
@@ -62,7 +66,8 @@ top-level heading:**
 
 The last three are built from the findings: the overview and the commits
 table judge what the findings found, and the bycatch is what they set
-aside.
+aside. A CR in the session that wrote the code opens with the ⚠️ line
+this skill's `SKILL.md` gives, above everything else.
 
 ### The CR Summary
 
@@ -80,12 +85,12 @@ done in this session.
 
 ```
 "CR Summary", after this session's CR of the branch, nothing changed since:
-❌ # Findings, # Branch overview, # Commits, # 🎣 Bycatch - the CR again
-✅ # Branch overview, # Commits, # 🎣 Bycatch
+❌ # Findings, # Repo … Overview, # Commits, # 🎣 Bycatch - the CR again
+✅ # Repo … Overview, # Commits, # 🎣 Bycatch
 
 "CR Summary", no CR of the branch yet:
-❌ # Branch overview, # Commits, # 🎣 Bycatch - verdicts no finding stands under
-✅ # Findings, # Branch overview, # Commits, # 🎣 Bycatch
+❌ # Repo … Overview, # Commits, # 🎣 Bycatch - verdicts no finding stands under
+✅ # Findings, # Repo … Overview, # Commits, # 🎣 Bycatch
 ```
 
 ## CRITICAL: IS IT A REAL BUG OR A NIT — AND MUST I FIX IT NOW?
@@ -113,7 +118,7 @@ A wall of findings where I can't tell the colours apart is a USELESS review, no 
 | 🟡 **QUALITY** | Behaves correctly. Structure, naming, DRY, missing log, stale docs, a weak or false commit message, a broken rule of the repo's `CLAUDE.md`. | Code is right, but whoever maintains it pays a price |
 | ⚪ **NIT** | Cosmetic. Whitespace, comment wording, ordering, style preference. | If I ignore it forever, nothing bad happens |
 
-**The colour is picked on the hazard, never on the kind of thing.** Docs that now lie are 🟡 - the same as a false commit message - until the lie makes someone do harm: a wrong runbook step, an API contract a caller acts on, and then they are a 🟠 on their own merits, as a silent failure. A broken repo rule is 🟡; when breaking it created a hazard - a secret in a log, a missing pin - that hazard is the 🟠. A departure from `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md` keeps the colour the checklist below gives it.
+**The colour is picked on the hazard, never on the kind of thing.** Docs that now lie are 🟡 - the same as a false commit message - until the lie makes someone do harm: a wrong runbook step, an API contract a caller acts on, and then they are a 🟠 on their own merits, as a silent failure. A broken repo rule is 🟡; when breaking it created a hazard - a secret in a log, a missing pin - that hazard is the 🟠. A departure from tkay-code's `clean-code.md` keeps the colour the checklist below gives it.
 
 **Who introduced it does not change the colour, and only sometimes where it goes:**
 
@@ -137,11 +142,17 @@ FINDINGS: none
 
 A 🔴 or 🟠 count on the line means the commit blocks; a line with only 🟡 and ⚪ means it ships. Nothing else goes on it.
 
-**The commit's Full Verdict** follows the FINDINGS line, in the shape and with the commit calls of `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md`:
+**The commit's Full Verdict** follows the FINDINGS line, in the shape and with the commit calls of tkay-code's `verdict.md`:
 
 - **Its call is the one its commits-table row gives**, under the rules in "The commits table" below. The row is this verdict's TL;DR, so the two never disagree.
 - **The Commit line is the commit as it is**: how sure you are it does what it claims at HEAD, apart from its findings, and how big and hard it is.
-- **The Fix lines are the work the findings ask for.** `Fix 🔴🟠` names what unblocks the merge and what it costs; `Fix 🟡⚪` names the clean-up and what it costs, and is mine to take or leave. Each reads `none` when its colours have no finding.
+- **The Fix lines are the work the findings ask for.** `Fix 🔴🟠` names what unblocks the merge and what it costs; `Fix 🟡⚪` names the clean-up and what it costs, and is mine to take or leave. One whose colours have no finding is left out.
+- **Every finding has a fix that changes something.** A finding whose fix would be to leave the code as it is is not a finding: drop it before the verdict, never write it with a Fix line that says to leave it. A bycatch row's `⏸ Leave for now` is different: its fix exists, and the call defers it. The case that taught it, a ⚪ on a heading that repeated the repo name the change was asked to add:
+
+  ```
+  ❌ FINDINGS: ⚪ 1 · Fix 🟡⚪: none needed; leave the repeat
+  ✅ FINDINGS: none - the repeat is what the change is for
+  ```
 - **Why Yes and Why Not hold what the change gains and costs** - behaviour it introduces, alerts it shifts, doors it closes - never its findings, which the sections below list. When nothing is left beyond them, Why Not says "none beyond the findings above (checked: <what was checked>)".
 
 Then exactly two sections, in this order, with the divider, each under a `###` heading inside its commit, worst colour first within each:
@@ -163,9 +174,11 @@ Then exactly two sections, in this order, with the divider, each under a `###` h
 After the last commit's review, say in plain words what the branch does as a
 whole at HEAD - what someone who never opens the diff gets when it merges.
 No file, function, flag or SHA: sentences a teammate reading release notes
-would follow. Under its own heading:
+would follow. Under its own heading, which names the repo by its directory
+and the branch by its full name, so a CR read on its own says what it
+judged:
 
-# Branch overview
+# Repo <repo> branch <branch> Overview
 
 ```
 ✂️ Split first (carve out 2) · **How sure:** CONFIDENT
@@ -180,7 +193,7 @@ would follow. Under its own heading:
 ```
 
 - **One line for the whole branch comes first**: a TL;DR Verdict with the
-  branch calls of `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md`, answering whether the branch
+  branch calls of tkay-code's `verdict.md`, answering whether the branch
   merges. It follows from the entries below it and is never a judgement of
   its own: the worst entry decides it, in the order ❌, ✂️, ⚖️, 🔧, ✅, and
   its bracket names the entries that decided it.
@@ -193,7 +206,7 @@ would follow. Under its own heading:
   drops the blank line between list items, and the entries run together;
   the number is how I answer an entry.
 - **Each entry carries a TL;DR Verdict on that change as it stands at HEAD**,
-  in the shape and with the entry calls of `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md`: what to
+  in the shape and with the entry calls of tkay-code's `verdict.md`: what to
   do with this part, never whether the branch merges. The call and its How
   sure, nothing else: what the change needs is in the call's bracket, and
   what the fix costs is in the commit's row.
@@ -236,13 +249,16 @@ last commit's review.
 | # | What the commit does | Findings | Verdict |
 |---|---|---|---|
 | 1 | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> |
-| | **Commit:** **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Verdict:** **How sure:** <level> |
+| | **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **How sure:** <level> |
 
 - **The head row** is the commit, its findings and its call, nothing else.
-  **The second row** puts the Commit line under the commit, the two Fix
+  **The second row** puts the Commit line under the commit, the Fix
   lines under the findings they answer, and the call's How sure under the
   call; its `#` cell stays empty, which is what makes it read as part of the
   row above. A table cell cannot hold a line break, so the lines are rows.
+  The column names what a cell holds, so the Commit, Bycatch and Verdict
+  lines drop their label there; the two Fix lines keep theirs, since they
+  share one cell.
 - **#** — `1`, `2`, `3` down the table in branch order, so I answer a row by
   its number.
 - **What the commit does** — one sentence on what the diff actually does,
@@ -252,18 +268,17 @@ last commit's review.
   or `none`.
 - **Verdict** — the call of that commit's Full Verdict on the head row, with
   the reason in a few words for anything other than ✅ Ship it, and
-  `**Verdict:** **How sure:** <level>` on the second row, in the shape of
-  `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md`. The commit call
-  is picked by these rules:
+  `**How sure:** <level>` on the second row, in the shape of
+  tkay-code's `verdict.md`. The commit call is picked by these rules:
 
 | Call | When |
 |---|---|
 | `✅ Ship it` | no 🔴 or 🟠, and it does one thing |
 | `👌 Fixed later (by <sha>)` | its 🔴 or 🟠 are fixed by a later commit on the branch, named in the bracket |
 | `🔧 Needs change` | a 🔴 or 🟠 in the code, and amending this commit fixes it |
-| `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md`. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
+| `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in tkay-code's `commits.md`. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
 | `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message is false or misleading - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing. When the message and the code disagree, the review says which side is wrong before it picks the call: the code right and the message not is this call; the message describing what the code should have done and the code not doing it is a 🔴 or 🟠 on the code and `🔧 Needs change`; and no way to tell which was meant is a 🟠 on the commit and `🔧 Needs change (message and code disagree)`, the finding stating both readings, what would settle it, and a fix for each |
-| `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
+| `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in tkay-code's `commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
 The later commit's call is picked by its own row of this table: carrying the
@@ -299,7 +314,7 @@ The same two rows per item as the commits table, under its own heading:
 | # | What the bycatch is | Findings | Verdict |
 |---|---|---|---|
 | B1 | <what it is, with `file`> | 🟠 1 | <call> |
-| | **Bycatch:** **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** none | **Verdict:** **How sure:** <level> |
+| | **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **How sure:** <level> |
 
 - **#** — `B1`, `B2`, `B3` down the table, so I answer a row by its number
   instead of describing it back to you. The letter keeps it apart from every
@@ -312,20 +327,19 @@ The same two rows per item as the commits table, under its own heading:
 - **Findings** — its colour and a count of one, in the commits table's
   form: `🟠 1`.
 - **Verdict** — what you think I should do, as a recommendation I can
-  overrule: the bycatch calls of
-  `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` on the head row,
+  overrule: the bycatch calls of tkay-code's `verdict.md` on the head row,
   and the call's How sure on the second. 🔧 Add fix is a new commit on this
   branch; ⏸ Leave for now carries the reason in a few words - out of the
   branch's scope, another owner's file, not worth the review cost today.
 - **The second row**: the Bycatch line is the problem as it sits in the
   code - how sure you are it is real as described, how much it touches,
   how hard it is to understand; the Fix lines are the fix, as in the
-  commits table, and the one whose colours the finding is not in reads
-  `none`.
+  commits table, and the one whose colours the finding is not in is left
+  out.
 
 **A problem the branch already fixes is not bycatch.** Its fix is part of
 the commit that carries it - a commit of its own, or a `Bycatch:` line in
-another commit's message, the bycatch rule in `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md` - and
+another commit's message, the bycatch rule in tkay-code's `commits.md` - and
 is reviewed in that commit's findings. It never gets a row, and "fixed" is
 never a Verdict - both calls are work still to do. A row the branch fixes
 in part keeps only the part still open, worded as though the fixed part
@@ -351,21 +365,21 @@ When nothing is open, the heading stays and the table is one line instead:
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG**:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED)** and state exactly what you couldn't check.
 - **✅ Ship it, 🪓 Split and 📝 Reword need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the verdict, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
-  **Every test you can run yourself is run before the verdict, as `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED)** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
+  **Every test you can run yourself is run before the verdict, as tkay-code's `verdict.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED)** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
   Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
-  - **Sure without it** - a How sure level from `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
+  - **Sure without it** - a How sure level from tkay-code's `verdict.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
   - **Sure with it** - a How sure level, and what would still be unproven after the test passes.
-- **State confidence when you're unsure**, as a How sure level from `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
+- **State confidence when you're unsure**, as a How sure level from tkay-code's `verdict.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
 - **Where the borderline cases land:**
   - Weak/vague commit message → 🟡. Commit message making a FALSE CLAIM about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commits table says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
-  - A name that holds more than its words say, is named for a cause instead of a meaning, or kept its name after its meaning changed (see "A NAME MEANS ONE THING, LITERALLY" in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md`) → 🟡. A reader already acting on the literal word and doing the wrong thing → 🔴 for that reader, with the rename as the fix. A label (enum, metric label value, status word) whose words are false for some case that produces it → 🟡.
+  - A name that holds more than its words say, is named for a cause instead of a meaning, or kept its name after its meaning changed (see "A NAME MEANS ONE THING, LITERALLY" in tkay-code's `clean-code.md`) → 🟡. A reader already acting on the literal word and doing the wrong thing → 🔴 for that reader, with the rename as the fix. A label (enum, metric label value, status word) whose words are false for some case that produces it → 🟡.
   - Clever code a plain version replaces with the same behaviour → 🟡. Clever code hiding a bug you traced → 🔴 for the bug, and the plain version is the fix.
   - Suspicious logic you traced and it's genuinely wrong → 🔴. Suspicious logic you can't prove either way → 🟠, and say what would prove it.
   - Perf: measurable regression on the per-request path → 🟠 minimum. Cold path → 🟡.
-  - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), or a test of nothing the component promises → 🟡. A bug fix with no test that reproduces it → 🟠 when a unit test through the component's public interface could fail on the unfixed code: the bug can come back and nothing will notice. When none could - a race, a failure only a live cluster shows, a fix to config alone - it is 🟡, and the bracket names which of those it is. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "TESTS CHECK THE CONTRACT, NOT THE CODE" in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md` says what a good one checks.
+  - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), or a test of nothing the component promises → 🟡. A bug fix with no test that reproduces it → 🟠 when a unit test through the component's public interface could fail on the unfixed code: the bug can come back and nothing will notice. When none could - a race, a failure only a live cluster shows, a fix to config alone - it is 🟡, and the bracket names which of those it is. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "TESTS CHECK THE CONTRACT, NOT THE CODE" in tkay-code's `clean-code.md` says what a good one checks.
 - **Still report the nits.** NICE TO HAVE ≠ "don't mention". Put them below the divider where they can't be mistaken for real problems.
 - **🟠 is not a wish list.** If everything is 🟠, the colour means nothing and I'll start ignoring it. Be willing to write 🟡 and stand behind it.
 
@@ -376,7 +390,7 @@ This is the checklist order for *looking*, not for *writing the review*. Commit 
 Each category below has a **default severity** - deviate only with a stated reason.
 
 1. **Commit Messages & Descriptions** [default: 🟡; a false claim about behavior is 🟡 too, and makes the commit's call 📝 Reword]
-   - **The full standard is in `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md` — read it before judging a commit message.** Subject line rules, body structure, accuracy checks and format all live there.
+   - **The full standard is in tkay-code's `commits.md` — read it before judging a commit message.** Subject line rules, body structure, accuracy checks and format all live there.
    - The accuracy checks are the ones that make a message false: does the message match what the code actually does, are there false claims, is the explanation backwards or misleading, does it mention all significant files changed?
 
 2. **Critical Bugs** [default: 🔴 if you can show the failure, 🟠 if you can only name the trigger condition]
@@ -389,11 +403,11 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Race conditions or concurrency issues?
 
 3. **Security** [default: 🟠, a leak or bypass you can show: 🔴]
-   - **Ask every question in "SECURITY" in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md`** of the diff and of the component it lands in.
+   - **Ask every question in "SECURITY" in tkay-code's `clean-code.md`** of the diff and of the component it lands in.
    - An exposure the branch did not introduce goes into the bycatch table, unless it stops what the branch delivers from working well - then it is a pre-existing finding on the commit that should carry the fix. Never dropped because it is pre-existing.
 
 4. **Metrics & Observability** [default: 🟠 for missing/partial metric calls and wrong metric type, 🟡 for naming]
-   - Is every bad path counted, and the unit of work too? "EVERY BAD PATH IS COUNTED, THEN LOGGED" in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md` says what counts as one
+   - Is every bad path counted, and the unit of work too? "EVERY BAD PATH IS COUNTED, THEN LOGGED" in tkay-code's `clean-code.md` says what counts as one
    - Are metrics called BEFORE logs? (metric-first pattern)
    - Are metric names/labels correct?
    - Right metric type? (Counter vs Gauge vs Histogram)
@@ -406,11 +420,11 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Include all necessary context (pod_name, pod_ip, model_name)?
 
 6. **Code Quality** [default: 🟡, EXCEPT "logical correctness of NEW code" below - wrong logic is 🔴/🟠]
-   - Duplicated logic or values? "ONE SOURCE OF TRUTH" in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md` says what counts
+   - Duplicated logic or values? "ONE SOURCE OF TRUTH" in tkay-code's `clean-code.md` says what counts
    - Ordering issues? (should things be grouped differently?)
    - Naming clarity? Does each name mean one thing, literally, that a cold reader gets from the name alone? A name that only a comment explains is the wrong name: make it longer or split it. Any state that hides a compound condition, is named for its cause, or kept its name when a change shifted its meaning? When a diff changes what a field means, grep every reader of it.
    - Any TODOs or FIXMEs that shouldn't be there?
-   - **Redundant comments**: the comment rules and their worked examples are in `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md`. Flag ANY comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be DELETED.
+   - **Redundant comments**: the comment rules and their worked examples are in tkay-code's `clean-code.md`. Flag ANY comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be DELETED.
    - **Inconsistent spacing/indentation in YAML/config files**:
      - Check for extra blank lines between similar sections (e.g., model entries in config)
      - Flag trailing whitespace (spaces after content on a line)
@@ -594,7 +608,6 @@ FINDINGS: ⚪ 2
 
 - **Verdict:** ✅ Ship it · **How sure:** CONFIDENT
 - **Commit:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** super easy
-- **Fix 🔴🟠:** none
 - **Fix 🟡⚪:** delete the comment, strip the whitespace · **How sure:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
   - a request with no auth header gets a 401 instead of a 500

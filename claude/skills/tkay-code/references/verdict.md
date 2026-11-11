@@ -75,7 +75,7 @@ How sure, Size and Difficulty - under the name of what it is:
   Then one line per fix, each naming what to do in a few words with the How
   sure, Size and Difficulty of doing it: `Fix 🔴🟠` is what unblocks the
   merge, `Fix 🟡⚪` the clean-up left to my judgement, and one with
-  nothing to do reads `none`.
+  nothing to do is left out.
 
 ```
 - **Verdict:** 🔧 Needs change (hangs on timeout) · **How sure:** CONFIDENT
@@ -102,7 +102,8 @@ The reason goes in brackets right after the call, and only when the call
 needs one. A TL;DR Verdict never carries Why Yes or Why Not. A proposal's
 carries the call's How sure and the change's Size and Difficulty on its one
 line, since it cannot nest; a CR's is the call alone on a table's head row,
-and the Commit, Fix and `Verdict: How sure` lines fill the row under it.
+and the Commit or Bycatch line, the Fix lines and the call's How sure fill
+the row under it, each without a label its column already gives.
 
 ## The call
 

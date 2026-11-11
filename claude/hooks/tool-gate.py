@@ -145,7 +145,7 @@ STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
 GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
-# The two skills that never share a session, and how each is loaded: the Skill tool, or a
+# The two skills that belong in separate sessions, and how each is loaded: the Skill tool, or a
 # Read of the skill's own files. The shared references under tkay-code load neither.
 SKILL_TOOLS = {"Skill", "Read"}
 SKILL_STATE_SUFFIX = ".skills"
@@ -2383,6 +2383,8 @@ def gate_blockers(command, cwd, run_time_dir=None):
                     continue
             if prog == "tar" and tar_extracts_into_scratch(here, args):
                 continue
+            if prog in ("sed", "gsed") and sed_edits_only_scratch(here, args):
+                continue
             if PYTHON_RE.fullmatch(prog) and args and os.path.basename(args[0]) == "board.py":
                 # Its only file in a repo can be the --out of a fetch or shot: login saves the
                 # browser session under ~/.agent-browser, and publish writes to Grafana.
@@ -2511,6 +2513,84 @@ def tar_extracts_into_scratch(here, args):
         if not inside_gate_scratch(here):
             return False
     return True
+
+
+SED_SAFE_SHORT_FLAGS = set("nrEsuz")
+SED_SAFE_LONG_FLAGS = {"--regexp-extended", "--quiet", "--silent", "--separate", "--null-data",
+                       "--posix", "--sandbox"}
+SED_SAFE_SUBSTITUTE_FLAGS = set("gIipmM0123456789")
+
+
+def sed_substitution(script):
+    """True when script is one s command whose flags neither write (w) nor run (e) anything."""
+    if len(script) < 4 or script[0] != "s" or script[1] in "\\\n":
+        return False
+    delim, seen, i = script[1], 0, 2
+    while i < len(script):
+        if script[i] == "\\":
+            i += 2
+            continue
+        if script[i] == delim:
+            seen += 1
+            if seen == 2:
+                return set(script[i + 1:]) <= SED_SAFE_SUBSTITUTE_FLAGS
+        i += 1
+    return False
+
+
+def sed_edits_only_scratch(here, args):
+    """True when sed edits in place with substitutions alone, and every file it edits lies in
+    a gate scratch root.
+
+    GOTCHA: BSD sed, the one macOS ships, takes the word after a bare -i (or after a flag
+    cluster ending in i) as the backup suffix, and GNU sed does not. Only '' or a word
+    that starts with a dot is taken as that suffix; any other word there holds the gate,
+    since the two seds would read it differently. A suffix with a / in it would put the
+    backup in another directory, so it holds the gate too.
+    """
+    scripts, pos, in_place, i = [], [], False, 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            pos.extend(args[i + 1:])
+            break
+        if arg in ("-e", "--expression"):
+            if i + 1 == len(args):
+                return False
+            scripts.append(args[i + 1])
+            i += 2
+            continue
+        if arg.startswith("--expression="):
+            scripts.append(arg.partition("=")[2])
+        elif arg == "--in-place" or arg.startswith("--in-place="):
+            in_place = True
+            if "/" in arg.partition("=")[2]:
+                return False
+        elif arg.startswith("--"):
+            if arg not in SED_SAFE_LONG_FLAGS:
+                return False
+        elif arg.startswith("-") and len(arg) > 1:
+            flags, has_i, suffix = arg[1:].partition("i")
+            if not set(flags) <= SED_SAFE_SHORT_FLAGS or "/" in suffix:
+                return False
+            if has_i:
+                in_place = True
+                if not suffix:
+                    if i + 1 == len(args):
+                        return False
+                    suffix = args[i + 1]
+                    if not (suffix == "" or suffix.startswith(".")) or "/" in suffix:
+                        return False
+                    i += 2
+                    continue
+        else:
+            pos.append(arg)
+        i += 1
+    if not scripts and pos:
+        scripts.append(pos.pop(0))
+    return (in_place and bool(scripts) and bool(pos)
+            and all(sed_substitution(s) for s in scripts)
+            and all(inside_gate_scratch(path_from(here, p)) for p in pos))
 
 
 def held_for_shell_paths(blockers):
@@ -4207,6 +4287,24 @@ def selftest():
             ("Bash", {"command": f"echo x > {scratch_dir}/out"}, None),
             ("Bash", {"command": f"echo x > {on_main}/out"}, DENY),
             ("Bash", {"command": f"sed -i '' s/a/b/ {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' 's/a b/c d/g' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' -e 's/a/b/' -e 's|c|d|g' {scratch_dir}/f.md"},
+             None),
+            ("Bash", {"command": f"cd {scratch_dir} && sed -i '' 's/a b/c/' f.md"}, None),
+            ("Bash", {"command": f"sed -i.bak 's/a/b/' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -Ei '' 's/a+/b/' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i 's/a/b/' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -Ei 's/a+/b/' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i -e 's/a/b/' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/' {scratch_dir}/f.md {on_main}/README.md"},
+             DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/w {on_main}/out' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/e' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '1d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' -f {scratch_dir}/s.sed {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '/x/' 's/a/b/' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed --in-place=../x 's/a/b/' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && sed -i '' 's/a/b/' ../f.md"}, DENY),
             ("Bash", {"command": "git commit -m x"}, DENY),
             ("Bash", {"command": f"git -C {on_main} stash"}, DENY),
             ("Bash", {"command": f"git -C {scratch_dir} init -q"}, None),
