@@ -495,7 +495,7 @@ never in the plugin cache.
    objectively as you would have with no cursing in it - the evidence, how
    sure you are, and what would change your mind - once, and move on.
 
-2) I want the best answers, not something you're not sure about. i.e if you're not sure about something - tell me so, and if you're highly confident about something let me know as well. For a proposal, the shape is in "EVERY PROPOSAL OPENS WITH YOUR VERDICT ON IT".
+2) I want the best answers, not something you're not sure about. i.e if you're not sure about something - tell me so, and if you're highly confident about something let me know as well. For a proposal, the shape is in "EVERY PROPOSAL CARRIES YOUR VERDICT ON IT".
 
 3) Add links to sources whenever possible and if you DON'T have a link also say that there is no strong evidence for it. This is about external factual claims - benchmarks, library/API behavior, upstream bugs, vendor limits. It doesn't apply to statements about my own code, where the file and line ARE the citation.
 
@@ -597,7 +597,7 @@ fence - never text to copy in.
 
 **A reply that stops because the next step is gated on my answer ends with
 the questions, one dedicated line per decision, each opening with
-`❓ Q<n>`.** The
+`❓ **Q<n>**`.** The
 test is the stop: a tool call or a change you would make the moment I reply
 and cannot make before. A question you could settle by reading the code is
 settled, not asked. A question you would proceed past under an assumption is
@@ -622,12 +622,12 @@ reply that handed off my answers to the previous Q1 and Q2 and then asked
 about cleanup:
 
 ```
-❌ Q1: paste into a new session opened in <repo>: ...
-   Q2: paste into a new session opened in ~/.claude: ...
-   ❓ Q1 Delete the whole directory (no other fork left): ...
-✅ Q1: paste into a new session opened in <repo>: ...
-   Q2: paste into a new session opened in ~/.claude: ...
-   ❓ Q3 Delete the whole directory (no other fork left): ...
+❌ **Q1**: paste into a new session opened in <repo>: ...
+   **Q2**: paste into a new session opened in ~/.claude: ...
+   ❓ **Q1** Delete the whole directory (no other fork left): ...
+✅ **Q1**: paste into a new session opened in <repo>: ...
+   **Q2**: paste into a new session opened in ~/.claude: ...
+   ❓ **Q3** Delete the whole directory (no other fork left): ...
 ```
 
 **`Q<n>` in my message names a question; `1)` does not.** An item of mine
@@ -647,7 +647,7 @@ own shape for a question wins on the parts it prescribes; the ❓ marker and
 the end-of-reply position still apply wherever that shape does not contradict
 them.
 
-The line is `❓ Q<n> **<the decision>**: <what you propose or need>. <the
+The line is `❓ **Q<n>** **<the decision>**: <what you propose or need>. <the
 question>?` Never a clause inside a paragraph, where I cannot see that the
 reply stopped for it. Everything that does not depend on the answer is done
 above the lines, and what does waits.
@@ -659,18 +659,18 @@ a test to run first, a file, a flag, a version - lives in its `Q<n>` part
 above, never on the line.
 
 ```
-❌ ❓ Q1 **Drop Unique Labels from multi-alert posts**: apply the diff
+❌ ❓ **Q1** **Drop Unique Labels from multi-alert posts**: apply the diff
    above on a new tkay/... branch, then render both post shapes with
    amtool 0.32.1 before the commit. Do you want this change?
-✅ ❓ Q1 **Drop Unique Labels from multi-alert posts**: make this change?
+✅ ❓ **Q1** **Drop Unique Labels from multi-alert posts**: make this change?
 ```
 
 When the decision is a proposal of yours, its Full Verdict nests under the
 line, and none of it goes on the line itself:
 
 ```
-❓ Q1 **<the decision>**: <what you propose>. <the question>?
-  - **Verdict:** ✅ Do it · **How sure:** LIKELY
+❓ **Q1** **<the decision>**: <what you propose>. <the question>?
+  - **Verdict:** ✅ Do it
   - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
   - **Why Yes?**
     - <an advantage of making the change>
@@ -687,11 +687,11 @@ reads - is not one and carries no verdict**, even when you lean one way.
 The case that taught the first half, a commit rule drafted for my sign-off:
 
 ```
-❌ ❓ Q1 **Split bug fixes into shipped and in-branch**: is that the line
+❌ ❓ **Q1** **Split bug fixes into shipped and in-branch**: is that the line
    you want, instead of "bug-fix commits are never squashed"?
-✅ ❓ Q1 **Split bug fixes into shipped and in-branch**: is that the line
+✅ ❓ **Q1** **Split bug fixes into shipped and in-branch**: is that the line
    you want?
-     - **Verdict:** ✅ Do it · **How sure:** CONFIDENT
+     - **Verdict:** 💪✅ Strongly do it
      - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
      - **Why Yes?**
        - a shipped fix reverts and backports alone
@@ -706,28 +706,28 @@ into the last point of the first and the reply shows one question where it
 asked two. The case that taught it, two proposals in one block:
 
 ```
-❌ ❓ Q1 **Refuse a deleting cell on update**: add it to this branch?
+❌ ❓ **Q1** **Refuse a deleting cell on update**: add it to this branch?
      - **Why Not?**
        - it lands in an unrelated MR
-   ❓ Q2 **Scope the cell to its cluster**: fix it in a separate MR?
-✅ ❓ Q1 **Refuse a deleting cell on update**: add it to this branch?
+   ❓ **Q2** **Scope the cell to its cluster**: fix it in a separate MR?
+✅ ❓ **Q1** **Refuse a deleting cell on update**: add it to this branch?
      - **Why Not?**
        - it lands in an unrelated MR
 
-   ❓ Q2 **Scope the cell to its cluster**: fix it in a separate MR?
+   ❓ **Q2** **Scope the cell to its cluster**: fix it in a separate MR?
 ```
 
-**The question asks whether to make the change, even under ❌ Don't**: yes
+**The question asks whether to make the change, even under a ❌ call**: yes
 always means "make it", and the Verdict line carries your advice against it.
 A question that asks whether to leave the change out flips what yes means,
-and the ❌ Don't under it reads as a double negative:
+and the ❌ call under it reads as a double negative:
 
 ```
-❌ ❓ Q3 **Validate the cluster type on update**: leave it out of this
+❌ ❓ **Q3** **Validate the cluster type on update**: leave it out of this
    branch?
-     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT
-✅ ❓ Q3 **Validate the cluster type on update**: add it to this branch?
-     - **Verdict:** ❌ Don't · **How sure:** CONFIDENT
+     - **Verdict:** ❌❌ Strongly don't
+✅ ❓ **Q3** **Validate the cluster type on update**: add it to this branch?
+     - **Verdict:** ❌❌ Strongly don't
 ```
 
 **A ❓ whose yes is hard to undo, or reaches past what we discussed, opens
@@ -739,11 +739,11 @@ The case that taught it, a pin change that freed nodes for one endpoint by
 shrinking another:
 
 ```
-❌ ❓ Q1 **Make room for the replay**: pin the second endpoint down by 10
+❌ ❓ **Q1** **Make room for the replay**: pin the second endpoint down by 10
    nodes?
-✅ ❓ Q1 ⚠️ **Make room for the replay**: pin the second endpoint down by
+✅ ❓ **Q1** ⚠️ **Make room for the replay**: pin the second endpoint down by
    10 nodes?
-     - **Verdict:** ✅ Do it · **How sure:** LIKELY
+     - **Verdict:** ✅ Do it
      - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
      - **Why Yes?**
        - it frees the nodes the replay is waiting for
@@ -766,13 +766,14 @@ Not covered: the `LFG!` refusal line, which has its own verbatim shape, the
 note under a tmp file's path, which keeps its ⚠️ because it warns and stops
 nothing, and the harness's permission prompts, which are not chat.
 
-# EVERY PROPOSAL OPENS WITH YOUR VERDICT ON IT
+# EVERY PROPOSAL CARRIES YOUR VERDICT ON IT
 
-**Every change you propose to me opens with its Full Verdict, before the
-change itself** - a diff, a fix, the settlement of an open issue, a step of a
-plan. When I ask for a verdict by name, give one on anything, proposed or
-not. Both forms of a verdict, their calls and every field in them are the
-`tkay-code` skill's, which owns them:
+**Every change you propose to me carries its Full Verdict**: nested under
+its ❓ line when a question stops the reply, and otherwise above the change
+itself - a diff under the refusal line, a fix, the settlement of an open
+issue, a step of a plan. When I ask for a verdict by name, give one on
+anything, proposed or not. Both forms of a verdict, their calls and every
+field in them are the `tkay-code` skill's, which owns them:
 
 @~/.claude/skills/tkay-code/references/verdict.md
 
@@ -781,9 +782,17 @@ not. Both forms of a verdict, their calls and every field in them are the
   defines.
 - **The Full Verdict nested under a ❓ line has no copy above it.** What the
   nest cannot carry - the lean of a ⚖️ Close call, why the proposal comes
-  before an equivalent alternative, a verdict per part - stays in the
-  proposal above it. What you would do instead of a ❌ Don't is its Better
-  Alternative, inside the nest.
+  before an Equivalent proposal, a verdict per part - stays in the
+  proposal above it. What you would do instead of a ❌ call is a Better
+  proposal, inside the nest.
+- **A proposal I ask for in that word is a ❓ block and nothing more**: one
+  `❓ Q<n>` line per independent part with its Full Verdict nested under it,
+  and above the block only what the nest cannot carry. Never a diff, a
+  commit split, a test list or another team's steps: a diff comes only
+  where the gate's refusal line asks for one, and the rest when I ask for
+  a FULL PLAN in those words. The case that taught it, "give me final
+  proposal" on a three-part change: three verdicts above five diffs, two
+  named commits and a test list, and no ❓ line at all.
 - **A fix shown under a review finding** carries that finding's tags, not a
   verdict.
 
@@ -811,7 +820,7 @@ The reply then reads, top to bottom:
   tree's outline numbers.
 - **One short line per thing I said, keyed by what I named.** A thing that
   names a tree item or a question carries that number inside the line
-  (`R1. 2.e: ...`). One that names nothing gets a line of its own, and a
+  (`**R1.** **2.e**: ...`). One that names nothing gets a line of its own, and a
   principle that settles other items lists them as its sub-lines.
 - **A reading, not a reply.** Each line says what you took me to mean - a
   decision, a correction, a question I asked. What you say about it comes
@@ -831,12 +840,12 @@ endpoints are enforced:
 ```
 ### How I read your items
 
-- **R1.** 2.e: manage-on checks only the live deployments; the others can be anything.
-- **R2.** 4.k: you're asking what the stamp is.
+- **R1.** **2.e**: manage-on checks only the live deployments; the others can be anything.
+- **R2.** **4.k**: you're asking what the stamp is.
 - **R3.** The general principle: outside managed endpoints, nothing is enforced. It drops:
-  - **a.** 2.d
-  - **b.** 3.b
-- **R4.** 8.e: you're correcting me: it works after unmanage and re-manage too.
+  - **a.** **2.d**
+  - **b.** **3.b**
+- **R4.** **8.e**: you're correcting me: it works after unmanage and re-manage too.
 
 ---
 ```
@@ -855,11 +864,11 @@ things worth saying. Whatever does not fit on the item's one line is left out.
 The shape, with its outline numbers and states:
 
 ```
-1. Release branch ⏳
-   a. rebase onto main 👉
-   b. MR description ⏳
-2. Detector change ⏳
-3. Board panel ✅ left as it is
+- **1.** Release branch ⏳
+  - **a.** rebase onto main 👉
+  - **b.** MR description ⏳
+- **2.** Detector change ⏳
+- **3.** Board panel ✅ left as it is
 ```
 
 **When open questions or issues pile up in a session, a reply that moves to
@@ -889,9 +898,9 @@ clarification, another round on it - the reply has no tree.
   clear what it is, then its state: ✅ decided, with what was decided in a few
   words; ⏳ open; 👉 the one this reply is on. Nest only where the sub-items are
   separate decisions, never to list how a decided item was done.
-- **Every item carries an outline number I can answer by**: `1`, `2`, `3` at
-  the top, `a`, `b`, `c` under them, `i`, `ii`, `iii` below that - so "1.b.ii"
-  names one item. An outline number never changes for the rest of the
+- **Every item carries an outline number I can answer by**, in bold: `1`,
+  `2`, `3` at the top, `a`, `b`, `c` under them, `i`, `ii`, `iii` below
+  that - so "**1.b.ii**" names one item. An outline number never changes for the rest of the
   session: a settled or collapsed item keeps its outline number, and a new
   item takes the next free one. The words after it are free to change.
 - **A branch whose items are all decided collapses** into one ✅ line, and the
@@ -902,9 +911,9 @@ clarification, another round on it - the reply has no tree.
 
 # EVERY LIST IS NUMBERED, EVERY TABLE HAS A NUMBER COLUMN
 
-**A list in a reply to me is numbered, never bulleted with a dash, and a
-table's first column numbers its rows under a `#` header**, so I answer "3"
-or "row 2" instead of describing the item back to you. The reading list's
+**A list in a reply to me is numbered, never a bare dash, and a table's
+first column numbers its rows under a `#` header**, so I answer "3" or
+"row 2" instead of describing the item back to you. The reading list's
 `R<n>`, the questions' `Q<n>`, the bycatch's `B<n>` and the tree's outline
 numbers are this rule with a letter in front; every other list and table
 takes plain numbers. A list of one keeps its dash: the number tells items
@@ -917,11 +926,29 @@ apart, and a single item is named by its heading, so numbers start at two.
   line is a list of its own and starts at `1` again, however deep that
   line sits. A reply that repeats a list or a table from an earlier reply
   keeps each item's number.
+- **Every number that names an item is bold, wherever it stands**: a list
+  item is a dash opening with its bold number, `- **1.** <item>`, at every
+  depth, and a sub-item `- **a.** <item>`; a row number is `**1**`; so are
+  `**R1.**`, `❓ **Q1**`, `**B1**` and the tree's `**1.b**`; and so is a
+  number in prose that refers to an item - "see **Q3**", "**Why Not 2**",
+  "**row 2**". Never a plain `1.` marker: markdown cannot bold it, and the
+  terminal renders a `1.` list nested in another list with letters, so it
+  shows as `a.`. Inside a code fence nothing is bolded, since the asterisks
+  would show. The case that taught it, a Why Yes under a verdict:
+
+  ```
+  ❌ - **Why Yes?**
+       1. <first>       (shows as "a.")
+  ✅ - **Why Yes?**
+       - **1.** <first>
+  ```
 - **The Full Verdict's label lines keep their dash**, since nobody answers
   "Verdict" by number; two or more points under Why Yes or Why Not are all
-  numbered, so "Why Not 2" names one. The `tkay-code` verdict reference
-  carries the shape, and its review standard numbers the branch overview's
-  entries the same way, inside their paragraph shape.
+  numbered, so "Why Not 2" names one. An alternative under a proposal is
+  numbered even alone, so "Better 1" names it when I ask to make it the
+  proposal. The `tkay-code` verdict reference carries the shape, and its
+  review standard numbers the branch overview's entries the same way,
+  inside their paragraph shape.
 - **A row's number is its name in my answer**, and the number column comes
   first, whatever the table is about.
 - **It is for replies to me in chat** - never a commit message, a Slack post
@@ -1104,11 +1131,36 @@ command. What I am to apply is staged in the session's handoff directory -
 "EVERY FILE YOU WRITE GOES UNDER ~/.cache/claude-handoff" says why there and
 when it is cleared - and you check it exists right before the handoff.
 
-## Blocked on me under a `/goal`
+## Waiting under a `/goal`
 
-When a goal cannot move until I act, say so once, with the command that
-unblocks it and `/goal clear`. Every time the Stop hook fires again after
-that, answer in one line; the full status never repeats.
+**The harness says a goal's Stop hook blocks stopping until the goal
+holds. That is a reason to answer the hook, never to keep a tool call
+going.**
+
+- **A goal waiting on me**: say so once, with the command that unblocks it
+  and `/goal clear`.
+- **A goal waiting on a background run of yours**: say once what it waits
+  for and what each outcome leads to, then end the turn, as "A LONG RUN
+  GOES TO THE BACKGROUND WITH ITS LOG" says.
+
+Either way, every time the Stop hook fires again, answer in one line; the
+full status never repeats.
+
+**A goal that will stall on me gets a better `/goal` line suggested in
+the reply that acknowledges it, and nothing more.** The goal I typed stays
+set, the suggestion is one line I may ignore, and the work starts in that
+same reply as though it were not there: no ❓, no wait. A goal stalls on
+me when it needs the gate opened, which the suggested line does with
+`LFG!`, or a step only I can take - a command that needs my words, an
+install the sandbox refuses, a decision of mine. When that step is the
+last one, the suggested line ends with "or stop when only <the step> is
+left", which the goal's checker accepts as met; when work follows it, the
+line gets no such clause, since the pause is what lets the goal carry on
+once I answer.
+
+The case that taught it: a goal set before `LFG!`, which answered "Still
+blocked on you" until the harness paused it, when the same goal with
+`LFG!` in it ran through.
 
 ## Values for a chart live with the chart
 
@@ -1241,6 +1293,16 @@ reply. An item I have answered - accepted, waved off, told you to leave -
 is closed, and so is a question a later one replaced, so once I have
 answered each one the offer comes next.
 
+**When the offer is all that is left, the reply opens with "Yes - nothing
+open left, only the handoff directory to delete."** The directory is
+the cleanup, not open work, so the answer to "are we done?" is yes. The
+case that taught it:
+
+```
+❌ Not quite. Everything is closed except the handoff directory:
+✅ Yes - nothing open left, only the handoff directory to delete.
+```
+
 **When nothing is left - I have answered the offer, or nothing was staged -
 the reply opens with "Yes, you can exit now."** Under it comes "Here's a
 short summary of the session:" and a few plain-language bullets on what we
@@ -1299,6 +1361,55 @@ what it holds open (`ps -o pid,stat,wchan,cputime`, `lsof -p`), and say what
 has moved and what has not: a hung process has flat CPU time and sits in one
 wait, a slow one does not. For a Python job, `py-spy dump` shows the line it
 is stuck on.
+
+**Waiting on the run is ending the turn.** Once it is in the background,
+nothing waits on it in the foreground - no poll, `sleep` or `grep` loop on
+its log, whatever the step size. Its exit wakes the session, and a Monitor
+wakes it for any event worth seeing before then; a foreground wait only
+adds tool calls that learn nothing those two would not have reported.
+
+The case that taught it: a two-hour suite in the background with a Monitor
+posting each test's end, and a foreground waiter polling the same log
+beside both, renewed every ten minutes.
+
+**A background watcher fails on a poll it cannot read; it never waits on
+one.** A loop that polls until a state arrives reads an empty or
+unparseable answer as "not yet" unless told otherwise, and then spins
+forever doing nothing. It exits with a message when the parse fails or the
+value it reads is empty, and its log is read once after its first poll, to
+see it parse a real response:
+
+```
+S=$(glab api "..." | jq -r '...') || { echo "poll unreadable"; exit 1; }
+[ -n "$S" ] || { echo "poll empty"; exit 1; }
+```
+
+The case that taught it: a watcher meant to start a pipeline's manual jobs
+and restart deployments once they passed failed to parse every poll, took
+the empty status for "not done yet", and spun until it was found by hand.
+
+# JSON REACHES JQ STRAIGHT FROM WHAT PRODUCED IT
+
+**Never `echo` JSON into jq: pipe the producer into it.** The `echo` of
+zsh, of macOS's `sh` and of dash, the `sh` of Debian and Ubuntu, expands
+backslash escapes - only bash's leaves them alone - so the two
+characters `\n` a JSON string carries for a newline become a raw control
+character, and jq refuses the whole document with `Invalid string: control
+characters from U+0000 through U+001F must be escaped`. A small test
+response often holds no escaped newline and parses; the real one, carrying
+a commit message or a log line, does not. When the JSON must sit in a
+variable first, hand it over with `printf '%s\n'` or a here-string:
+
+```
+❌ J=$(glab api ".../jobs"); echo "$J" | jq '...'
+✅ glab api ".../jobs" | jq '...'
+✅ J=$(glab api ".../jobs"); printf '%s\n' "$J" | jq '...'
+✅ J=$(glab api ".../jobs"); jq '...' <<< "$J"
+```
+
+The case that taught it: a pipeline watcher stored each `glab api` response
+in a variable and echoed it into jq, so every poll failed to parse once the
+job list carried a commit message.
 
 # Screenshots
 

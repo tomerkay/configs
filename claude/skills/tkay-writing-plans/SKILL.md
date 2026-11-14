@@ -18,7 +18,9 @@ still open, and what is already settled or not a problem. It is shaping as Basec
 naming the rabbit holes - never a brainstorm where every idea stands unchallenged.
 
 - **What shaping produces**: a list in chat, one line per item, each with an outline
-  number I can answer by - `1`, `1.a`, `1.a.i` - that never changes once given.
+  number I can answer by - `1`, `1.a`, `1.a.i` - that never changes once given. Each
+  item is a dash opening with its number in bold, `- **1.** <item>`, at every depth:
+  a terminal renders a plain `1.` list nested in another with letters.
   Nothing else is drafted: no plan document, no contract, no black-box tests, no
   commits, no incidents table, no questions-and-answers or TBD section. What we want
   may still change completely, and anything built now is built for a plan that may
@@ -31,11 +33,11 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
   column that was in the plan but in no line of the shape:
 
   ```
-  ❌ 5.d The load-balancing weights plan, on this branch
-  ✅ 5.d The load-balancing weights plan, on this branch
-         i. The weights leave the pin rows and the scaling lock
-         ii. A new name for the scaling page's pins tab
-         iii. A column on that tab showing which way each pin scaled
+  ❌ - **5.d** The load-balancing weights plan, on this branch
+  ✅ - **5.d** The load-balancing weights plan, on this branch
+       - **i.** The weights leave the pin rows and the scaling lock
+       - **ii.** A new name for the scaling page's pins tab
+       - **iii.** A column on that tab showing which way each pin scaled
   ```
 - **Shaping thinks as hard as the full plan; only what it writes is smaller.** The
   full plan's checks run while shaping, and what they find reaches me as items and
@@ -285,7 +287,7 @@ wrote after an outage, commit bodies, postmortems, tickets - and says what the c
 does to each. The section is there whether the change is a redesign, a feature or a
 bug fix; an incident the plan never names is one the reader assumes it handles.
 
-**The section opens with a summary table**: one row per incident, numbered, with
+**The section opens with a summary table**: one row per incident, numbered in bold, with
 the incident, its status, and in one line how it is fixed or why it is not. A
 reader sees the state of every incident before reading any of them.
 
@@ -335,8 +337,8 @@ after I agree to defer it. A TBD you invented reads as a commitment I never made
 landed nowhere: an item of the shape no section carries, a thing I raised and never
 settled, something you found and we did not chase. A finding that changes what we want
 is raised the moment it is found, as "Executing a plan" says for a hole. Everything
-else is floated once, before the full plan is written: a numbered list in chat, one
-line per item with why it matters, and for each I pick its bucket - in scope, TBD, or
+else is floated once, before the full plan is written: a numbered list in chat, each
+number in bold as in shaping, one line per item with why it matters, and for each I pick its bucket - in scope, TBD, or
 a rejected decision below the divider. Only then is the plan written, with every item
 in its bucket.
 

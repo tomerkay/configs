@@ -3,15 +3,16 @@
 
 Checks, on the reply's text outside code fences:
 - a ❓ line with a Verdict line nested under it is a proposal: the Verdict carries one of the
-  change calls and its How sure, and a Change line with How sure, Size and Difficulty, Why
-  Yes and Why Not are nested too;
+  change calls, and a Change line with How sure, Size and Difficulty, Why Yes and Why Not
+  are nested too;
 - a ❓ line flagged ⚠️ has a Verdict nested under it, since only a question whose yes changes
   something can warn;
 - every Verdict line carries one of the calls, so a call in an old or misspelt shape never
   passes unchecked;
-- a reply with a change-call Verdict anywhere carries How sure on that line and a Change line,
-  Size, Difficulty, Why Yes and Why Not somewhere, so a ❓ phrased as a preference question
-  cannot shed them;
+- a change-call Verdict line carries no How sure, since the call carries it, and every other
+  Verdict line carries one;
+- a reply with a change-call Verdict anywhere carries a Change line, Size, Difficulty, Why
+  Yes and Why Not somewhere, so a ❓ phrased as a preference question cannot shed them;
 - the old shapes are sent back: a call as a tag on the ❓ line, a `VERDICT:` header, and an
   emoji before Why Yes or Why Not.
 
@@ -29,13 +30,17 @@ import re
 import sys
 
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
-QUESTION_RE = re.compile(r"^❓ Q\d+ ")
+# The question number is bold by the rules, but a plain one must still be checked: matching
+# only one spelling leaves every ❓ in the other unchecked.
+QUESTION_NUMBER = r"(?:\*\*Q\d+\*\*|Q\d+)"
+QUESTION_RE = re.compile(rf"^❓ {QUESTION_NUMBER} ")
 # The variation selector after ⚖, ⚠, 🗑 and ⏸ is optional: both spellings render as the same
 # symbol.
-WARNING_QUESTION_RE = re.compile(r"^❓ Q\d+ ⚠️? ")
-TAGGED_QUESTION_RE = re.compile(r"^❓ Q\d+ (⚠️? )?\*\*.+?\*\* \[")
-CHANGE_CALL = r"(✅ Do it|⚖️? Close call|❌ Don't)"
-ANY_CALL = (r"(✅ Do it|⚖️? Close call|❌ Don't|✅ Ship it|👌 Fixed later|🔧 Needs change"
+WARNING_QUESTION_RE = re.compile(rf"^❓ {QUESTION_NUMBER} ⚠️? ")
+TAGGED_QUESTION_RE = re.compile(rf"^❓ {QUESTION_NUMBER} (⚠️? )?\*\*.+?\*\* \[")
+CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Strongly don't|❌ Don't)"
+ANY_CALL = (r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Strongly don't|❌ Don't"
+            r"|✅ Ship it|👌 Fixed later|🔧 Needs change"
             r"|🪓 Split|📝 Reword|🔀 Squash into|🗑️? Drop|🔧 Add fix|⏸️? Leave for now)")
 VERDICT_LINE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*Verdict:\*\* ")
 KNOWN_VERDICT_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*Verdict:\*\* {ANY_CALL}\b")
@@ -95,7 +100,11 @@ def problems(text):
         if VERDICT_LINE_RE.match(line) and not KNOWN_VERDICT_RE.match(line):
             found.append(f"{line.strip()[:60]}... carries no call, or one not in its "
                          "emoji-and-word shape")
-        if CHANGE_VERDICT_RE.match(line) and not HOW_SURE_RE.search(line):
+        if CHANGE_VERDICT_RE.match(line) and HOW_SURE_RE.search(line):
+            found.append(f"{line.strip()[:60]}... carries a How sure; a change's call "
+                         "carries it")
+        elif (KNOWN_VERDICT_RE.match(line) and not CHANGE_VERDICT_RE.match(line)
+              and not HOW_SURE_RE.search(line)):
             found.append(f"{line.strip()[:60]}... carries no How sure on the Verdict line")
         if OLD_HEADER_RE.match(line):
             found.append(f"{line[:60]}... is the old VERDICT: header; the call goes on a "
@@ -123,13 +132,14 @@ def main():
               + "; ".join(found)
               + ". Resend only what is wrong, with nothing on the ❓ line but the decision and "
                 "the question, and the Full Verdict as list items under it: **Verdict:** with "
-                "the call and its How sure, **Change:** with How sure, Size and Difficulty, "
+                "the call alone for a change, the call and its How sure for a CR verdict, "
+                "**Change:** with How sure, Size and Difficulty, "
                 "then **Why Yes?** and **Why Not?** with no emoji before them.")
     print(json.dumps({"decision": "block", "reason": reason}))
 
 
 def selftest():
-    verdict = ("  - **Verdict:** ✅ Do it · **How sure:** CONFIDENT\n"
+    verdict = ("  - **Verdict:** ✅ Do it\n"
                "  - **Change:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n")
     whys = "  - **Why Yes?**\n    - a\n  - **Why Not?**\n    - b\n"
     good_question = ("Q1. The proposal\n\n"
@@ -144,10 +154,20 @@ def selftest():
         ("proposal missing Why Not",
          "❓ Q1 **X**: ok?\n" + verdict.replace("✅ Do it", "⚖️ Close call")
          + "  - **Why Yes?**\n    - a\n", True),
-        ("proposal missing How sure on the Verdict line",
-         "❓ Q1 **X**: ok?\n  - **Verdict:** ✅ Do it\n"
+        ("proposal with a How sure on the Verdict line",
+         "❓ Q1 **X**: ok?\n  - **Verdict:** ✅ Do it · **How sure:** LIKELY\n"
          "  - **Change:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n"
          + whys, True),
+        ("Strongly do it, full shape",
+         good_question.replace("✅ Do it", "💪✅ Strongly do it"), False),
+        ("Strongly don't, full shape",
+         good_question.replace("✅ Do it", "❌❌ Strongly don't"), False),
+        ("Strongly do it with a How sure",
+         good_question.replace("✅ Do it", "💪✅ Strongly do it · **How sure:** CONFIDENT"),
+         True),
+        ("commit verdict with no How sure",
+         "- **Verdict:** ✅ Ship it\n"
+         "- **Commit:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n", True),
         ("proposal in the old one-line shape, no Change line",
          "❓ Q1 **X**: ok?\n  - **Verdict:** ✅ Do it · **How sure:** CONFIDENT · **Size:** small"
          " · **Difficulty:** easy\n" + whys, True),
@@ -169,7 +189,7 @@ def selftest():
         ("Q-part Verdict above an untagged ❓, items nowhere",
          "Q1. - **Verdict:** ❌ Don't · **Size:** small\n\n❓ Q1 **X**: ok?\n", True),
         ("standalone proposal verdict with every field",
-         "- **Verdict:** ⚖️ Close call · **How sure:** LIKELY\n"
+         "- **Verdict:** ⚖️ Close call\n"
          "- **Change:** **How sure:** VERIFIED · **Size:** small · **Difficulty:** easy\n"
          "- **Why Yes?**\n  - a\n- **Why Not?**\n  - none\n", False),
         ("review verdicts with Commit and Fix lines, table rows and install question",
@@ -196,6 +216,16 @@ def selftest():
          False),
         ("Needs change verdict with a reason",
          "- **Verdict:** 🔧 Needs change (crashes) · **How sure:** CONFIDENT\n", False),
+        ("bold question number, full shape",
+         good_question.replace("❓ Q1 ", "❓ **Q1** "), False),
+        ("bold question number, second of two proposals incomplete",
+         good_question + "\n❓ **Q2** **Y**: ok?\n  - **Verdict:** ❌ Don't · **Size:** small\n",
+         True),
+        ("bold question number, warning ❓ with no Verdict", "❓ **Q1** ⚠️ **X**: ok?\n", True),
+        ("bold question number, old tag on the ❓ line",
+         good_question.replace("❓ Q1 **Split fixes**:", "❓ **Q1** **Split fixes** [✅ DO IT]:"),
+         True),
+        ("half-bold question number is not a question", "❓ **Q1 ⚠️ **X**: ok?\n", False),
         ("broken shape inside a code fence is an example",
          "```\nVERDICT: ✅ DO IT\n❓ Q1 **X** [✅ DO IT]: ok?\n  - 👍 **Why Yes?**\n```\n", False),
     ]

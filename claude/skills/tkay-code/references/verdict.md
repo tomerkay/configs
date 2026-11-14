@@ -36,7 +36,7 @@ cheap and the change is not, the call says so and no design is polished.
 ## The Full Verdict
 
 ```
-- **Verdict:** ✅ Do it · **How sure:** LIKELY
+- **Verdict:** ✅ Do it
 - **Change:** **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** hard
 - **Why Yes?**
   - <an advantage of making the change>
@@ -49,27 +49,29 @@ item, so a terminal keeps each on its own line wherever the verdict stands -
 under a question, above a proposal, in a commit's review. Two or more
 points under Why Yes or Why Not are numbered `1`, `2`, however deep the
 verdict sits, so one is answered as "Why Not 2"; a single point keeps its
-dash. A proposal's Full Verdict ends with its alternatives when it has
-any, also siblings of the Verdict line; "Alternatives" below gives their
-shape. The case that taught the numbering, a verdict nested under a
-question:
+dash. **The number is written as a dash item opening with it in bold**,
+`- **1.** <point>`: a terminal renders a numbered list nested in another
+list with letters, so a plain `1.` under a label line shows as `a.`. A
+proposal's Full Verdict ends with its alternatives when it has any, also
+siblings of the Verdict line; "Alternatives" below gives their shape. The
+case that taught the numbering, a verdict whose `1.` and `2.` showed on
+screen as `a.` and `b.`:
 
 ```
-❌ - <the question the verdict nests under>
-     - **Why Yes?**
-       a. <first>
-       b. <second>
-✅ - <the question the verdict nests under>
-     - **Why Yes?**
-       1. <first>
-       2. <second>
+❌ - **Why Yes?**
+     1. <first>
+     2. <second>
+✅ - **Why Yes?**
+     - **1.** <first>
+     - **2.** <second>
 ```
 
 **The call and the thing judged are two lines, because they are two
 claims**: whether to do it, and whether it is correct. A staged change can
 be verified by its tests while doing it is a close call, and a commit whose
 code is verified can still need splitting. The Verdict line carries the
-call and how sure you are of it; the line under it carries the thing - its
+call and how sure you are of it - for a change, the call alone, since its
+call carries how sure you are; the line under it carries the thing - its
 How sure, Size and Difficulty - under the name of what it is:
 
 - **Change**, for a proposal: the change as drafted, or the design when
@@ -97,14 +99,14 @@ One line, for a place with no room for Why Yes and Why Not - a table cell, a
 summary entry:
 
 ```
-✅ Do it · **How sure:** LIKELY · **Size:** medium · **Difficulty:** hard
+✅ Do it · **Size:** medium · **Difficulty:** hard
 🔧 Needs change (<the reason in a few words>) · **How sure:** CONFIDENT
 ```
 
 The reason goes in brackets right after the call, and only when the call
 needs one. A TL;DR Verdict never carries Why Yes, Why Not or
-alternatives. A proposal's carries the call's How sure and the change's
-Size and Difficulty on its one line, since it cannot nest; a CR's is the
+alternatives. A proposal's carries the call and the change's Size and
+Difficulty on its one line, since it cannot nest; a CR's is the
 call alone on a table's head row, and the Commit or Bycatch line, the Fix
 lines and the call's How sure fill the row under it, each without a label
 its column already gives.
@@ -116,14 +118,21 @@ improvised, and each set is used only for its own kind. **Each call opens
 with its emoji**, wherever it is written - a verdict, a table cell or a
 sentence; nothing else in a verdict carries one.
 
-**A change** - a change proposed to me, an option, a tool or an idea:
+**A change** - a change proposed to me, an option, a tool or an idea. Its
+call carries how sure you are, by the levels "How sure" below defines, so
+its Verdict line has no How sure of its own:
 
-- **✅ Do it** - you would make it.
-- **⚖️ Close call** - both ways are defensible; the text around the verdict
-  says which way you lean and why.
-- **❌ Don't** - you advise against it and name what you would do
-  instead: on a proposal or one of its alternatives, the Better
-  Alternative; anywhere else, the text around the verdict.
+- **💪✅ Strongly do it** - you would make it, and you are CONFIDENT or
+  surer that it is right.
+- **✅ Do it** - you would make it, and you are LIKELY right.
+- **⚖️ Close call** - both ways are defensible, or you are 50-50 on which
+  is right; the text around the verdict says which way you lean and why.
+- **❌ Don't** - you advise against it, LIKELY right, and name what you
+  would do instead: on a proposal, a Better proposal under it; on an
+  alternative, the proposal it is judged against; anywhere else, the text
+  around the verdict.
+- **❌❌ Strongly don't** - you advise against it, CONFIDENT or surer that
+  it is right, and name what you would do instead, as for ❌ Don't.
 
 **A commit** under review:
 
@@ -171,20 +180,22 @@ judged:
 - **🔧 Add fix** - fix it as part of this work.
 - **⏸ Leave for now** - not in this work, with the reason in a few words.
 
-The call says what to do, never how sure you are of it.
+A CR call - commit, branch, entry or bycatch - says what to do, never how
+sure you are of it; a change's call says both.
 
 ## How sure, Size and Difficulty
 
-- **How sure is how sure you are of the claim on its line**: on the
+- **How sure is how sure you are of the claim on its line**: on a CR's
   Verdict line, that the call is right - on a commit, that its findings
   are real and in the right colour, since the call follows from them; on a
   Change, Commit or Bycatch line, that the thing does what it claims; on a
-  Fix line, that the fix would work. Never how sure you are that I will
+  Fix line, that the fix would work. A change's Verdict line has none: its
+  call carries it. Never how sure you are that I will
   agree. One of four, each defined by what backs it: VERIFIED, you ran it
   or tested the exact behaviour; CONFIDENT, not run, but you traced every
   step in the code or the docs; LIKELY, one unchecked inference carries it;
   50-50, more than one unchecked inference, or you do not know. Below 50-50
-  the call never says go ahead: never ✅ Do it, ✅ Ship it, 👌 Fixed later,
+  a CR call never says go ahead: never ✅ Ship it, 👌 Fixed later,
   🪓 Split, 📝 Reword, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first,
   ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
 - **Size is how much the thing touches**, one of four: huge, large, medium,
@@ -201,7 +212,7 @@ The call says what to do, never how sure you are of it.
 **They are the part I read most**, so they hold the real case and nothing
 else. Why Yes is the advantages of making the change; Why Not is its
 drawbacks, costs and risks. Both are about the change, never about the call
-or how sure you are: under ❌ Don't, Why Yes holds the case you argue
+or how sure you are: under a ❌ call, Why Yes holds the case you argue
 against.
 
 - **Nothing real is left out.** Every advantage and every drawback that could
@@ -267,56 +278,79 @@ against.
 
 ## Alternatives
 
-**A proposal shows every other way as good as it or better**, so a real
+**A proposal shows every other way it was weighed against**, so a real
 choice never hides behind the one you picked. Only a Change has
 alternatives: a Commit or Bycatch verdict judges what already sits in the
 code.
 
-- **Two kinds, each a field of its own, in this order:**
-  1. **Better Alternatives** - a better call than the proposal. Only a
-     proposal that is mine, a change I asked for, can have one.
-  2. **Equivalent Alternatives** - the same call as the proposal.
-- **Each one looks exactly like the proposal**: its own Verdict, Change,
-  Why Yes and Why Not, held to every rule above. Two or more are
-  numbered as Why Yes and Why Not are, so one is answered as
-  "Equivalent 2".
-- **A worse way is left out, and so is a field with nothing in it** - I
-  ask for the rest when I want them. A proposal with neither kind ends at
-  its Why Not, and a fix to the draft goes into the draft, never into an
-  alternative.
-- **Beside an equivalent alternative, one sentence above the question
-  says why the proposal comes first**, where the lean of a ⚖️ Close call
-  goes: when two carry the same call, the order is the real choice.
+- **Three fields, in this order, each opening with its count** - a count
+  of one takes the singular, and a field with none is left out:
+  1. **`<N>` Better proposals:** - a better call than the proposal, each
+     written out. Only a proposal that is mine, a change I asked for, can
+     have one.
+  2. **`<N>` Equivalent proposals:** - the same call as the proposal, each
+     written out; since the call carries how sure you are, a ✅ Do it
+     beside a 💪✅ Strongly do it proposal is Lesser. Beside a Better
+     proposal it is the count alone:
+     **`<N>` Equivalent proposals are possible**.
+  3. **`<N>` Lesser proposals** - a worse call; the count alone, until I
+     ask to see them.
+- **Each one written out opens with its number, even alone**, so "Better
+  2" names one, and is judged against the proposal, never on its own: its
+  own Verdict and Change, then **Gains** and **Losses** - what it has over
+  the proposal and what it gives up against it - each held to the rules of
+  Why Yes and Why Not. An Equivalent has both; one with no Losses is
+  Better, one with no Gains is Lesser.
+- **A proposal with no alternatives ends at its Why Not**, and a fix to
+  the draft goes into the draft, never into an alternative.
+- **Beside Equivalents written out, one sentence above the question says
+  why the proposal comes first**, where the lean of a ⚖️ Close call goes:
+  when two carry the same call, the order is the real choice.
+- **"Make Better 2 the proposal" swaps them**: it gets its own Why Yes and
+  Why Not, and every other way - the old proposal included - is judged
+  again against it and lands in the field it now belongs to. With no
+  Better left, the Equivalents are written out again.
 
-The shape of an equivalent alternative; a better one is the same under
-its own label:
+The shape, with every field present:
 
 ```
-- **Equivalent Alternatives:**
-  - **<another way>**
-    - **Verdict:** ✅ Do it · **How sure:** LIKELY
+- **Why Not?**
+  - <a drawback of the proposal>
+- **2 Better proposals:**
+  - **1. <another way>**
+    - **Verdict:** ✅ Do it
     - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
-    - **Why Yes?**
-      - <an advantage of making it>
-    - **Why Not?**
-      - <a drawback, a cost or a risk of making it>
+    - **Gains:**
+      - <what it has over the proposal>
+    - **Losses:**
+      - <what it gives up against the proposal>
+  - **2. <another way>**
+    - <its own Verdict, Change, Gains and Losses>
+- **1 Equivalent proposal is possible**
+- **2 Lesser proposals**
 ```
 
 The case that taught it, a router timeout proposed with every way it beat
-listed under it, until the lists read as clutter:
+written out under it, and its alternatives judged on their own, which
+left the comparison with the proposal to the reader:
 
 ```
-❌ - **Why Not?**
-     - <its drawbacks>
-   - **Lesser Alternatives:**
-     1. a circuit breaker per decode pod
-     2. a shorter readiness probe period
-✅ <one sentence: why the client timeout comes before `asyncio.wait_for`>
-   - **Why Not?**
-     - <its drawbacks>
-   - **Equivalent Alternatives:**
+❌ - **Equivalent Alternatives:**
      - **`asyncio.wait_for` around the call**
-       - <its own Verdict, Change, Why Yes and Why Not>
+       - **Why Yes?**
+         - <an advantage of making it>
+   - **Lesser Alternatives:**
+     - **1.** a circuit breaker per decode pod
+     - **2.** a shorter readiness probe period
+✅ <one sentence: why the client timeout comes before `asyncio.wait_for`>
+   - **1 Equivalent proposal:**
+     - **1. `asyncio.wait_for` around the call**
+       - <its own Verdict and Change>
+       - **Gains:**
+         - covers the connect step too, not only the read
+       - **Losses:**
+         - a cancelled read can leave the connection out of the pool
+   - **2 Lesser proposals**
 ```
 
 **Independent parts get a verdict each.** One verdict over parts you rate

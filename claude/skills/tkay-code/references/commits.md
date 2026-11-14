@@ -105,6 +105,35 @@ rewritten commit - confirm with `git log --format='%h %G? %s'` before deleting
 the backup. When a permission layer refuses such a script as destructive, hand
 me the command to run; never reach the same rewrite by another route.
 
+**The rebase builds every commit whose tree is new, as it replays them.** A
+replay that applies without a conflict proves nothing about the code: git
+merges text, not meaning, so a symbol the new base added or renamed breaks
+a commit whose diff never touched it. `--exec` on that same rebase command
+runs the repo's full build after each commit and stops the rebase on the
+first one that fails. A commit whose tree the backup already has is
+skipped, since the rebase did not change it:
+
+```
+--exec 'git log --format=%T <backup> | grep -qx "$(git rev-parse HEAD^{tree})" || <full build>'
+```
+
+Onto a new base every tree is new, so every commit builds; a reword, or a
+squash of a commit into the one under it, keeps the trees and builds
+nothing.
+
+- **The full build, never the packages the commit touched.** The break
+  lands in code that depends on the change, which a list of touched
+  packages leaves out. A toolchain with a build cache already rebuilds
+  only what changed and what depends on it - `go build ./...` in Go - so a
+  narrower list saves nothing that is safe to save.
+- **Never skip a commit because its diff holds no source file.** An
+  embedded file, a generated file or a build config breaks the build as
+  surely as code, and no list of build inputs written here stays complete.
+
+The case that taught it: a plain replay onto a new base merged a gauge the
+base had added cleanly into commits that no longer compiled, and git
+reported success.
+
 **On a branch only I push to, whether it is already pushed is NOT an input to
 this decision.** I force-push my own branches, so a commit already on the
 remote squashes and amends exactly like one that is not. "It's already pushed"

@@ -183,11 +183,11 @@ judged:
 ```
 ✂️ Split first (carve out 2) · **How sure:** CONFIDENT
 
-• 1 <one thing the branch does, in plain words>
+• **1** <one thing the branch does, in plain words>
 ✅ Keep it · **How sure:** LIKELY
 **Commits:** `<sha>`, `<sha>`
 
-• 2 <the next thing the branch does>
+• **2** <the next thing the branch does>
 ✂️ Carve out · **How sure:** CONFIDENT
 **Commits:** `<sha>`
 ```
@@ -200,8 +200,8 @@ judged:
 - **One entry per distinct thing the branch does.** A branch that does one
   thing gets one entry; several changes get one each, never folded into one
   entry where a weak part hides behind a strong one.
-- **Each entry is a `•` paragraph opening with its number, never a markdown
-  list item**: `• 1`, the sentence, then the TL;DR Verdict, then the Commits
+- **Each entry is a `•` paragraph opening with its bold number, never a markdown
+  list item**: `• **1**`, the sentence, then the TL;DR Verdict, then the Commits
   line, one per line, and a blank line before the next entry. A terminal
   drops the blank line between list items, and the entries run together;
   the number is how I answer an entry.
@@ -248,7 +248,7 @@ last commit's review.
 
 | # | What the commit does | Findings | Verdict |
 |---|---|---|---|
-| 1 | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> |
+| **1** | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> |
 | | **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **How sure:** <level> |
 
 - **The head row** is the commit, its findings and its call, nothing else.
@@ -259,7 +259,7 @@ last commit's review.
   The column names what a cell holds, so the Commit, Bycatch and Verdict
   lines drop their label there; the two Fix lines keep theirs, since they
   share one cell.
-- **#** — `1`, `2`, `3` down the table in branch order, so I answer a row by
+- **#** — **1**, **2**, **3** down the table in branch order, in bold, so I answer a row by
   its number.
 - **What the commit does** — one sentence on what the diff actually does,
   verified against it. Never the subject line pasted in: the subject may be the
@@ -313,10 +313,10 @@ The same two rows per item as the commits table, under its own heading:
 
 | # | What the bycatch is | Findings | Verdict |
 |---|---|---|---|
-| B1 | <what it is, with `file`> | 🟠 1 | <call> |
+| **B1** | <what it is, with `file`> | 🟠 1 | <call> |
 | | **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **How sure:** <level> |
 
-- **#** — `B1`, `B2`, `B3` down the table, so I answer a row by its number
+- **#** — **B1**, **B2**, **B3** down the table, in bold, so I answer a row by its number
   instead of describing it back to you. The letter keeps it apart from every
   other number in the reply, and `B2` in my message names that row and
   nothing else. A repeat CR in the same session keeps a carried row's number
@@ -350,9 +350,9 @@ The case that taught it, a CR whose branch had already fixed two of its
 three rows:
 
 ```
-❌ | B1 | Panel 12 double-counted during a pod overlap. | 🟡 1 | Fixed by `<sha>`. |
-   | B3 | Standby passes stamp the last-pass timestamp. The board side is now covered by tile 30. The code half is still open. | 🟠 1 | ⏸ Leave for now (...) |
-✅ | B3 | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). | 🟠 1 | ⏸ Leave for now (...) |
+❌ | **B1** | Panel 12 double-counted during a pod overlap. | 🟡 1 | Fixed by `<sha>`. |
+   | **B3** | Standby passes stamp the last-pass timestamp. The board side is now covered by tile 30. The code half is still open. | 🟠 1 | ⏸ Leave for now (...) |
+✅ | **B3** | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). | 🟠 1 | ⏸ Leave for now (...) |
 ```
 
 When nothing is open, the heading stays and the table is one line instead:
@@ -594,9 +594,9 @@ Doesn't say: hashX did O(n) iteration → CPU spikes; hashY is O(1).
 "Reduce" → "reduce".
 
 #### ✅ Correct:
-1. Type is right: perf
-2. Has scope: (validator)
-3. The hashY swap itself is correct - the algorithm change is sound
+- **1.** Type is right: perf
+- **2.** Has scope: (validator)
+- **3.** The hashY swap itself is correct - the algorithm change is sound
 ```
 
 And when it's clean, the FINDINGS line says so plainly - don't make a pile of nits look like danger:
