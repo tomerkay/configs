@@ -671,7 +671,7 @@ line, and none of it goes on the line itself:
 ```
 ❓ **Q1** **<the decision>**: <what you propose>. <the question>?
   - **Verdict:** ✅ Do it
-  - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+  - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
   - **Why Yes?**
     - <an advantage of making the change>
   - **Why Not?**
@@ -691,8 +691,8 @@ The case that taught the first half, a commit rule drafted for my sign-off:
    you want, instead of "bug-fix commits are never squashed"?
 ✅ ❓ **Q1** **Split bug fixes into shipped and in-branch**: is that the line
    you want?
-     - **Verdict:** 💪✅ Strongly do it
-     - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+     - **Verdict:** ✅ Do it
+     - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
      - **Why Yes?**
        - a shipped fix reverts and backports alone
      - **Why Not?**
@@ -725,9 +725,9 @@ and the ❌ call under it reads as a double negative:
 ```
 ❌ ❓ **Q3** **Validate the cluster type on update**: leave it out of this
    branch?
-     - **Verdict:** ❌❌ Strongly don't
+     - **Verdict:** ❌ Don't
 ✅ ❓ **Q3** **Validate the cluster type on update**: add it to this branch?
-     - **Verdict:** ❌❌ Strongly don't
+     - **Verdict:** ❌ Don't
 ```
 
 **A ❓ whose yes is hard to undo, or reaches past what we discussed, opens
@@ -744,7 +744,7 @@ shrinking another:
 ✅ ❓ **Q1** ⚠️ **Make room for the replay**: pin the second endpoint down by
    10 nodes?
      - **Verdict:** ✅ Do it
-     - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+     - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
      - **Why Yes?**
        - it frees the nodes the replay is waiting for
      - **Why Not?**

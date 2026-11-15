@@ -145,7 +145,7 @@ A 🔴 or 🟠 count on the line means the commit blocks; a line with only 🟡 
 **The commit's Full Verdict** follows the FINDINGS line, in the shape and with the commit calls of tkay-code's `verdict.md`:
 
 - **Its call is the one its commits-table row gives**, under the rules in "The commits table" below. The row is this verdict's TL;DR, so the two never disagree.
-- **The Commit line is the commit as it is**: how sure you are it does what it claims at HEAD, apart from its findings, and how big and hard it is.
+- **The Commit line is the commit as it is**: the Evidence that it does what it claims at HEAD, apart from its findings, and how big and hard it is.
 - **The Fix lines are the work the findings ask for.** `Fix 🔴🟠` names what unblocks the merge and what it costs; `Fix 🟡⚪` names the clean-up and what it costs, and is mine to take or leave. One whose colours have no finding is left out.
 - **Every finding has a fix that changes something.** A finding whose fix would be to leave the code as it is is not a finding: drop it before the verdict, never write it with a Fix line that says to leave it. A bycatch row's `⏸ Leave for now` is different: its fix exists, and the call defers it. The case that taught it, a ⚪ on a heading that repeated the repo name the change was asked to add:
 
@@ -181,14 +181,14 @@ judged:
 # Repo <repo> branch <branch> Overview
 
 ```
-✂️ Split first (carve out 2) · **How sure:** CONFIDENT
+✂️ Split first (carve out 2) · **Evidence:** CONFIDENT
 
 • **1** <one thing the branch does, in plain words>
-✅ Keep it · **How sure:** LIKELY
+✅ Keep it · **Evidence:** LIKELY
 **Commits:** `<sha>`, `<sha>`
 
 • **2** <the next thing the branch does>
-✂️ Carve out · **How sure:** CONFIDENT
+✂️ Carve out · **Evidence:** CONFIDENT
 **Commits:** `<sha>`
 ```
 
@@ -207,8 +207,8 @@ judged:
   the number is how I answer an entry.
 - **Each entry carries a TL;DR Verdict on that change as it stands at HEAD**,
   in the shape and with the entry calls of tkay-code's `verdict.md`: what to
-  do with this part, never whether the branch merges. The call and its How
-  sure, nothing else: what the change needs is in the call's bracket, and
+  do with this part, never whether the branch merges. The call and its
+  Evidence, nothing else: what the change needs is in the call's bracket, and
   what the fix costs is in the commit's row.
 - **The call follows the commits it names.** `✅ Keep it` only when every
   one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split` or
@@ -220,9 +220,9 @@ judged:
   was a back-merge of the default branch that carried no change:
 
   ```
-  ❌ ✅ Do it · **How sure:** LIKELY
+  ❌ ✅ Do it · **Evidence:** LIKELY
      with `<sha>` 🗑 Drop (carries no change) in the commits table
-  ✅ 🔧 Needs fixes (drop the back-merge `<sha>`) · **How sure:** LIKELY
+  ✅ 🔧 Needs fixes (drop the back-merge `<sha>`) · **Evidence:** LIKELY
   ```
 
 - **✂️ Carve out is the split recommendation.** Work that is sound but does
@@ -233,7 +233,7 @@ judged:
 - **The Commits line names every commit the change lives in**, in branch
   order. A commit that serves two entries is on both lines.
 - **These verdicts judge the outcome, so a broken branch shows up here.** A
-  `❌ Drop it`, or How sure below `CONFIDENT`, under a commits table of
+  `❌ Drop it`, or Evidence below `CONFIDENT`, under a commits table of
   nothing but `✅ Ship it` means the commits above are missing a finding or a
   `🗑 Drop`: find it on the commits the entry names and put it on the one
   that should carry it.
@@ -249,11 +249,11 @@ last commit's review.
 | # | What the commit does | Findings | Verdict |
 |---|---|---|---|
 | **1** | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> |
-| | **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **How sure:** <level> |
+| | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Evidence:** <level> |
 
 - **The head row** is the commit, its findings and its call, nothing else.
   **The second row** puts the Commit line under the commit, the Fix
-  lines under the findings they answer, and the call's How sure under the
+  lines under the findings they answer, and the call's Evidence under the
   call; its `#` cell stays empty, which is what makes it read as part of the
   row above. A table cell cannot hold a line break, so the lines are rows.
   The column names what a cell holds, so the Commit, Bycatch and Verdict
@@ -268,7 +268,7 @@ last commit's review.
   or `none`.
 - **Verdict** — the call of that commit's Full Verdict on the head row, with
   the reason in a few words for anything other than ✅ Ship it, and
-  `**How sure:** <level>` on the second row, in the shape of
+  `**Evidence:** <level>` on the second row, in the shape of
   tkay-code's `verdict.md`. The commit call is picked by these rules:
 
 | Call | When |
@@ -314,7 +314,7 @@ The same two rows per item as the commits table, under its own heading:
 | # | What the bycatch is | Findings | Verdict |
 |---|---|---|---|
 | **B1** | <what it is, with `file`> | 🟠 1 | <call> |
-| | **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **How sure:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **How sure:** <level> |
+| | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Evidence:** <level> |
 
 - **#** — **B1**, **B2**, **B3** down the table, in bold, so I answer a row by its number
   instead of describing it back to you. The letter keeps it apart from every
@@ -328,11 +328,11 @@ The same two rows per item as the commits table, under its own heading:
   form: `🟠 1`.
 - **Verdict** — what you think I should do, as a recommendation I can
   overrule: the bycatch calls of tkay-code's `verdict.md` on the head row,
-  and the call's How sure on the second. 🔧 Add fix is a new commit on this
+  and the call's Evidence on the second. 🔧 Add fix is a new commit on this
   branch; ⏸ Leave for now carries the reason in a few words - out of the
   branch's scope, another owner's file, not worth the review cost today.
 - **The second row**: the Bycatch line is the problem as it sits in the
-  code - how sure you are it is real as described, how much it touches,
+  code - the Evidence that it is real as described, how much it touches,
   how hard it is to understand; the Fix lines are the fix, as in the
   commits table, and the one whose colours the finding is not in is left
   out.
@@ -368,9 +368,9 @@ When nothing is open, the heading stays and the table is one line instead:
   **Every test you can run yourself is run before the verdict, as tkay-code's `verdict.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED)** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
   Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
-  - **Sure without it** - a How sure level from tkay-code's `verdict.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
-  - **Sure with it** - a How sure level, and what would still be unproven after the test passes.
-- **State confidence when you're unsure**, as a How sure level from tkay-code's `verdict.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
+  - **Sure without it** - an Evidence level from tkay-code's `verdict.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
+  - **Sure with it** - an Evidence level, and what would still be unproven after the test passes.
+- **State confidence when you're unsure**, as an Evidence level from tkay-code's `verdict.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
 - **Where the borderline cases land:**
   - Weak/vague commit message → 🟡. Commit message making a FALSE CLAIM about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commits table says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
@@ -548,10 +548,10 @@ second commit's message:
 
 FINDINGS: 🔴 1 · 🟠 1 · 🟡 3 · ⚪ 1
 
-- **Verdict:** 🔧 Needs change (crashes on an empty pod list) · **How sure:** CONFIDENT
-- **Commit:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
-- **Fix 🔴🟠:** guard the empty list, call `record_failure()` on timeout · **How sure:** VERIFIED · **Size:** small · **Difficulty:** super easy
-- **Fix 🟡⚪:** reword the subject and body · **How sure:** VERIFIED · **Size:** small · **Difficulty:** super easy
+- **Verdict:** 🔧 Needs change (crashes on an empty pod list) · **Evidence:** CONFIDENT
+- **Commit:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
+- **Fix 🔴🟠:** guard the empty list, call `record_failure()` on timeout · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
+- **Fix 🟡⚪:** reword the subject and body · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
   - every lookup drops from O(n) to O(1)
 - **Why Not?**
@@ -606,9 +606,9 @@ And when it's clean, the FINDINGS line says so plainly - don't make a pile of ni
 
 FINDINGS: ⚪ 2
 
-- **Verdict:** ✅ Ship it · **How sure:** CONFIDENT
-- **Commit:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** super easy
-- **Fix 🟡⚪:** delete the comment, strip the whitespace · **How sure:** VERIFIED · **Size:** small · **Difficulty:** super easy
+- **Verdict:** ✅ Ship it · **Evidence:** CONFIDENT
+- **Commit:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** super easy
+- **Fix 🟡⚪:** delete the comment, strip the whitespace · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
   - a request with no auth header gets a 401 instead of a 500
 - **Why Not?**

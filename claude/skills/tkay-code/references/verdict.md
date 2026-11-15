@@ -37,7 +37,7 @@ cheap and the change is not, the call says so and no design is polished.
 
 ```
 - **Verdict:** ✅ Do it
-- **Change:** **How sure:** CONFIDENT · **Size:** medium · **Difficulty:** hard
+- **Change:** **Evidence:** CONFIDENT · **Size:** medium · **Difficulty:** hard
 - **Why Yes?**
   - <an advantage of making the change>
 - **Why Not?**
@@ -70,23 +70,24 @@ screen as `a.` and `b.`:
 claims**: whether to do it, and whether it is correct. A staged change can
 be verified by its tests while doing it is a close call, and a commit whose
 code is verified can still need splitting. The Verdict line carries the
-call and how sure you are of it - for a change, the call alone, since its
-call carries how sure you are; the line under it carries the thing - its
-How sure, Size and Difficulty - under the name of what it is:
+call - in a CR, with the Evidence that the call is right; for a change,
+the call alone, since whether to make a change is a judgement and Evidence
+rates a claim; the line under it carries the thing - its Evidence, Size
+and Difficulty - under the name of what it is:
 
 - **Change**, for a proposal: the change as drafted, or the design when
   nothing is drafted yet.
 - **Commit** or **Bycatch**, in a CR: the thing as it sits in the code.
-  Then one line per fix, each naming what to do in a few words with the How
-  sure, Size and Difficulty of doing it: `Fix 🔴🟠` is what unblocks the
+  Then one line per fix, each naming what to do in a few words with the
+  Evidence, Size and Difficulty of doing it: `Fix 🔴🟠` is what unblocks the
   merge, `Fix 🟡⚪` the clean-up left to my judgement, and one with
   nothing to do is left out.
 
 ```
-- **Verdict:** 🔧 Needs change (hangs on timeout) · **How sure:** CONFIDENT
-- **Commit:** **How sure:** VERIFIED · **Size:** medium · **Difficulty:** hard
-- **Fix 🔴🟠:** add a client timeout · **How sure:** LIKELY · **Size:** small · **Difficulty:** easy
-- **Fix 🟡⚪:** rename the two helpers · **How sure:** VERIFIED · **Size:** small · **Difficulty:** super easy
+- **Verdict:** 🔧 Needs change (hangs on timeout) · **Evidence:** CONFIDENT
+- **Commit:** **Evidence:** VERIFIED · **Size:** medium · **Difficulty:** hard
+- **Fix 🔴🟠:** add a client timeout · **Evidence:** LIKELY · **Size:** small · **Difficulty:** easy
+- **Fix 🟡⚪:** rename the two helpers · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
   ...
 ```
@@ -99,16 +100,16 @@ One line, for a place with no room for Why Yes and Why Not - a table cell, a
 summary entry:
 
 ```
-✅ Do it · **Size:** medium · **Difficulty:** hard
-🔧 Needs change (<the reason in a few words>) · **How sure:** CONFIDENT
+✅ Do it · **Evidence:** LIKELY · **Size:** medium · **Difficulty:** hard
+🔧 Needs change (<the reason in a few words>) · **Evidence:** CONFIDENT
 ```
 
 The reason goes in brackets right after the call, and only when the call
 needs one. A TL;DR Verdict never carries Why Yes, Why Not or
-alternatives. A proposal's carries the call and the change's Size and
-Difficulty on its one line, since it cannot nest; a CR's is the
+alternatives. A proposal's carries the call and the change's Evidence,
+Size and Difficulty on its one line, since it cannot nest; a CR's is the
 call alone on a table's head row, and the Commit or Bycatch line, the Fix
-lines and the call's How sure fill the row under it, each without a label
+lines and the call's Evidence fill the row under it, each without a label
 its column already gives.
 
 ## The call
@@ -119,20 +120,33 @@ with its emoji**, wherever it is written - a verdict, a table cell or a
 sentence; nothing else in a verdict carries one.
 
 **A change** - a change proposed to me, an option, a tool or an idea. Its
-call carries how sure you are, by the levels "How sure" below defines, so
-its Verdict line has no How sure of its own:
+call says whether to make it and nothing else, so its Verdict line carries
+no Evidence: whether the change works is the Change line's.
 
-- **💪✅ Strongly do it** - you would make it, and you are CONFIDENT or
-  surer that it is right.
-- **✅ Do it** - you would make it, and you are LIKELY right.
-- **⚖️ Close call** - both ways are defensible, or you are 50-50 on which
-  is right; the text around the verdict says which way you lean and why.
-- **❌ Don't** - you advise against it, LIKELY right, and name what you
-  would do instead: on a proposal, a Better proposal under it; on an
-  alternative, the proposal it is judged against; anywhere else, the text
-  around the verdict.
-- **❌❌ Strongly don't** - you advise against it, CONFIDENT or surer that
-  it is right, and name what you would do instead, as for ❌ Don't.
+- **💯 No brainer** - you would make it, and its Why Not is none.
+- **✅ Do it** - you would make it: what it gains outweighs what it costs.
+- **⚖️ Close call** - what it gains and what it costs are about even; the
+  text around the verdict says which way you lean and why.
+- **❌ Don't** - you advise against it: what it costs outweighs what it
+  gains. You name what you would do instead: on a proposal, a Better
+  proposal under it; on an alternative, the proposal it is judged against;
+  anywhere else, the text around the verdict.
+- **😱 Hell NO** - you advise against it because it does harm nothing
+  undoes - data lost, an outage, a leak - and name what you would do
+  instead, as for ❌ Don't.
+
+**The call and the Evidence never stand in for each other.** Doubt about
+whether the change works is the Change line's Evidence, never a ⚖️ Close
+call, and a change you are sure works is not a stronger call for it. The
+case that taught it, a proposal to narrow a table so a terminal renders
+it: the row details it moved out of the table were a cost, which made the
+call close, and the width the terminal falls back at was unchecked, which
+made the Change line LIKELY - two lines, each saying one thing:
+
+```
+- **Verdict:** ⚖️ Close call
+- **Change:** **Evidence:** LIKELY · **Size:** small · **Difficulty:** easy
+```
 
 **A commit** under review:
 
@@ -180,24 +194,37 @@ judged:
 - **🔧 Add fix** - fix it as part of this work.
 - **⏸ Leave for now** - not in this work, with the reason in a few words.
 
-A CR call - commit, branch, entry or bycatch - says what to do, never how
-sure you are of it; a change's call says both.
+A call says what to do, never what backs it: that is the Evidence, beside
+the call on a CR's Verdict line and on the Change line of a change.
 
-## How sure, Size and Difficulty
+## Evidence, Size and Difficulty
 
-- **How sure is how sure you are of the claim on its line**: on a CR's
-  Verdict line, that the call is right - on a commit, that its findings
-  are real and in the right colour, since the call follows from them; on a
-  Change, Commit or Bycatch line, that the thing does what it claims; on a
-  Fix line, that the fix would work. A change's Verdict line has none: its
-  call carries it. Never how sure you are that I will
-  agree. One of four, each defined by what backs it: VERIFIED, you ran it
-  or tested the exact behaviour; CONFIDENT, not run, but you traced every
-  step in the code or the docs; LIKELY, one unchecked inference carries it;
-  50-50, more than one unchecked inference, or you do not know. Below 50-50
-  a CR call never says go ahead: never ✅ Ship it, 👌 Fixed later,
-  🪓 Split, 📝 Reword, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first,
-  ✅ Keep it, 🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
+- **Evidence is what backs the claim on its line**: on a CR's Verdict
+  line, that the call is right - on a commit, that its findings are real
+  and in the right colour, since the call follows from them; on a Change,
+  Commit or Bycatch line, that the thing does what it claims; on a Fix
+  line, that the fix would work. A change's Verdict line has none: its
+  call is a judgement, not a claim. It never rates whether I will agree.
+  Each level is defined by what backs it:
+  - **VERIFIED** - you ran it or tested the exact behaviour.
+  - **CONFIDENT** - not run, but you traced every step in the code or the
+    docs.
+  - **LIKELY** - one unchecked inference says it holds.
+  - **50-50** - more than one unchecked inference, and they do not settle
+    it.
+  - **DOUBTFUL** - one unchecked inference says it does not hold.
+  - **REFUTED** - you ran or traced it, and it does not hold.
+  - **UNKNOWN** - nothing backs it either way. It is off the scale, not
+    its lowest step: 50-50 has inferences to check, and UNKNOWN has
+    nothing yet to check.
+- **DOUBTFUL and REFUTED are only for a claim that is not yours** - what a
+  commit says it does, an idea of mine. A claim of your own is stated as
+  what you believe, so each claim is written one way: "LIKELY that it
+  fails", never "DOUBTFUL that it works".
+- **On DOUBTFUL, REFUTED or UNKNOWN a CR call never says go ahead**: never
+  ✅ Ship it, 👌 Fixed later, 🪓 Split, 📝 Reword, ✅ Merge it,
+  🔧 Merge after fixes, ✂️ Split first, ✅ Keep it, 🔧 Needs fixes,
+  ✂️ Carve out or 🔧 Add fix.
 - **Size is how much the thing touches**, one of four: huge, large, medium,
   small. **Difficulty is how hard it is to get right**, one of four: super
   hard, hard, easy, super easy. The two are independent: a one-line change
@@ -212,7 +239,7 @@ sure you are of it; a change's call says both.
 **They are the part I read most**, so they hold the real case and nothing
 else. Why Yes is the advantages of making the change; Why Not is its
 drawbacks, costs and risks. Both are about the change, never about the call
-or how sure you are: under a ❌ call, Why Yes holds the case you argue
+or its Evidence: under a ❌ call, Why Yes holds the case you argue
 against.
 
 - **Nothing real is left out.** Every advantage and every drawback that could
@@ -289,9 +316,8 @@ code.
      written out. Only a proposal that is mine, a change I asked for, can
      have one.
   2. **`<N>` Equivalent proposals:** - the same call as the proposal, each
-     written out; since the call carries how sure you are, a ✅ Do it
-     beside a 💪✅ Strongly do it proposal is Lesser. Beside a Better
-     proposal it is the count alone:
+     written out; a ✅ Do it beside a 💯 No brainer proposal is Lesser.
+     Beside a Better proposal it is the count alone:
      **`<N>` Equivalent proposals are possible**.
   3. **`<N>` Lesser proposals** - a worse call; the count alone, until I
      ask to see them.
@@ -319,7 +345,7 @@ The shape, with every field present:
 - **2 Better proposals:**
   - **1. <another way>**
     - **Verdict:** ✅ Do it
-    - **Change:** **How sure:** CONFIDENT · **Size:** small · **Difficulty:** easy
+    - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
     - **Gains:**
       - <what it has over the proposal>
     - **Losses:**
