@@ -74,6 +74,8 @@ ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Shell words that precede the real program on a segment and carry no rating of their own.
 TRANSPARENT = {"do", "then", "else", "elif", "!", "{", "}", "if", "while", "until", "time",
                "exec", "command", "builtin", "nohup", "nice", "env", "stdbuf", "caffeinate"}
+# The options of caffeinate that take a value; its other options are flags of their own.
+CAFFEINATE_VALUE_OPTS = {"-t", "-w"}
 # A segment made only of one of these is loop/branch syntax.
 SYNTAX_ONLY = {"done", "fi", "esac", "in", "function", "then", "do", "else", "}", "{"}
 # `for p in a b` names variables, not a program: the body is its own segment after `do`.
@@ -1492,7 +1494,10 @@ def strip_prefix(words):
     words = list(words)
     # GOTCHA: shlex leaves a bare `$` behind when nested quotes split `$(...)` apart.
     while words and (ENV_ASSIGN_RE.match(words[0]) or words[0] in TRANSPARENT or words[0] == "$"):
-        words = words[1:]
+        wrapper, words = words[0], words[1:]
+        if wrapper == "caffeinate":
+            while words and words[0].startswith("-"):
+                words = words[2:] if words[0] in CAFFEINATE_VALUE_OPTS else words[1:]
     if words and words[0] == "timeout":
         words = words[1:]
         while words and (words[0].startswith("-") or re.match(r"^\d+[smhd]?$", words[0])):
@@ -2997,8 +3002,25 @@ CARGO_VALUE_FLAGS = {"-p", "--package", "--features", "-F", "--target", "-j", "-
 SHELL_PATH_REASON = ("a write path, or the directory a cd before it moves to, is built by the "
                      "shell at run time, so the gate cannot tell whether it lands in a repo: "
                      "write it out literally")
+NAMED_REF_FETCH_REASON = ("a fetch into a named ref leaves the ref in the repo: drop the "
+                          "`:<dst>` and pin the commit with `git rev-parse FETCH_HEAD`")
 SUITE_REASON = ("runs a whole test suite: ask before it starts, and run the tests the change "
                 "touches unless the user asked for the suite")
+
+
+def named_ref_fetch(words):
+    """True for a git fetch with a destination, every one a full ref outside refs/heads and
+    refs/tags: it parks a commit under a ref of its own and moves no branch or tag."""
+    words = strip_prefix(words)
+    if not words or program_of(words) != "git":
+        return False
+    rest = git_subcommand_args(words[1:])
+    if not rest or rest[0] != "fetch":
+        return False
+    dests = [p.split(":", 1)[1] for p in positionals(rest[1:])[1:] if ":" in p]
+    return bool(dests) and all(d.startswith("refs/")
+                               and not d.startswith(("refs/heads/", "refs/tags/"))
+                               for d in dests)
 
 
 def runs_whole_suite(prog, args):
@@ -3074,6 +3096,8 @@ def decide_bash(tool_input, gate_open, cwd, named):
             out.append((ASK, "unclassified - fix the handler in tool-gate.py"))
         elif held_for_shell_paths(blockers) or held_for_shell_dir(command, cwd):
             out.append((DENY, SHELL_PATH_REASON))
+        elif all(words is not None and named_ref_fetch(words) for words in blockers):
+            out.append((DENY, NAMED_REF_FETCH_REASON))
         else:
             out.append((DENY, REFUSAL))
     if rm_escapes_scratch(command):
@@ -4001,6 +4025,13 @@ def selftest():
         ("mkdir -p $D/m && cd $D && printf a > m/f", SHELL_PATH_REASON),
         (f"cd $D && printf a > {rx}/f", REFUSAL),
         (f"cd {rx} || cd /x; printf a > f", REFUSAL),
+        # A fetch into a ref of its own is told to read FETCH_HEAD; one that moves a branch
+        # or a tag, or comes with another repo write, keeps the refusal.
+        ("git fetch origin refs/merge-requests/1/head:refs/cr/mr-1", NAMED_REF_FETCH_REASON),
+        ("git fetch origin main:main", REFUSAL),
+        ("git fetch origin x:refs/tags/t", REFUSAL),
+        ("git fetch origin x:refs/cr/a main:main", REFUSAL),
+        (f"git fetch origin x:refs/cr/a && touch {rx}/f", REFUSAL),
     ]
     for command, expected in reason_cases:
         got = decide("Bash", {"command": command}, False, os.path.join(REPO_ROOTS[0], "no-repo"))
@@ -4113,6 +4144,10 @@ def selftest():
         (f"git commit -q -F - <<'EOF'\nfix: drop; rm -rf {s}x\nEOF", WRITE),
         ("cat <<EOF\nrm -rf /\nEOF", READ),
         ("cat <<EOF\nhello\nEOF\nrm -rf /", DANGER),
+        # caffeinate's options are not the program it runs.
+        ("caffeinate -i go vet ./x", READ),
+        ("caffeinate -dims -t 600 rm -rf /etc", DANGER),
+        ("caffeinate -i -w 123", READ),
         # Process substitution runs its own command.
         ("cat <(rm -rf /etc)", DANGER),
         ("diff <(sort a) <(sort b)", READ),

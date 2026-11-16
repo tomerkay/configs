@@ -452,11 +452,14 @@ locally and its findings come back in chat:
 - **The MR itself is read through its API**: the description, the review
   threads and the pipeline.
 - **The code is read from git, not from the web diff.** Fetch the MR's head
-  into a ref without checking it out - `git fetch origin
+  with no local destination - `git fetch origin
   refs/merge-requests/<iid>/head` on GitLab, `refs/pull/<n>/head` on GitHub -
-  and review `FETCH_HEAD` with `git log`, `git show` and `git diff` against
-  its target branch. The current branch and the working tree stay as they
-  are. If no checkout of that repo is open, ask where it is.
+  and pin its SHA at once with `git rev-parse FETCH_HEAD`: the next fetch
+  overwrites `FETCH_HEAD`, and after a fetch of two refs it resolves to the
+  first. Review that SHA with `git log`, `git show` and `git diff` against its
+  target branch. Never fetch into a named ref (`<src>:<dst>`): the ref stays
+  in the repo after the review. The current branch and the working tree stay
+  as they are. If no checkout of that repo is open, ask where it is.
 - **Nothing goes back to the link.** No note, no draft note, no inline
   comment, no suggestion, no approval, no resolved thread, no label, and no
   review tool's commenting mode. Each of those runs only when my message
