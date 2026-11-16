@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/DANGER rating on Bash commands.
+"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/UNCLASSIFIED/DANGER rating on Bash
+commands.
 
 For Bash it classifies what the command can change and rewrites the tool's `description`
 so a permission dialog opens with the rating:
 
     🟢 READ    changes nothing
     🟠 WRITE   changes local, recoverable state (files, commits, installs, helm releases)
+    🟣 UNCLASSIFIED  a program or a line the classifier does not recognise
     🔴 DANGER  destroys data or changes live cluster / remote state
 
-Anything the classifier does not recognise is WRITE: a wrong orange costs a glance, a
-wrong green is the failure this hook exists to prevent.
+Anything the classifier does not recognise is UNCLASSIFIED, never READ: a wrong purple
+costs a glance, a wrong green is the failure this hook exists to prevent. The gate holds
+it like a write. A known program's handler still rates an argument it does not know as
+WRITE.
 
 For Bash, Edit, Write, NotebookEdit, EnterWorktree and every MCP tool it then decides,
 from the gate state lfg-state.py records per session: a change to a git repo before
@@ -24,11 +28,6 @@ branch is denied in every state, outside the repos in DEFAULT_BRANCH_EXEMPT, whi
 committed on main by design. A rebase in any form, a pull that rebases and a reset that
 moves the branch back ask in every state: history below HEAD is rewritten only on the
 user's words, while amending HEAD is free.
-
-For Skill and Read it keeps the code skill and the CR skill out of one session: loading
-either while the other is already loaded asks with a ⚠️ warning, outside ~/.claude, so
-the code is not written to the review rubric and the review is not by the code's author.
-The skills a session loaded are recorded beside its gate state.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -57,9 +56,10 @@ import shlex
 import subprocess
 import sys
 
-READ, WRITE, DANGER = "🟢 READ", "🟠 WRITE", "🔴 DANGER"
-RANK = {READ: 0, WRITE: 1, DANGER: 2}
-LABEL_RE = re.compile(r"^(?:🟢 READ|🟠 WRITE|🔴 DANGER)\s*[·:|-]?\s*")
+READ, WRITE, UNCLASSIFIED, DANGER = "🟢 READ", "🟠 WRITE", "🟣 UNCLASSIFIED", "🔴 DANGER"
+# An unknown program could do anything, so it outranks a known local write, never a known danger.
+RANK = {READ: 0, WRITE: 1, UNCLASSIFIED: 2, DANGER: 3}
+LABEL_RE = re.compile(r"^(?:🟢 READ|🟠 WRITE|🟣 UNCLASSIFIED|🔴 DANGER)\s*[·:|-]?\s*")
 
 SEPARATORS = {";", ";;", "|", "||", "&&", "&", "(", ")", "|&"}
 REDIRECT_OUT = {">", ">>", "&>", "&>>", ">|"}
@@ -147,13 +147,6 @@ STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
 GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
-# The two skills that belong in separate sessions, and how each is loaded: the Skill tool, or a
-# Read of the skill's own files. The shared references under tkay-code load neither.
-SKILL_TOOLS = {"Skill", "Read"}
-SKILL_STATE_SUFFIX = ".skills"
-TKAY_SKILLS = os.path.realpath(os.path.expanduser("~/.claude/skills")) + "/"
-SKILL_KINDS = {"tkay-code": "code", "tkay-review": "CR"}
-SKILL_OVERFIT = {"code": "code overfit to the CR", "CR": "CR overfit to the code"}
 PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebook_path"}
 
 # Writes here never need the gate: scratch, plan mode and memory are harness bookkeeping.
@@ -768,7 +761,7 @@ def creates_remote_tag(args):
 MR_MOVES = {"create", "new", "for", "reopen", "close", "merge", "accept", "approve", "rebase",
             "update-branch", "comment", "review"}
 # The user's words for this one command AND this prompt, every time: CLAUDE.md's
-# "Some commands need my words AND the prompt, every time".
+# "Some commands need my words and the prompt, every time".
 ON_WORDS = ("run it only when the user's message allowed this command in words, otherwise "
             "print it as `! <command>`")
 CONTEXT_SETTER_REASON = ("sets the current context or namespace, which every command that "
@@ -1077,6 +1070,30 @@ def classify_npx(args):
     return WRITE
 
 
+# The go build flags that take a value, so the value is never read as a package.
+GO_BUILD_VALUE_FLAGS = {"-C", "-o", "-p", "-asmflags", "-buildmode", "-compiler", "-gccgoflags",
+                        "-gcflags", "-installsuffix", "-ldflags", "-mod", "-modfile", "-overlay",
+                        "-pgo", "-pkgdir", "-tags", "-toolexec", "-coverpkg", "-covermode"}
+
+
+def go_build_discards_output(args):
+    """True for a go build that writes nothing but the build cache.
+
+    Go keeps the binary only of a build of one main package, or at -o; a build of several
+    packages compiles them and discards the result
+    (https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies). Several means two
+    distinct package arguments, or the whole module as ./... . -toolexec runs a program of
+    its own, so a build that names one is never a read.
+    """
+    # Go takes --flag for -flag.
+    args = ["-" + a.lstrip("-") if a.startswith("--") and a != "--" else a for a in args]
+    if has_flag(args, "-o", "-toolexec"):
+        return False
+    rest, _ = split_globals(args, GO_BUILD_VALUE_FLAGS)
+    packages = set(positionals(rest)[1:])
+    return len(packages) > 1 or "./..." in packages
+
+
 def classify_go(args):
     pos = positionals(args)
     if not pos:
@@ -1088,6 +1105,8 @@ def classify_go(args):
         return READ
     if sub == "mod":
         return READ if len(pos) > 1 and pos[1] in ("graph", "why", "verify") else WRITE
+    if sub == "build" and go_build_discards_output(args):
+        return READ
     return WRITE
 
 
@@ -1449,7 +1468,7 @@ HANDLERS = {
     "nvidia-smi": classify_nvidia_smi,
 }
 
-_unknown_level = WRITE
+_unknown_level = UNCLASSIFIED
 
 
 @contextlib.contextmanager
@@ -1531,6 +1550,21 @@ def split_line(line):
     return segments, targets
 
 
+SHLEX_PUNCTUATION = set("();<>|&")
+
+
+def split_closing_paren(tok):
+    """A shlex token split so a leading `)` stands alone: `);` is `)` then `;`.
+
+    GOTCHA: shlex with punctuation_chars glues adjacent punctuation into one token, so the
+    `)` closing `$(ls);` arrives as `);`, which is neither a `)` nor a separator: the
+    substitution would never close, and every command after it would read as its argument.
+    """
+    if len(tok) > 1 and tok[0] == ")" and set(tok) <= SHLEX_PUNCTUATION:
+        return [")"] + split_closing_paren(tok[1:])
+    return [tok]
+
+
 def parse_line(line):
     """split_line's segments and targets, for each segment whether it runs apart from
     the line's shell: inside parentheses or a substitution, in a pipeline or in the
@@ -1538,7 +1572,7 @@ def parse_line(line):
     the index of the segment it belongs to, len(segments) for one past the last."""
     lexer = shlex.shlex(DESCRIPTOR_RE.sub("", line), posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
-    tokens = list(lexer)
+    tokens = [part for tok in lexer for part in split_closing_paren(tok)]
     segments, targets, apart, segment, target_at = [], [], [], [], []
     # One entry per open `(`: the command a `$(` interrupts, resumed at its `)` so text
     # glued after the `)` stays that command's argument, or None for a subshell or a
@@ -1697,7 +1731,7 @@ def classify_command(command):
         try:
             line_level = classify_line(line)
         except ValueError:
-            line_level = WRITE
+            line_level = UNCLASSIFIED
         level = worst(level, line_level)
     return level
 
@@ -3183,76 +3217,8 @@ def named_scratch_paths(session_id):
         return ()
 
 
-def skill_kind(tool_name, tool_input):
-    """Which of the two skills a tool call loads: "code", "CR" or None."""
-    if tool_name == "Skill":
-        return SKILL_KINDS.get(tool_input.get("skill"))
-    if tool_name == "Read":
-        path = tool_input.get("file_path")
-        if not isinstance(path, str):
-            return None
-        real = os.path.realpath(os.path.expanduser(path))
-        if real.startswith(TKAY_SKILLS + "tkay-review/"):
-            return "CR"
-        if real == TKAY_SKILLS + "tkay-code/SKILL.md":
-            return "code"
-    return None
-
-
-def skill_clash(kind, loaded, cwd):
-    """The ask when `kind` loads while the other skill already is, outside ~/.claude, where
-    the CR skill cannot be edited without being read and nothing written is code it judges."""
-    other = {"code": "CR", "CR": "code"}[kind]
-    in_claude_home = isinstance(cwd, str) and (os.path.realpath(cwd) + "/").startswith(CLAUDE_HOME)
-    if other not in loaded or in_claude_home:
-        return None
-    return (ASK, f"⚠️ The {kind} skill has been loaded, although the {other} skill already is "
-                 f"in this session. That can make the {SKILL_OVERFIT[kind]}. I recommend "
-                 "rewinding; do you want to proceed?")
-
-
-def loaded_skills(session_id):
-    try:
-        with open(session_file(STATE_DIR, session_id) + SKILL_STATE_SUFFIX) as f:
-            return set(f.read().split())
-    except FileNotFoundError:
-        return set()
-
-
-def record_skill(session_id, kind):
-    os.makedirs(STATE_DIR, exist_ok=True)
-    with open(session_file(STATE_DIR, session_id) + SKILL_STATE_SUFFIX, "a") as f:
-        f.write(kind + "\n")
-
-
-def skill_hook_output(payload, tool_name):
-    """The decision for a Skill or Read call, or None; a failure here never denies a read."""
-    try:
-        tool_input = payload.get("tool_input")
-        session_id = payload.get("session_id")
-        if not isinstance(tool_input, dict) or not isinstance(session_id, str) or not session_id:
-            return None
-        kind = skill_kind(tool_name, tool_input)
-        if kind is None:
-            return None
-        loaded = loaded_skills(session_id)
-        decision = skill_clash(kind, loaded, payload.get("cwd"))
-        if kind not in loaded:
-            record_skill(session_id, kind)
-    except Exception as exc:
-        print(f"tool-gate: skill state: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return None
-    if decision is None:
-        return None
-    return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                   "permissionDecision": decision[0],
-                                   "permissionDecisionReason": decision[1]}}
-
-
 def hook_output(payload):
     tool_name = payload.get("tool_name")
-    if tool_name in SKILL_TOOLS:
-        return skill_hook_output(payload, tool_name)
     gated = tool_name in GATED_TOOLS or (isinstance(tool_name, str) and tool_name.startswith("mcp__"))
     if not gated:
         return None
@@ -3327,6 +3293,10 @@ def selftest():
         (True, "Bash", "V=delete; kubectl $V pod p --context X -n Y", ASK),
         (True, "Bash", "helm $(echo uninstall) r --kube-context X -n Y", ASK),
         (True, "Bash", "kubectl get pods -l app=$(echo x) --context X -n Y", None),
+        # A substitution closed right before an operator hides nothing after it.
+        (True, "Bash", "echo $(ls); kubectl delete pod p --context X -n Y", ASK),
+        (True, "Bash", "echo $(ls)&&helm uninstall r --kube-context X -n Y", ASK),
+        (True, "Bash", "echo `ls`|kubectl delete pod p --context X -n Y", ASK),
         (True, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
         (False, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
         (True, "Bash", "helm del r --kube-context X -n Y", ASK),
@@ -3733,6 +3703,9 @@ def selftest():
         (False, "Bash", "GOFLAGS=-mod=readonly go mod download example.com/m", DENY),
         # go env -w writes Go's user config file, outside every repo.
         (False, "Bash", "go env -w GOFLAGS=-mod=mod", None),
+        # A build of several packages discards its output, so it changes no repo.
+        (False, "Bash", "go build ./...", None),
+        (False, "Bash", "go build ./cmd/a", DENY),
         # A signal reaches a process, never a file.
         (False, "Bash", "kill 12345", None),
         (False, "Bash", "kill 12345 && echo x > /x/f", DENY),
@@ -4051,43 +4024,6 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} payload {payload} -> {got}"
               + ("" if ok else f" (want {expected})"))
-    sid = "tool-gate-selftest-skills"
-    skills_path = session_file(STATE_DIR, sid) + SKILL_STATE_SUFFIX
-    with contextlib.suppress(FileNotFoundError):
-        os.remove(skills_path)
-    repo_cwd = os.path.join(REPO_ROOTS[0], "p")
-
-    def skill_call(skill, cwd=repo_cwd):
-        return {"tool_name": "Skill", "session_id": sid, "tool_input": {"skill": skill}, "cwd": cwd}
-
-    def read_call(path, cwd=repo_cwd):
-        return {"tool_name": "Read", "session_id": sid, "tool_input": {"file_path": path},
-                "cwd": cwd}
-
-    skill_cases = [
-        # in order: the state the earlier cases leave is the point
-        ("an unrelated skill loads nothing", skill_call("tkay-writing-plans"), None),
-        ("a shared reference loads nothing",
-         read_call(TKAY_SKILLS + "tkay-code/references/clean-code.md"), None),
-        ("the code skill alone", skill_call("tkay-code"), None),
-        ("the code skill again", skill_call("tkay-code"), None),
-        ("the CR skill after the code skill", skill_call("tkay-review"), ASK),
-        ("the CR skill's reference after the code skill",
-         read_call(TKAY_SKILLS + "tkay-review/references/code-review.md"), ASK),
-        ("the code skill after the CR skill", read_call(TKAY_SKILLS + "tkay-code/SKILL.md"), ASK),
-        ("both loaded, under ~/.claude", skill_call("tkay-review", CLAUDE_HOME + "x"), None),
-        ("an unrelated read", read_call("/x"), None),
-        ("no session id", {"tool_name": "Skill", "tool_input": {"skill": "tkay-review"}}, None),
-    ]
-    for name, payload, expected in skill_cases:
-        result = hook_output(payload)
-        got = (result or {}).get("hookSpecificOutput", {}).get("permissionDecision")
-        ok = got == expected
-        failures += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} skill {name} -> {got}"
-              + ("" if ok else f" (want {expected})"))
-    with contextlib.suppress(FileNotFoundError):
-        os.remove(skills_path)
     s = SCRATCH_ROOTS[0]
     strip_cases = [
         # (command, expected command after the strip)
@@ -4160,6 +4096,13 @@ def selftest():
         ("echo $(rm -rf /etc)/x", DANGER),
         ("kubectl get pods -o name $(echo x) && rm -rf /etc", DANGER),
         ("(cd /x && ls) ; launchctl print gui/$(id -u)/x", READ),
+        # A substitution closed right before an operator still ends there.
+        ("echo $(ls); rm -rf /etc", DANGER),
+        ("echo $(ls)&&rm -rf /etc", DANGER),
+        ("echo $(ls)|rm -rf /etc", DANGER),
+        ("echo `ls`; rm -rf /etc", DANGER),
+        ("for f in $(ls); do rm -rf /etc; done", DANGER),
+        ("echo $(ls); ls", READ),
         ("glab mr update 3 --description-file d.md", DANGER),
         ("python3 /x/board.py publish g /x/g.json --org 2 --message m", DANGER),
         ("python3 /x/board.py fetch g --org 2 --out=/x/g.json", WRITE),
@@ -4221,6 +4164,16 @@ def selftest():
         ("go env GOPATH", READ),
         ("go env -w GOFLAGS=-mod=mod", WRITE),
         ("go env -u GOFLAGS", WRITE),
+        # go build keeps a binary only for one main package or at -o.
+        ("go build ./...", READ),
+        ("go build -tags scaling_test ./...", READ),
+        ("go build ./cmd/a ./cmd/b", READ),
+        ("go build --tags x ./cmd/a", WRITE),
+        ("go build ./cmd/a ./cmd/a", WRITE),
+        ("go build ./cmd/a", WRITE),
+        ("go build", WRITE),
+        ("go build -o /x/out ./...", WRITE),
+        ("go build -toolexec /x/t ./...", WRITE),
         ("kill 12345", DANGER),
         ("pkill -f temporal", DANGER),
         ("killall temporal", DANGER),
@@ -4230,6 +4183,15 @@ def selftest():
         ("fuser -k 8080/tcp", DANGER),
         ("fuser -ki -TERM /x", DANGER),
         ("fuser --kill /x", DANGER),
+        # A program the classifier has never met is UNCLASSIFIED: above a known write, below a
+        # known danger, and never READ.
+        ("frobnicate --all", UNCLASSIFIED),
+        ("cp a b && frobnicate", UNCLASSIFIED),
+        ("frobnicate && git push", DANGER),
+        ("ls && frobnicate", UNCLASSIFIED),
+        ("FOO=1 frobnicate", UNCLASSIFIED),
+        # A line the lexer cannot parse is UNCLASSIFIED too.
+        ("echo 'unterminated", UNCLASSIFIED),
     ]
     for command, expected in label_cases:
         got = classify_command(command)

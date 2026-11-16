@@ -8,7 +8,7 @@ the *actual* fault. Always grep the raw log around the first failure rather than
 reading the summarized exception.
 
 ```
-kubectl logs <pod> --context <ctx> -n <ns> | grep -n "transfer failed" | head -1   # line N of the FIRST one
+kubectl logs <pod> --context <ctx> -n <ns> | grep -n "transfer failed" | head -1   # line N of the first one
 kubectl logs <pod> --context <ctx> -n <ns> | sed -n '<N-30>,<N+5>p'               # what preceded it
 ```
 
@@ -73,7 +73,7 @@ kubectl get nodes --context <ctx> -l dedicated=<ns> -o wide
 ## Getting evidence out of a multi-node group
 
 Multi-node failures actively destroy their own evidence. Three things to set
-BEFORE debugging, or you will chase ghosts:
+Before debugging, or you will chase ghosts:
 
 - **`restartPolicy: Default` on the LWS while debugging.** The default
   `RecreateGroupOnPodRestart` replaces every pod in the group when any one

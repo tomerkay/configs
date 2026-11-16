@@ -3,7 +3,7 @@
 Concrete commands, all verified against a live H100 cluster. Ordered by when you
 need them.
 
-## Verify RDMA BEFORE the log rotates
+## Verify RDMA before the log rotates
 
 **The `Found N HCAs` line exists only in the startup log, and it ages out.**
 

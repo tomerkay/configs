@@ -1,7 +1,8 @@
 # Commit Standards
 
-**A repo that documents its own commit or branch convention overrides this
-file.** See "The repo's conventions win" in `SKILL.md`.
+**A repo that documents its own commit convention overrides this file**, and
+the override is named to me in one line - with one exception, under "Every
+commit carries a body" below.
 
 **Every commit is signed.** Never `--no-gpg-sign`, and a rebase or
 cherry-pick re-signs with `-S`. Inside a sandbox gpg cannot reach its agent
@@ -53,7 +54,7 @@ rewrite.** A change that belongs in HEAD is amended into HEAD - that needs
 no word from me. A change that belongs in a commit below HEAD lands as a new
 commit on top, with its own subject, and the CR says `🔀 Squash into <sha>`
 or `🪓 Split`; the rewrite that folds it in happens when I allow it, never
-on the verdict alone. Until then the history records the fix as a commit of
+on the call alone. Until then the history records the fix as a commit of
 its own, and that is the intended state, not a failure of the rule above.
 
 ## A Rewrite Below HEAD Waits for My Word
@@ -61,11 +62,10 @@ its own, and that is the intended state, not a failure of the rule above.
 **Every rewrite of the branch below HEAD needs my words that time, plus the
 prompt**: a rebase in any form, onto a new base included, and a reset that
 moves the branch back. Amending HEAD is free: it is the one commit nothing is
-stacked on. Nothing rewrites on a CR verdict alone, however clear the squash.
+stacked on. Nothing rewrites on a CR call alone, however clear the squash.
 
-- **Before a rebase, one ❓ with three parts**: may this rebase reword,
-  squash, split? My answer scopes that one rebase; with no answer it is a
-  plain replay.
+- **Before a rebase, ask me whether it may reword, squash and split.** My
+  answer scopes that one rebase; with no answer it is a plain replay.
 - **Reword is free only for a commit whose SHA changes anyway in that
   rebase.** Onto a new base that is every commit; in a squash of the third
   commit it is the third and everything above it, and the commits below keep
@@ -75,20 +75,15 @@ stacked on. Nothing rewrites on a CR verdict alone, however clear the squash.
   them, and **from a CR of the branch at HEAD in this session**: its commits
   table says what folds into what. With no such CR, the CR comes first.
 
-**When a rewrite runs: branch a backup first, do it, then check
+**When a rewrite runs: branch a backup first with `git branch <name>`, do it, then check
 `git diff <backup> HEAD`.** It must show exactly the change you meant to
 make - nothing for a squash or a reword, only the intended edits for an
 amend that changes content. When it does, the rewrite is proven: **delete
-the backup branch straight away, WITHOUT asking permission** - no question in
+the backup branch straight away, without asking permission** - no question in
 chat, no offer, no backup left behind for me to clean up - with `git branch
 -D` (rewritten commits never count as merged, so `-d` refuses), and report
 the `Deleted branch ... (was <sha>)` line. Only a diff carrying something you
 did not intend keeps the backup: stop and show me that diff.
-
-**A branch you created for your own work is yours to delete, never mine.** A
-backup, a scratch branch, a throwaway for an experiment: once it has done its
-job, delete it in the same session without asking, and never leave it for me
-to find later. Ask only before deleting a branch you did not create.
 
 **The rewrite itself is scripted, because no interactive editor exists in this
 harness.** `GIT_SEQUENCE_EDITOR=true git rebase -S -i <base>` runs as its own
@@ -134,7 +129,7 @@ The case that taught it: a plain replay onto a new base merged a gauge the
 base had added cleanly into commits that no longer compiled, and git
 reported success.
 
-**On a branch only I push to, whether it is already pushed is NOT an input to
+**On a branch only I push to, whether it is already pushed is not an input to
 this decision.** I force-push my own branches, so a commit already on the
 remote squashes and amends exactly like one that is not. "It's already pushed"
 is never a reason to make a new commit instead of amending there, and never a
@@ -220,53 +215,13 @@ unrelated selftest with it.
 Reverting the ❌ commit to undo a bad `~` expansion also drops a guard
 nobody meant to touch.
 
-## Branch Names
-
-**Before naming a new branch, read the convention of the repo it lives in and
-follow it.** The remote branches show it - `git for-each-ref
---sort=-committerdate --count=30 --format='%(refname:short)' refs/remotes` -
-whether names carry a person, a type (`feat/`, `fix/`), a ticket key, and which
-separator. Check the repo's `CONTRIBUTING.md`, `CLAUDE.md` and README too, and
-any CI rule that matches on the branch name: a name that misses such a rule
-runs a different pipeline without saying so.
-
-**When the convention puts a person in the name, that person is me**, spelled
-as the handle I have given you, whatever older branches of mine use. With no
-handle given, spell it the way my own recent branches in this repo do; with
-none of those either, the local part of `git config user.email`. When the
-convention carries no person, do not add one.
-
-**The rest of the name is the change, in kebab case** - what the branch does,
-never who asked for it or what wrote it (`fix-by-claude` says nothing). A
-ticket key goes in when the convention has one and the task has one.
-
-**Never work on the default branch, unless I have told you a repo is worked on
-its default branch.** Before the first change that would land on it, create a
-branch by the convention above, switch to it and tell me the name - no
-proposal, no question.
-
-**Otherwise a branch is created and checked out only when I ask for one.** The
-work stays on the branch it is on, whatever that branch was made for, and its
-commits go on top of the ones already there. When I ask, pick the name, create
-the branch and tell me the name - no proposal, no question. A backup is made
-with `git branch <name>`, which leaves HEAD where it is.
-
-**`git worktree add` runs only when I ask for a worktree in so many words.** A
-worktree checks out another branch without moving this one, so it is the same
-switch by another route, and its registration in the repo's `.git` keeps that
-branch undeletable after the session is gone.
-
-**When you think the work does not belong on the current branch**, say why in
-one sentence and ask whether to check out a new branch for it. The work waits
-for the answer.
-
 ## Documentation Sync on Every Commit
 
-**Before creating ANY commit, check whether the change makes the repo
+**Before creating any commit, check whether the change makes the repo
 `CLAUDE.md` or any `README.md` near the changed files stale.** A line about
 something that no longer exists is deleted, never turned into a record of what
 used to be there; a line that is now wrong is corrected in place. Either way
-the doc change lands in the SAME commit. If the docs are already accurate, say
+the doc change lands in the same commit. If the docs are already accurate, say
 so briefly and move on - don't update docs just to touch them.
 
 This applies to every commit, not just when I explicitly ask for documentation
@@ -315,6 +270,11 @@ purpose: that prefix is not a release, and the guard saying so is correct.
 **The Body (wrap at 72 chars): three labelled sections, short, and Bycatch
 when the commit carries one**
 
+**Every commit carries a body.** A repo convention about the subject line,
+its prefix or its format never removes it; only a repo rule that a commit
+must carry no body does, and that one is never silently followed: quote it to
+me and ask before the first commit whether to follow it.
+
 Every body is exactly these three sections, in this order, each its own
 paragraph opening with its label - plus a fourth, Bycatch, only when the
 commit carries one (see "Bycatch in a Commit" below):
@@ -347,8 +307,9 @@ it delivers.
 **Bycatch in a Commit**
 
 **Bycatch - a fix found on the way, outside the change the commit is for -
-belongs in a commit of its own.** When some rides along anyway, it is
-written down, never left for the reader to find in the diff: a section
+belongs in a commit of its own, and is made only when I ask for that fix by
+name.** When one I asked for rides along in another commit, it is written
+down, never left for the reader to find in the diff: a section
 after Why, its label on a line of its own, one bullet per item.
 
 ```
@@ -357,7 +318,7 @@ Bycatch:
 ```
 
 - **Bullets only.** No Before / Change / Why per item, no CR row, no
-  verdict.
+  assessment.
 - **A bullet that is not one simple line is a sign to apply the one-thing
   test**: an item that needs a reason, a second line or a sub-bullet is
   probably a change a reader, a bisect or a revert would want apart. When
@@ -447,29 +408,26 @@ its own.
   <noreply@anthropic.com>` - use the model you actually are, never a model name
   copied from a config file
 
-## CRITICAL: Commit Message Verification Protocol
+## Verifying a commit message
 
-**MANDATORY PROCESS when writing/amending commit messages:**
+Writing or amending a commit message follows this process:
 
-When I ask you to "amend" or create a commit message, you MUST follow this
-exact process:
-
-1. **Run `git show HEAD` or `git diff HEAD~1 HEAD`** - Actually look at the
-   REAL changes
-2. **Verify EVERY SINGLE CLAIM** in the commit message against the actual diff:
-   - For EACH bullet point, find the corresponding code change
+1. **Run `git show HEAD` or `git diff HEAD~1 HEAD`** - look at the real
+   changes
+2. **Verify every claim** in the commit message against the actual diff:
+   - For each bullet point, find the corresponding code change
    - If you claim "rename X → Y", find the line that shows `-  label: 'X'` and
      `+  label: 'Y'`
    - If you claim "remove column Z", find the line that shows `-  { id: 'Z',
      ...` being removed
    - If you claim "add feature W", find the lines showing W being added
-3. **Flag MISSING changes** - Check if significant changes in the diff aren't
-   mentioned in the message
-4. **Remove FALSE claims** - Delete any claim you can't find evidence for in
+3. **Flag missing changes** - check whether significant changes in the diff
+   are left out of the message
+4. **Remove false claims** - delete any claim you can't find evidence for in
    the actual diff
-5. **Be SPECIFIC about what changed** - Use actual old/new values from the diff
+5. **Be specific about what changed** - use actual old/new values from the diff
 
-**BANNED commit message patterns:**
+**Commit message patterns that fail the check:**
 
 ❌ **Accumulated leftovers from session discussion:**
 ```
@@ -482,7 +440,7 @@ removing a space!)
 ```
 - Reorder columns
 ```
-When you just DISCUSSED reordering but didn't actually do it in THIS commit.
+When the reordering was only discussed, and this commit does not do it.
 
 ❌ **Vague claims without verification:**
 ```
@@ -490,7 +448,7 @@ When you just DISCUSSED reordering but didn't actually do it in THIS commit.
 ```
 Without showing what specifically changed in the code.
 
-**CORRECT approach:**
+**What passes it:**
 
 ✅ **Verify each claim:**
 ```
@@ -508,16 +466,11 @@ Without showing what specifically changed in the code.
 
 **The Test:**
 
-Before finalizing ANY commit message, ask yourself:
+Before finalizing any commit message, ask of each claim:
 - "Can I show the exact line in `git show HEAD` that proves this claim?"
-- "Is this claim about THIS commit or something we discussed earlier?"
-- "Am I being precise about what OLD value changed to what NEW value?"
+- "Is this claim about this commit, or something we discussed earlier?"
+- "Am I precise about which old value changed to which new value?"
 
-If you can't answer "YES" to all three, DELETE that claim or rewrite it
-accurately.
-
-**When I catch you with false claims in commit messages:**
-
-This is a CRITICAL failure. It means you didn't actually verify the diff. I
-will call you out harshly because commit history is permanent and I care deeply
-about accurate git history.
+A claim that fails any of the three is deleted or rewritten accurately. A
+false claim in a commit message stays in history for good, so no claim goes
+in that the diff does not show.

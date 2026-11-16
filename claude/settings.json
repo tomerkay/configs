@@ -43,7 +43,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "^(Bash|Edit|Write|NotebookEdit|EnterWorktree|Skill|Read|mcp__.*)$",
+        "matcher": "^(Bash|Edit|Write|NotebookEdit|EnterWorktree|mcp__.*)$",
         "hooks": [
           {
             "type": "command",
@@ -133,16 +133,6 @@
           {
             "type": "command",
             "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"PermissionRequest\", \"decision\": {\"behavior\": \"allow\"}}}'"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$HOME/.claude/hooks/question-shape.py\""
           }
         ]
       }

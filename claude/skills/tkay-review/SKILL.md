@@ -1,6 +1,16 @@
 ---
 name: tkay-review
 description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, or a CR Summary - never while writing code, which the tkay-code skill owns. In the session that wrote the code under review it still runs, and opens with a warning that the review is not independent.
+hooks:
+  PreToolUse:
+    - matcher: "Skill|Read"
+      hooks:
+        - type: command
+          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/skill-clash.py"'
+  Stop:
+    - hooks:
+        - type: command
+          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/cr-shape.py"'
 ---
 
 # Code review
@@ -10,20 +20,24 @@ the whole standard: what a finding is, how bad each one is, what blocks the
 merge, the shape of a commit's review, the branch overview, the commits table,
 the bycatch table, and what a CR on an MR link may and may not do.
 
-## This skill is one half of a pair
+## Shared references
 
-This skill is handed out together with `tkay-code`, installed beside it under
-the same skills directory, and reads three of that skill's references rather
-than carrying copies that would drift:
+Four references are shared with other skills of mine and kept in this
+skill's own `references/` so it works installed alone:
 
 | Read | For |
 |---|---|
-| `${CLAUDE_SKILL_DIR}/../tkay-code/references/clean-code.md` | what clean code is - every finding is a departure from it |
-| `${CLAUDE_SKILL_DIR}/../tkay-code/references/verdict.md` | the calls and fields of every verdict a CR carries |
-| `${CLAUDE_SKILL_DIR}/../tkay-code/references/commits.md` | the commit standard a CR judges messages and boundaries by |
+| `references/clean-code.md` | what clean code is - every finding is a departure from it |
+| `references/security.md` | the security questions every change is asked |
+| `references/assessment.md` | the frame every assessment in a CR is written in |
+| `references/commits.md` | the commit standard a CR judges messages and boundaries by |
 
-Read all three before the first finding. **Never answer from memory of a
+Read all four before the first finding. **Never answer from memory of a
 reference you have not read this session.**
+
+The hook in this skill's frontmatter checks the shape of every assessment
+the CR carries once the skill is loaded, and sends a reply back once when
+one breaks it.
 
 ## The author's own session warns, and reviews anyway
 
@@ -49,10 +63,13 @@ branch:
    <the CR>
 ```
 
-The one exemption is a session working on my Claude config itself, under
-`~/.claude`: this standard cannot be edited without being read, and what
-such a session writes is the rubric, not code the rubric judges, so it
+The one exemption is a session working on these skills themselves, whose
+directory holds them: this standard cannot be edited without being read, and
+what such a session writes is the rubric, not code the rubric judges, so it
 reviews its own staged changes in place, with no ⚠️ line.
+
+The hook in this skill's frontmatter asks before `tkay-code` loads beside
+it, except in such a session.
 
 ## The repo's conventions win
 

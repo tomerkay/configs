@@ -17,9 +17,9 @@ one:
    every edit to the copy.
 2. **Review the staged diff with the `tkay-review` standard**, in the
    full shape that standard gives a one-commit branch: the FINDINGS line and
-   the commit's Full Verdict, both buckets, the branch overview, the
+   the commit's Full Assessment, both buckets, the branch overview, the
    commits table and the bycatch table. The diff stands in for the
-   commit; a Full Verdict on its own is not a review. A MUST HAVE finding is fixed on the
+   commit; a Full Assessment on its own is not a review. A MUST HAVE finding is fixed on the
    staged copy before the question, not after it: the standard's "show the
    fix and wait" does not apply here, because the question is my sign-off.
 3. **Ask once**: show the diff, the review and the commit message, written by
@@ -104,7 +104,7 @@ installed skills - stays untracked.
 **It has no remote: the commit is the last step, and publishing is the
 sync's job.**
 
-**NO CHANGE TO A TRACKED FILE IS EVER LEFT UNCOMMITTED.** Every edit,
+**No change to a tracked file is ever left uncommitted.** Every edit,
 deletion, rename and move is reviewed and committed in the same turn as the
 change, whatever task it came up in. A deletion is the dangerous one: git
 lists a file until a commit records that it is gone, and the sync stops on a
@@ -119,7 +119,7 @@ included.
   `git -C ~/.claude status --short` printing nothing.** Run it before the last message. Anything it
   lists is reviewed and committed before you reply, including a change you
   did not make - with the one exception below.
-- **The `model` line of `settings.json` is NEVER committed.** The harness
+- **The `model` line of `settings.json` is never committed.** The harness
   rewrites it on every model switch, and the tracked copy keeps the value
   it has. Stage that file hunk by hunk (`git add -p`) and skip the model
   hunk every time; never commit it with a pathspec, which takes the whole
@@ -132,7 +132,7 @@ publishes it: the sync copies whatever this repo tracks into the public repo.
 
 ## A hook is live the moment it is saved
 
-**A file under `~/.claude/hooks` is NEVER edited in place.** Every session on
+**A file under `~/.claude/hooks` is never edited in place.** Every session on
 this machine runs it the moment it is saved, so a half-applied edit is not a
 draft there. `tool-gate.py` fails closed: if it raises, it denies every
 command it touches, in every session, including the commands that would undo
@@ -163,11 +163,16 @@ session that has never seen a CLAUDE.md of mine or any other skill. When you
 write or edit one:
 
 - **It points at nothing outside itself** - no CLAUDE.md, no other skill, no
-  path on my machine. Its own `references/` are fine. The one exception is
-  the pair `tkay-code` and `tkay-review`, handed out together: the review
-  skill reads the clean-code, verdict and commit references from
-  `${CLAUDE_SKILL_DIR}/../tkay-code/references/`, a path that holds wherever
-  the two are installed side by side, so neither carries a copy that drifts.
+  path on my machine. Its own `references/` and `hooks/` are fine.
+- **A file two skills need is shared by symlink**, as `tkay-writing-mds`
+  says for any catalog. For mine, the sync's `cp` follows the link and
+  publishes a real copy into each skill, which it rebuilds on every run,
+  so the copies never drift. Two skills' hooks never check the
+  same thing: each checks only its own skill's side, so nothing is
+  checked twice when both are loaded, and code the hooks share is a module
+  symlinked like any other file. The case that
+  set it: `tkay-review` reading `../tkay-code/references/`, which broke
+  for anyone who installed the review skill alone.
 - **It states every rule it relies on**, in its own words: a cluster command
   in it carries `--context`/`--kube-context` and `-n`, a safety rule it
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine
@@ -176,13 +181,15 @@ write or edit one:
   namespace or label value. It says "me" and "my", which reads as whoever
   loaded it, and derives anything personal at run time (`git config
   user.email`) or asks for it.
-- **A rule I taught in a session carries a real example from it.** When I
-  point out how I want something and ask you to put it in a skill, the
-  skill gets the case that taught it, not only the rule: a before/after
-  snippet of the actual code, the label or the message, cut to the lines
-  that show it and stripped of names as "It names nobody and nowhere"
-  says. A rule read cold is easy to agree with and hard to apply; the
-  example is what makes it recognisable the next time.
+- **A rule I taught in a session is best given a real example from it**, a
+  recommendation, not a requirement. When I point out how I want something
+  and ask you to put it in a skill, add the case that taught it when it
+  makes the rule easier to recognise: a before/after snippet of the actual
+  code, the label or the message, cut to the lines that show it and
+  stripped of names as "It names nobody and nowhere" says. Leave it out
+  when the rule reads plainly without one. A rule read cold is easy to
+  agree with and hard to apply; the example is what makes it recognisable
+  the next time.
 
 This applies to `tkay-*` only. Team and repo skills - `atero-skills` and the
 rest - follow their own catalog's conventions and may point across skills and

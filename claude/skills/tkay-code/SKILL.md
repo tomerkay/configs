@@ -1,32 +1,39 @@
 ---
 name: tkay-code
-description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, the verdict a judgement opens with, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to propose a change or give a verdict on one, an option or an idea; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; to take screenshots of UI work; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
+description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; to take screenshots of UI work; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
+hooks:
+  PreToolUse:
+    - matcher: "Skill|Read"
+      hooks:
+        - type: command
+          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/skill-clash.py"'
 ---
 
 # Code standards
 
 The rules that apply to **all** code work are in `references/clean-code.md`,
-each with the worked examples behind it. The other references hold the task-specific
-standards.
+each with the worked examples behind it. The other references hold the
+task-specific standards.
 
-## Read the reference for the task BEFORE you start
+## Read the reference for the task before you start
 
 | Task | Read first |
 |---|---|
 | Anything on a GitLab MR - its review threads, its pipeline, a job log - or any `glab` call | `references/gitlab.md` — **before the first glab call** |
-| Writing or amending ANY commit message, or committing at all | `references/commits.md` — **before you type the message** |
-| Creating or naming a branch | `references/commits.md` — "Branch Names", **before you pick the name** |
+| Writing or amending any commit message, or committing at all | `references/commits.md` — **before you type the message** |
+| Running a throwaway test, or handing a tool a file of your own, inside a repo | `references/scratch-in-a-repo.md` |
+| The first change in a repo, or creating, naming or deleting a branch | `references/branches.md` — **before the first change** |
 | Writing an MR or PR description | `references/mr-description.md` — **before you look for the MR** |
 | Writing or moving deploy tooling, a topology file or values — anything that decides what lives under `dev/` versus `deploy/` | `references/deploy-layout.md` — before creating or moving the file |
-| Writing or changing code, or unsure whether a comment, mechanism, default or config key is acceptable | `references/clean-code.md` |
-| Proposing a change, or giving a verdict on a change, an option or an idea | `references/verdict.md` — **before you write the verdict** |
+| Writing or changing any code, a chart, a dashboard or config, or unsure whether a comment, mechanism, default or config key is acceptable | `references/clean-code.md` and `references/security.md` — **read both in full before the first line** |
+| Writing any line into a repo - code, a chart, config, a doc, a test - that could carry a specific value or a person's setup | `references/stale-and-personal.md` |
 
 **If you are unsure whether a row applies, read it.** Loading a reference I did
 not need costs seconds. Skipping one costs me a bad review or a false commit
 message, and git history is permanent.
 
 **Never answer from memory of a reference you have not read this session.** If
-you catch yourself recalling how my commit bodies are structured, STOP and
+you catch yourself recalling how my commit bodies are structured, stop and
 read the file. A remembered version of my standards is the same failure as
 not having them.
 
@@ -43,6 +50,12 @@ state the change leaves as it was gets none.
 
 - **Each screenshot is captioned with the state it shows**, so a missing
   state shows in the list of captions.
+- **What the change touched is boxed in red**, so a reader sees at a glance
+  where to look. Before the shot, outline each changed element on the page
+  itself - `outline: 3px solid red` with an `outline-offset`, which moves
+  nothing on the page - and take the outline off after; a UI that is not a
+  web page gets the box drawn on the image. A box goes on what the change
+  added or altered, never on the whole screen.
 - **A state you cannot reach is named, never skipped** - no data that
   triggers it, a backend you cannot make fail: say which state has no
   screenshot and what it takes to reach it.
@@ -50,13 +63,13 @@ state the change leaves as it was gets none.
 ## A code review is another skill, and another session
 
 **This skill writes code; it never reviews it.** The CR standard lives in
-the `tkay-review` skill, handed out together with this one, which reads
-`references/clean-code.md`, `references/verdict.md` and
-`references/commits.md` from here. The two belong in separate sessions:
+the `tkay-review` skill, handed out together with this one, which carries
+`references/clean-code.md` and `references/commits.md` too. The two belong in separate sessions:
 code written with the review rubric in context is written to the rubric,
 and a review by the code's author is not independent. When asked for a CR in
 a session that has this skill loaded, load the review skill anyway; it says
-how its CR warns that it is not independent.
+how its CR warns that it is not independent. The hook in this skill's
+frontmatter asks before the review skill loads beside it.
 
 ## The repo's conventions win
 
@@ -73,6 +86,5 @@ the two is the point: do not drop a reference wholesale because the repo
 covers part of it.
 
 When the repo and a reference disagree, follow the repo and tell me in one
-line which rule of mine it overrode. The one exception is a repo rule that a
-commit must carry no body: quote it to me and ask before the first commit,
-rather than following it.
+line which rule of mine it overrode; `references/commits.md` names the one
+exception.

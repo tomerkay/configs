@@ -7,7 +7,7 @@ description: Deploying inference models to Crusoe k8s with the il-model (interle
 
 Covers `charts/model/il-model` and `charts/model/pd-model` in `atero-charts`.
 The charts' own `values.yaml` comments are the reference for what each knob does
-— this skill covers what those comments do NOT tell you: the failures that render
+— this skill covers what those comments do not tell you: the failures that render
 clean, install clean, and serve correct answers for an hour before falling over.
 
 > **Confidence:** the single-node PD material here was verified by deploying and
@@ -92,11 +92,9 @@ cell has nodes:
 kubectl get nodes --context <ctx> -L dedicated,cell-display-name
 ```
 
-A policy pins every GPU pod in a cell's namespace to that cell's nodes, so the
-values carry no node selector of their own, and admission rejects `nodeName`,
-a node affinity on `dedicated` or one that matches by field, and a `dedicated`
-toleration. A cell with no node leaves
-every GPU pod Pending while the release looks deployed.
+The values carry no node selector of their own: `references/cells.md` says
+how a cell places its pods and which placement fields it rejects. A cell with
+no node leaves every GPU pod Pending while the release looks deployed.
 
 Before an upgrade, read who wrote the release's objects:
 `kubectl get <obj> --context <ctx> -n <ns> -o jsonpath='{.metadata.managedFields[*].manager}'`.

@@ -14,25 +14,16 @@ token. "Uploading a file" below is the case that taught it.
 ## The TLS failure and its fix
 
 Inside the sandbox on a Mac every glab call fails with
-`tls: failed to verify certificate: x509: OSStatus -26276`, while `curl`
-reaches the same host. The sandbox proxy only tunnels the connection:
-`curl -v` shows gitlab.com's own certificate chain, nothing intercepted,
-so the certificate is fine and the verifier is what broke. glab is Go, and
-Go on macOS hands verification to the Security framework, which the
-sandbox cuts off from the trust store. Go on Linux reads the PEM bundle
-itself and does not hit this.
-
-The fix is glab's own `ca_cert` setting, set on the command:
+`tls: failed to verify certificate: x509: OSStatus -26276`. glab is Go, and
+`go-tls-in-sandbox.md`, beside this file, says why and what fixes it. For
+glab the fix is its own `ca_cert` setting, set on the command:
 
 ```
 GLAB_CA_CERT=/etc/ssl/cert.pem glab api ...
 ```
 
-Given a root pool, Go verifies in pure Go against that bundle and never
-asks the Security framework. Should Linux ever fail the same way, the
-bundle is the distribution's own (`/etc/ssl/certs/ca-certificates.crt` on
-Debian and Ubuntu). `glab config --help` lists `ca_cert` and its
-environment variable; a glab that does not list it predates the setting.
+`glab config --help` lists `ca_cert` and its environment variable; a glab that
+does not list it predates the setting.
 
 Two things that look like fixes and are not:
 
@@ -40,8 +31,7 @@ Two things that look like fixes and are not:
   network filter, the auto-mode classifier may refuse the bypass on a
   GitLab read, and the variable makes the sandboxed call work.
 - Reading the token out (`glab auth status --show-token`, glab's config
-  file) to hand it to `curl`. That materialises a credential, the
-  classifier refuses it, and nothing needs it once glab itself works.
+  file) to hand it to `curl`, which `go-tls-in-sandbox.md` rules out.
 
 The workaround expires when a plain `glab api version` succeeds in the
 sandbox without the variable: drop the variable and this section then.

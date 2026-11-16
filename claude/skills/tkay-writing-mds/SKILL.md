@@ -1,45 +1,24 @@
 ---
 name: tkay-writing-mds
-description: Standards for the markdown files that live in a repo or a skill - a repo CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md, the shape of a README, which copy of a skill to edit, how to write one and how two skills share code. Use before creating or editing any of them, including a doc touched on the way through a code change.
+description: Standards for the markdown files that live in a repo or a skill - any CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md and the check commands it owns, the shape of a README, which copy of a skill to edit, how to write one and how two skills share code. Use before creating or editing any of them, including a doc touched on the way through a code change.
 ---
 
 # Writing markdown files
 
-Two rules bind every file below.
-
-**Nothing that goes stale silently.** A specific value the next change
-invalidates never gets written down: a count of things, a reading of live
-state ("currently disabled"), a date stamped on a claim, a measurement quoted
-as fact, a line number or position in a file. Name the owner instead - the
-function, the config key, the command that answers the question. The test:
-would this sentence need editing after a change nobody will connect to this
-file? A commit body is the exception, because the diff it describes is frozen,
-and so is the record of an incident - when it happened and the numbers it
-showed.
-A deletion is not content - delete the entry, do not record what used to be
-there - but a rejected decision ("tried X, do not go back") stays.
-
-**Nothing personal in a repo.** No person's name, user label, namespace,
-cluster or context name, node hostname, pod IP or branch-built image tag in
-anything tracked - manifests, values, script defaults, docs, tests, examples.
-Anything that names a person or an environment is an install-time input (a
-`--set`, a required script argument, a variable defined once at the top), and
-where a file must carry the key it carries a placeholder no node or cluster
-has. The one exception is the production deploy config that owns a cluster.
+Two rules bind every file below - nothing that goes stale silently, and
+nothing personal in a repo. **Read `references/stale-and-personal.md` before
+writing the first line of any file.**
 
 ## Docs are copies too
 
-This binds every doc. A README, a design doc and a repo `CLAUDE.md` - ANY repo,
+This binds every doc. A README, a design doc and a repo `CLAUDE.md` - any repo,
 whether I asked you to write it or you are touching it on the way through a code
 change - never restate a value and never paste code. No "(default 15)", no
 example block carrying the current numbers, no table with a Default column, no
 function body, no snippet that is wrong after the next edit. Name the key, the
 function or the file and point at the one that owns it; describe the pattern, do
-not copy it.
-
-**A design doc may quote a measurement as the reason for a decision**, with the
-query that reproduces it and no date. It records why the decision was taken,
-not a value in force; a setting in force is still named by its owner.
+not copy it. A repo `CLAUDE.md`'s check commands are no copy: that file is
+their one home - see "A repo CLAUDE.md".
 
 ## Where a fact goes
 
@@ -56,8 +35,9 @@ written, once; every other file that needs it points there.
 3. **The repo `CLAUDE.md`**, when every session needs it before the first tool
    call. It is loaded whole into every session, so every line is paid for on
    every turn, and the harness warns at startup when it grows past its size
-   target. It holds why the code works the way it does, where it bites, and how
-   Claude behaves in this repo - see "A repo CLAUDE.md".
+   target. It holds why the code works the way it does, where it bites, how
+   Claude behaves in this repo, and the commands that check work in it - see
+   "A repo CLAUDE.md".
 4. **The README**, when a human operating the thing needs it: setup, the
    commit or deploy steps, the contract consumers depend on, troubleshooting.
 
@@ -109,7 +89,15 @@ list, a snippet or a procedure never repeats.
 
 Two jobs. **Engineering notes:** why the code works the way it does and where
 it bites. **Behaviour:** how Claude works in this repo. Never what the code
-does - the code says that - and never how to operate it - that is the README.
+does - the code says that - and never how to operate it - that is the README -
+with one exception, the check commands below.
+
+**The commands that check work live here, written in full**: test,
+typecheck, lint, and running a single test file, one line each with the
+exact flags and paths, so Claude can check its own work on every task with
+no file to open first. This is their one home: the README points here for
+them and never repeats them. A repo whose runner target already says how
+to call it - `make lint` - may name the target instead.
 
 The engineering notes carry design decisions and the reason behind them, the
 trade-offs, and each gotcha with the mechanism behind it. A flow or an
@@ -141,30 +129,24 @@ def validate(pod):
 This function validates the pod by checking if it's ready...
 ````
 
-**Example - GOOD (design and architecture):**
+**The shape is topic headings with one bullet per fact**, as the
+[Claude Code memory docs](https://code.claude.com/docs/en/memory#write-effective-instructions)
+recommend: headers and bullets are easier for Claude to follow than
+paragraphs. A fact carries its reason in the same bullet. A reason that runs
+longer nests as a sub-bullet under its fact, and one that needs real
+explaining goes in a WHY comment or a design doc the bullet points to.
+
+**Example - GOOD (decisions and gotchas):**
 ````markdown
-## Validation Flow
+## Validation
 
-**Design:** Fail-fast at startup, zero defensive checks at runtime.
-
-**Flow:** Health check (fail immediately if unhealthy) → Skip prefill/multi-node
-pods → Validate text/audio/vision based on config.
-
-**Key decision:** Separate transient errors (timeouts, network) from validation
-failures (wrong output, corrupted response). Only validation failures trigger
-blacklisting - prevents pods being blacklisted during temporary infrastructure issues.
-
-**Gotcha:** Multi-node workers skip ALL endpoint validation because leader handles
-inference. Only health check runs.
+- Fail fast at startup; nothing is checked defensively at runtime.
+- Only wrong or corrupted output blacklists a pod; a timeout or a network
+  error is transient and never does.
+  - Otherwise a short infrastructure blip blacklists healthy pods.
+- Multi-node workers skip endpoint validation and run only the health
+  check: the leader serves inference.
 ````
-
-The Flow line stays because the Gotcha below it needs it.
-
-**Structure per section:**
-1. Problem/context (1 sentence)
-2. Design decision or architecture
-3. Key insights or trade-offs
-4. Gotchas or edge cases
 
 ## A README
 
@@ -180,6 +162,8 @@ The reader has a task and has not read the code.
   the file that explains the mechanism.
 - **A README below the root keeps only what is that directory's own** and
   points up for the rest.
+- **The test, typecheck and lint commands are the `CLAUDE.md`'s**: the
+  README says where they are and never repeats them.
 
 "Docs are copies too" binds here hardest: a README is where a setup snippet
 gets pasted and then forgotten. Name the file and the key, and give the command
@@ -204,6 +188,15 @@ Both install routes carry the file. A plugin that holds only the skill gets the
 link's target copied in as a plain file; a plugin rooted at the whole repo
 copies the target with everything else and keeps the link. Never paste a copy
 into each skill instead: the copies drift.
+
+**A skill names its files so the path holds wherever it is installed.** It
+runs from whatever repo the session opened and may sit in a plugin cache, so
+it never names a file as `.claude/skills/...` or `~/.claude/skills/...`. Its
+SKILL.md names them relative to its own folder, or as
+`${CLAUDE_SKILL_DIR}/...` where a command needs the full path. The harness
+fills that variable in SKILL.md alone: a reference file names a file by the
+name SKILL.md gives it, never by the variable. A path into a different repo
+names that repo and says a checkout of it is needed.
 
 **A skill name** is lowercase letters, digits and hyphens only, which is all the
 [Agent Skills spec](https://agentskills.io/specification) allows.

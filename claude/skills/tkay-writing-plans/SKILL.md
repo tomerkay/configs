@@ -50,7 +50,7 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
   4. The questions of "Check security" and "Check high availability", asked of what
      we are shaping.
   5. What has failed here before, and which of those the shape must answer.
-  6. What is NOT a problem, what rests on an inference, and when planning turns into
+  6. What is not a problem, what rests on an inference, and when planning turns into
      a rabbit hole.
 
   What waits for the full plan is the writing: the document, the contract and its
@@ -203,33 +203,10 @@ Once it is chosen, the plan carries it:
 
 ## Check security
 
-**Read the design as an outside auditor would, writing a report about the company.**
-Anything they could write down that makes us look careless is a finding, whether or
-not anyone has exploited it. Ask these of the design and of the component it lands
-in, and write each answer into the fix - "not exposed, because <reason>" included:
-
-- **Does anything cross a network in plaintext?** HTTP where HTTPS exists, an
-  insecure gRPC channel, TLS verification switched off. Inside the cluster counts
-  too.
-- **Where does each secret live, and can it leak?** It comes from a secret store at
-  run time, never from source, a values file, an image layer, a URL, a log line or
-  a metric label.
-- **Does customer data go where the customer did not send it?** Prompts,
-  completions, request bodies or user identifiers in logs, traces, metrics or a
-  third-party service.
-- **Can one tenant reach another?** A shared cache, queue, volume or namespace, or a
-  lookup keyed on something the caller controls.
-- **Who can reach each endpoint, and how is it authenticated?** An admin, debug or
-  metrics endpoint exposed past its users, a default credential, a firewall rule
-  open to the world, a LoadBalancer where a ClusterIP would do.
-- **Does it run with more than it needs?** Root in the container, privileged, host
-  network, a wildcard RBAC rule, a cloud role broader than its one job.
-- **Can input reach a shell, a query or a path?** A command, SQL or file path built
-  from anything the caller sends.
-- **Is what it pulls in trusted?** An unpinned image or dependency, a `curl | sh`, a
-  dependency with a known CVE, home-grown crypto.
-
-Closing an exposure the report would name is part of the fix, not extra scope.
+**Read the design as an outside auditor would.** Ask every question in
+`references/security.md` of the design and of the component it lands in,
+and write each answer into the fix - "not exposed, because <reason>"
+included.
 
 ## Check high availability
 
@@ -344,18 +321,9 @@ in its bucket.
 
 ## Divide it into commits
 
-Not a pile of edits. One section per commit, each independently correct and leaving the
-tests passing - so any prefix of the list is correct on its own. The series takes the
-shape of the Linux kernel's
-[Submitting patches](https://www.kernel.org/doc/html/latest/process/submitting-patches.html)
-("Separate your changes"), and a fix for a shipped bug is one commit outside it:
-
-1. Preparatory refactors first, one per commit, each changing no behaviour.
-2. Then the behaviour, with the tests that pin it in the same commit.
-3. Then the docs the behaviour makes true.
-4. Where the repo requires a version bump, the bump last, the one that releases.
-
-A refactor and a behaviour change never share a commit. For each one: the subject
+Not a pile of edits. One section per commit, cut and ordered as
+`references/commits.md` says under "Two Suits: a Fix Stands Alone, a Feature
+Is a Series". For each one: the subject
 line, the files, the tests, and **what the commit body has to say**. Each black-box
 test of the contract lands in the commit that delivers the behaviour it pins, so no
 prefix of the list claims a promise nothing tests.
@@ -415,7 +383,7 @@ gone? If not, cut it.
 - **Every number must be reproducible.** Put the exact query beside it and name the data
   source. A number I cannot re-derive is one I cannot trust a week later.
 - **Measurement windows expire.** Say so, and give the recipe for picking a fresh one.
-- **Say what is NOT a problem.** If you checked something and it is fine, write that down
+- **Say what is not a problem.** If you checked something and it is fine, write that down
   so I stop wondering about it.
 - **Name the decisions that are mine** and ask them.
 - **Flag what rests on an inference rather than a measurement**, say what would falsify
@@ -478,9 +446,9 @@ plan the code already contradicts.
 ## Committing a plan to a repo
 
 Committed to a repo, a plan becomes a record read by someone who was not in the
-review. It names a setting in force by its owner, the key and the file, never by
-its value. It keeps a measurement only as the reason for a decision, with the
-query that reproduces it and no date: git history dates it. Working notes go:
+review, and `references/stale-and-personal.md` binds it: a setting in force is
+named by its owner, and a measurement stays only as the reason for a
+decision. Working notes go:
 instructions to whoever executes it, people's names, branch names, a section on
 running things on one machine.
 

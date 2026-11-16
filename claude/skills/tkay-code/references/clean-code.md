@@ -7,55 +7,14 @@ mechanism, default or config key is acceptable.
 
 ---
 
-# SECURITY: WHAT WOULD AN AUDITOR WRITE ABOUT THIS?
+# Security: what would an auditor write about this?
 
-**Read every component as an outside auditor, a security researcher or an
-analyst writing about the company would - when writing it and when reviewing
-it.** Anything they could write down that makes us look careless is a
-finding, whether or not anyone has exploited it. The company is judged on what
-that report says, not on whether the hole was ever used.
-
-Ask these of every change, and of the component it lands in:
-
-- **Does anything cross a network in plaintext?** HTTP where HTTPS exists, an
-  insecure gRPC channel, TLS verification switched off (`verify=False`,
-  `InsecureSkipVerify`, `curl -k`). Inside the cluster counts too: "it is an
-  internal network" is the first line such a report quotes.
-- **Can a secret leak?** A token, key or password in source, a values file, an
-  image layer, a URL or query string, a log line, an error message, a metric
-  label or a startup dump of the environment. A secret comes from a secret
-  store at run time and is never printed.
-- **Does customer data go where the customer did not send it?** Prompts,
-  completions, request bodies or user identifiers in logs, traces, metrics,
-  crash dumps or a third-party service. Log a request's ID and shape, never
-  its content.
-- **Can one tenant reach another?** A shared cache, queue, volume or namespace
-  through which one customer's data or traffic reaches another's, or a lookup
-  keyed on something the caller controls.
-- **Is every endpoint authenticated, and reachable only by who needs it?** An
-  admin, debug, metrics or profiling endpoint exposed past its users, a
-  default credential, a firewall rule open to `0.0.0.0/0`, a LoadBalancer
-  where a ClusterIP would do.
-- **Does it run with more than it needs?** Root in the container,
-  `privileged`, `hostNetwork`, a wildcard RBAC rule, a cloud role broader than
-  its one job.
-- **Can input reach a shell, a query or a path?** A shell command, SQL, file
-  path or template built from anything the caller sends.
-- **Is what it pulls in trusted?** An unpinned image or dependency, a
-  `curl | sh`, a package from an unknown source, a dependency with a known
-  CVE, home-grown crypto, MD5 or SHA-1 used for security.
-
-**Closing one of these exposures is not over-engineering.** It passes the
-"What breaks in production TODAY" test in "OVER-ENGINEERING": the scenario is
-the report that names it. A control for an exposure nobody can reach still
-fails that test.
-
-**An exposure found on the way is always reported**, never left unmentioned
-because the change at hand did not cause it.
+**The security rules are in `security.md`, beside this file, and are read in
+full with it.**
 
 ---
 
-# COMMENTS IN CODE
+# Comments in code
 
 **A comment that states the obvious, or repeats what the code or the log
 already says, is noise.** Every needless comment costs the reader time; the
@@ -87,7 +46,7 @@ Comments that go:
 
 **A doubt resolves toward deleting the comment.** If the code is unclear, improve the code (better naming, structure) rather than add a comment.
 
-## CONVERSATION ARTIFACTS STAY OUT OF THE CODE
+## Conversation artifacts stay out of the code
 
 **A comment must make sense to someone who reads the file cold, having never seen our discussion.** If a comment only exists because of something that happened in our conversation — a code review finding, a rejected alternative, a bug I introduced and fixed, a design I argued for — it does NOT belong in the code. Answer me in chat; leave the file clean.
 
@@ -97,6 +56,7 @@ Comments that go:
 - `# Gated here rather than relying on X, which happens to be true today but is a coincidence` — arguing against a rejected approach
 - `# so they cannot drift apart the way three parallel lists could` — referencing code that no longer exists
 - `# without this, a skipped write would still log as published` — describing the bug I just fixed
+- `# this is my addition` or `# this is the part you were referring to` — pointing at the request instead of writing code that stands on its own
 - Anything containing "rather than", "instead of", "we could have", "previously", "this used to", "deliberately not", or a justification for why the code isn't something else
 
 **The test:** delete every trace of our conversation from your memory, then read the comment. If it now reads as a defence of a decision, or refers to code/bugs/alternatives that aren't in the file, it goes.
@@ -107,7 +67,7 @@ Comments that go:
 
 ---
 
-# OVER-ENGINEERING
+# Over-engineering
 
 **The smallest change that fixes the actual problem is the right one**
 until I say otherwise. Every line nothing asked for is a line I read, maintain
@@ -136,7 +96,7 @@ sentence that you considered it and moved on. I decide, not you.
   just fail, counted and logged
 - **Caching / memoisation / pooling to speed up a read that must be fresh** -
   measure first. No numbers, no cache. A reader that need not be fresh reads
-  a cached copy by "A CHECK COSTS WHAT ITS ANSWER IS WORTH", with no number
+  a cached copy by "A check costs what its answer is worth", with no number
   asked for
 - **New config knobs** - every knob is another number someone must keep in step
   with the rest. Derive it from an existing value, or hardcode it and say why
@@ -209,7 +169,7 @@ and dead code is deleted.**
 
 **Where defensive code belongs:**
 - Validating external inputs (user data, API responses, config files) - see
-  "PARSE AT THE BOUNDARY"
+  "Parse at the boundary"
 - Failing cleanly on a known transient failure (a network timeout, a
   temporary unavailability): the call fails, counted and logged. A retry is
   on the suspects' list above
@@ -231,13 +191,13 @@ handling of a state that cannot occur. A state that can occur but should
 never happen in practice gets no recovery path of its own. In order:
 
 - **First, make it unrepresentable.** A check in the middle of the code is
-  a boundary that let something through; the fix is in "PARSE AT THE
-  BOUNDARY", where the type the boundary produces has no way to hold the
+  a boundary that let something through; the fix is in "Parse at the
+  boundary", where the type the boundary produces has no way to hold the
   state, not one more check downstream. Many invariants to check is the
   smell that the boundary is too weak.
 - **What remains is refused at the smallest scope that contains it**: the
   request fails for its caller, the item is dropped from the pass, counted
-  and logged ("EVERY BAD PATH IS COUNTED, THEN LOGGED"). The process dies
+  and logged ("Every bad path is counted, then logged"). The process dies
   only for a state that is process-wide - a config it cannot parse, a
   corrupt store - and the supervisor restarts it. That is
   [fail fast](https://martinfowler.com/ieeeSoftware/failFast.pdf) as
@@ -296,7 +256,7 @@ def parse_pod(raw: dict) -> Pod:
 
 ---
 
-# ONE SOURCE OF TRUTH - CONFIG, DEFAULTS, LOGIC AND EVERYTHING ELSE
+# One source of truth - config, defaults, logic and everything else
 
 A value that lives in two places will drift, and then one change means hunting
 every copy.
@@ -334,7 +294,7 @@ every copy.
     "not set" with "off" - the exact distinction the rule above keeps.
 - **Name the off value at the key when the name and the value do not say it
   themselves.** One line in values.yaml and in the flag's help text - "0
-  turns the cap off" - is a gotcha comment, the kind "COMMENTS IN CODE"
+  turns the cap off" - is a gotcha comment, the kind "Comments in code"
   allows: a reader cannot deduce which value switches the limit off. Leave it
   out when it is self-evident, such as a word `unlimited` among the allowed
   values.
@@ -359,7 +319,7 @@ every copy.
 - **Code that only looks alike is not duplication.** Two blocks that change for
   different reasons stay apart. Extract when a second real caller exists and
   both must change together, not for a caller that might come - see
-  "OVER-ENGINEERING". A wrong shared helper costs more than the copy it
+  "Over-engineering". A wrong shared helper costs more than the copy it
   replaced.
 - **A copy that cannot drift is cheaper than a pipe that carries the value.**
   Before you add an API field, a parameter or a lookup so that a consumer can
@@ -368,7 +328,7 @@ every copy.
   interface: the consumer keeps a named constant that names its owner. The
   test is what a change of the value costs - when the change is a migration
   anyway, the second copy does not drift.
-- **This rule is the commonest case of "SOLID VS FRAGILE".** A second copy
+- **This rule is the commonest case of "SOLID vs fragile".** A second copy
   is a line that a change to the first leaves standing and false, the silent
   form of fragility. That section's test decides the cases this one does not
   name - a count, a path, an example, a rule written in two places - and
@@ -394,9 +354,9 @@ file that owns it, and never restates the value.
 
 ---
 
-# ONE REASON TO CHANGE
+# One reason to change
 
-The mirror of "ONE SOURCE OF TRUTH": what changes together lives in one place,
+The mirror of "One source of truth": what changes together lives in one place,
 and what changes for different reasons lives apart.
 
 - **One reason to change per function, class or module.** Code that changes for
@@ -419,7 +379,7 @@ and what changes for different reasons lives apart.
 
 ---
 
-# SOLID VS FRAGILE
+# SOLID vs fragile
 
 **Before writing a line, ask what one small change elsewhere does to it.**
 Fragility is one of the design smells Robert C. Martin named next to the
@@ -433,7 +393,7 @@ the one that reaches production:
   retry tripped. The break is visible, but it lands where nobody was
   looking, and whoever made the change could not see it coming. The fix
   cuts the coupling: the value read from one place, the behaviour behind
-  one interface, the dependency pointing one way. "ONE REASON TO CHANGE"
+  one interface, the dependency pointing one way. "One reason to change"
   keeps the blast radius of a change to the one place that changes for
   that reason.
 - **Silent fragility: the change leaves something standing and false.** A
@@ -455,6 +415,10 @@ happens. Nothing, it follows, or it breaks where the change is made:
 solid. It breaks somewhere else, or it stays and lies: fragile, and it is
 rewritten before it is written.
 
+**A path is fragile to where it is run from.** A path relative to the
+current directory holds only for a script always run from its own repo;
+one run from anywhere builds its paths from its own location.
+
 **Worked example.** A consumer repo carried a values file for a chart it
 did not own. The chart renamed a key, Helm ignores a key the chart does
 not know, and the copy kept rendering while the setting it carried did
@@ -464,7 +428,7 @@ the rename then breaks at the commit that causes it.
 
 ---
 
-# THE PLAIN VERSION WINS
+# The plain version wins
 
 **When two versions do the same job, write the one a reader follows on the
 first pass.** Clever code is paid for by every reader, every change and every
@@ -477,7 +441,7 @@ bisect, and buys nothing when the plain version is as correct and fast enough.
 - **A known idiom is already plain**: a one-level comprehension, `any()` /
   `all()`, `dict.get` with a default, `?` in Rust. Unrolling it into a
   hand-written loop is not simpler.
-- **Past two levels, nesting is the spaghetti "ONE REASON TO CHANGE" names**:
+- **Past two levels, nesting is the spaghetti "One reason to change" names**:
   the inner level becomes a named function, and early returns flatten the
   branches.
 - **Performance buys complexity only with a measurement** on a path that
@@ -486,7 +450,7 @@ bisect, and buys nothing when the plain version is as correct and fast enough.
 
 ---
 
-# A NAME MEANS ONE THING, LITERALLY
+# A name means one thing, literally
 
 **A reader who never saw the code before must know what a variable, field,
 function, state or label holds from its name alone, without a comment and
@@ -610,7 +574,13 @@ if neverSplit && deployInFlight(e) {
 
 ---
 
-# ONE RESULT, ALL OR NOTHING
+## A script's name and its log
+
+**Script names join their words with `-`**, unless the repo's other scripts
+use `_`, and a script's log takes its name: `daily-updates.sh` writes
+`daily-updates.log`.
+
+# One result, all or nothing
 
 **A step that returns one result never leaves half of it done.** Two
 writes behind one result - two tables, a row and a cluster object, a row
@@ -658,8 +628,8 @@ only the failed step retries, at the cost of a longer event history
 In a review, a function that makes two writes to two places and returns
 one error is a finding.
 
-**Worked example.** The verdict loop under "EVERY BAD PATH IS COUNTED,
-THEN LOGGED" settled verdicts and filed new requests in one transaction.
+**Worked example.** The verdict loop under "Every bad path is counted,
+then logged" settled verdicts and filed new requests in one transaction.
 A verdict is settled whether or not the next request files, and filing
 reads nothing the settle writes, so a request that failed to file rolled
 back verdicts with nothing wrong with them, and the next pass settled them
@@ -684,7 +654,7 @@ return errors.Join(settleErr, fileErr)
 
 ---
 
-# EVERY BAD PATH IS COUNTED, THEN LOGGED
+# Every bad path is counted, then logged
 
 A bad path I cannot alert on is one I find out about from a customer. The
 counter is what lets someone write the alert the day it matters.
@@ -696,7 +666,7 @@ counter is what lets someone write the alert the day it matters.
   bad path - one that fires constantly is an outage nobody sees.
 - **Only paths that can occur.** A state the system rules out gets no handler
   and no counter - see "Metrics or logs for states that cannot occur" under
-  "OVER-ENGINEERING".
+  "Over-engineering".
 - **Every bad path is counted, then logged.** Each one increments a counter,
   then logs one line with the context needed to debug it (pod name, pod IP,
   model name, whatever identifies the thing that went wrong). Metric first, so
@@ -733,7 +703,7 @@ counter is what lets someone write the alert the day it matters.
   only for a level that goes up and down.
 - **A bad-path log on a per-request path can flood.** The counter is never
   cut - it is the signal at any volume. The log line is what gets raised: see
-  the rate-limiting bullet in "OVER-ENGINEERING", raise it with me, build
+  the rate-limiting bullet in "Over-engineering", raise it with me, build
   nothing.
 
 **Worked example.** One pass of a loop settled its verdicts and filed new
@@ -785,11 +755,11 @@ for _, v := range settled {
 ```
 
 Counting after the commit fixes the count; two independent jobs sharing
-one transaction is a bug of its own - see "ONE RESULT, ALL OR NOTHING".
+one transaction is a bug of its own - see "One result, all or nothing".
 
 ---
 
-# PARSE AT THE BOUNDARY
+# Parse at the boundary
 
 Raw input - a request body, a config file, an API response, an environment
 variable - is turned into a typed struct or an enum once, where it enters.
@@ -798,12 +768,12 @@ Everything past that point takes the typed value and never re-checks it.
 - **A validated value has a type that says so.** A function that checks a
   string and passes the same string on leaves every caller to wonder whether it
   was checked. A function that returns a parsed type answers that for good.
-- **This is where defensive code belongs** (see "When defensive code IS
-  appropriate" under YAGNI), and the reason the code inside needs none.
+- **This is where defensive code belongs** (see "Where defensive code belongs"
+  under YAGNI), and the reason the code inside needs none.
 
 ---
 
-# A CHECK COSTS WHAT ITS ANSWER IS WORTH
+# A check costs what its answer is worth
 
 **Before a check runs, ask who reads the answer and what a cheaper one
 would cost them.** A hint - a greyed button, a status column, a dashboard
@@ -817,7 +787,7 @@ whose only reader is a hint. The database world calls the move
 read picks the level it needs.
 
 - **One owner.** The action's check is the truth; a hint that computes its
-  own copy drifts from it ("ONE SOURCE OF TRUTH"). The hint calls the same
+  own copy drifts from it ("One source of truth"). The hint calls the same
   function with a cheaper input - the cached value, the partial set - or
   shows the control live and lets the click refuse with the reason. OWASP
   says the same of a client-side check: it is for the person, and the
@@ -859,7 +829,7 @@ core.replace_node(name, node)
 
 ---
 
-# ASYNCIO
+# Asyncio
 
 - **Every task has an owner.** The result of `asyncio.create_task` is kept and
   awaited, or held by a `TaskGroup` or a set the owner drains. The event loop
@@ -872,7 +842,7 @@ core.replace_node(name, node)
 
 ---
 
-# ONE LOCK AT A TIME
+# One lock at a time
 
 **A lock taken while another is held is a design smell, whatever the two
 guard.** Two locks held at once is the one ingredient a deadlock needs, and
@@ -884,14 +854,14 @@ caller.
 
 - **Nesting says two things that change together got separate locks, or one
   lock guards too much.** State that must change together is one lock
-  ("ONE REASON TO CHANGE"); state that changes apart is two regions, each
+  ("One reason to change"); state that changes apart is two regions, each
   released before the next is taken.
 - **A call made under a lock is a nested lock you cannot see.** The callee
   may take its own lock today or after its next change - a callback, a
   logger, a client, another component's method. Under a lock run only the
   reads and writes it guards; I/O, an `await`, a callback or a call into
   another component under it is each a nested lock in waiting. The same rule
-  "ONE RESULT, ALL OR NOTHING" gives a transaction.
+  "One result, all or nothing" gives a transaction.
 - **A documented lock order is a workaround, not a design.** When two locks
   truly must be held together the split was wrong: one lock, a queue drained
   by the one owner of the state, or an actor that owns it.
@@ -935,7 +905,7 @@ async with self._lock:
 
 ---
 
-# TESTS CHECK THE CONTRACT, NOT THE CODE
+# Tests check the contract, not the code
 
 **A unit test earns its place by catching a real regression.** It pins
 something the component promises - its API, an invariant, the intent behind a
@@ -1047,7 +1017,7 @@ proportional to the change" applies to tests too.
 
 ---
 
-# ENUMS OVER STRINGS
+# Enums over strings
 
 **A fixed set of values is an enum; a string literal standing for one of
 them is a smell.**

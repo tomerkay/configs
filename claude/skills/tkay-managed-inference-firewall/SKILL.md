@@ -93,13 +93,10 @@ project, not the cluster's. Derive the mapping with the search above every
 time; clusters get moved.
 
 `crusoe` failing with `tls: failed to verify certificate: x509: OSStatus
--26276` inside a sandbox on a Mac is neither a network block nor a bad
-certificate: the request reaches `api.cloud.crusoe.ai`, but the CLI is Go, and
-Go on macOS verifies through the Security framework, which the sandbox cuts off
-from the trust store. `SSL_CERT_FILE` does not help - Go ignores it on macOS -
-and `crusoe --help` lists no CA-certificate setting, so run it with the sandbox
-off. The workaround expires when a plain `crusoe projects list` succeeds inside
-the sandbox.
+-26276` inside a sandbox on a Mac is the Go TLS case `references/go-tls-in-sandbox.md`
+explains. `crusoe --help` lists no CA-certificate setting, so run it with the
+sandbox off, until a plain `crusoe projects list` succeeds inside the
+sandbox.
 
 ## IP topology — what is per node, per cluster, per region
 
@@ -114,7 +111,7 @@ the sandbox.
 So `kubectl get nodes --context <ctx> -o wide` EXTERNAL-IP **is** the correct source list for an
 allowlist. There is no shared egress IP to discover.
 
-**Public blocks do NOT map to regions.** A single cluster's nodes straddle
+**Public blocks do not map to regions.** A single cluster's nodes straddle
 blocks, so you cannot infer a region from an address, and you cannot write a
 per-region source CIDR. Observed shape: one region sits in one block, a second
 region mixes two blocks within one cluster, a third sits mostly in a third

@@ -8,38 +8,14 @@ description: Procedures for helm upgrades against a live release, for tearing th
 This skill is the *how* for the operations that have real procedure behind
 them. Two rules hold throughout.
 
-**Every command that reaches a cluster names its target**: `kubectl <verb> ...
---context <ctx>` plus `-n <ns>` for anything namespaced, `helm <verb> ...
---kube-context <ctx> -n <ns>`. Never
-rely on the current context and never switch it with `kubectl config
-use-context` - I switch contexts constantly, so the current one is whatever I
-last pointed at elsewhere. If I did not name the cluster and namespace: for a
-read, take them from an authoritative source - the deploy config that owns the
-cluster, the cell record - and say which; with no such source, ask. For
-anything that changes the cluster, ask.
+**Every command that reaches a cluster names its target.** Read
+`references/pinning.md` before the first command that reaches a cluster: the
+flags per tool, the command shapes that run without a prompt, and what to do
+when I did not name the cluster or the namespace.
 
-**Every workload I deploy lands in my cell.** The dev clusters hand GPU nodes
-out as cells: the backoffice moves a node into a cell, and a policy pins every
-GPU pod in a cell's namespace to that cell's nodes with
-`nodeSelector: dedicated=<namespace>`, and every other pod to the shared CPU
-nodes. The deprecated `atero/user` node label is rejected on write and carried
-by no node, so a selector on it schedules nothing while looking deployed.
-Before any install or upgrade, check that the namespace is a cell of mine and
-that the cell has nodes (`kubectl get nodes --context <ctx> -L
-dedicated,cell-display-name`). If you do not know which cell is mine, ask -
-never infer it from another workload. If the namespace is someone else's cell,
-or the cell has no nodes, stop and ask before installing.
-
-**Placement in a cell is the policy's alone.** Admission rejects any pod in a
-cell namespace that sets `spec.nodeName`, a node affinity on `dedicated` or one
-that matches by field, a toleration for `dedicated`, or - on a pod that requests
-no GPU - a `dedicated` node selector. So the rendered manifest carries none of
-those: check it for them before an install, and when a chart sets one, drop it
-from the values rather than working around the rejection. The one exception is
-a per-node agent - a DaemonSet whose pods carry
-`crusoe-ai.managed-ai.inference.node-agent: "true"` - which is skipped by those
-checks and must instead select its own cell itself, with
-`nodeSelector: dedicated=<namespace>`.
+**Every workload I deploy lands in my cell.** Read `references/cells.md`
+before any install or upgrade: what a cell is, the checks before an install,
+and the placement fields a cell namespace rejects.
 
 ## Upgrading a Live Release: Get the Chart the Release Actually Used
 
@@ -54,7 +30,7 @@ back, which only its verifiers can. If I ask for one
 anyway, say this before anything else. Everything below is for releases that
 are mine to upgrade.
 
-**The deployed chart is usually NOT my local working tree.** CI stamps the chart
+**The deployed chart is usually not my local working tree.** CI stamps the chart
 version from `git describe`, so the local `Chart.yaml` keeps a placeholder
 (`0.1.0`) forever and never matches a released version. Compare `helm list`
 against the local `Chart.yaml` before anything else. Upgrading from the local
@@ -73,7 +49,7 @@ Ways to get the real chart:
 
 Before every upgrade:
 
-- `helm get values <release> --kube-context <ctx> -n <ns>` first, then **ASK
+- `helm get values <release> --kube-context <ctx> -n <ns>` first, then **ask
   me whether `--reuse-values` is wanted — do not decide it yourself.** It replays my previous user values on
   top of the *new* chart's defaults: a no-op when the release has none, and a
   silent carry-forward of stale values when it does.
@@ -171,7 +147,7 @@ components into it - an ArgoCD-managed collector, and whatever the backoffice
 installs per cell, such as a router or a monitor. Those are the cell, not my
 work, and they stay.
 
-**A teardown removes what RUNS. It never removes what STORES, and never the
+**A teardown removes what runs. It never removes what stores, and never the
 namespace.** PVCs, secrets, configmaps and the namespace itself stay unless I
 ask for them by name, in that message - they are what the next round rebuilds
 from, and re-copying pull secrets into a fresh namespace is a tax I pay for
@@ -218,7 +194,7 @@ deleting. A node being drained or relabelled out from under it produces exactly
 this.
 
 Then give me four lists: what one `helm uninstall` takes, what the backoffice
-installed and so comes down through the backoffice, what is still RUNNING that
+installed and so comes down through the backoffice, what is still running that
 neither owns and so needs `kubectl delete`, and what is left standing on
 purpose: the cell's own components, storage, config, the namespace.
 
@@ -232,7 +208,7 @@ Still running, so it IS part of the teardown:
 - Hand-applied daemonsets, deployments, jobs and bare pods - these are what is
   holding the GPU the teardown exists to free.
 
-Persists on purpose, so you REPORT it and leave it alone:
+Persists on purpose, so you report it and leave it alone:
 
 - The cell's own platform components, written by `argocd-controller` or by
   the backoffice for the cell rather than for a model.
@@ -249,7 +225,7 @@ them all at once.
 ### Batch it - not one command per object
 
 `helm uninstall` accepts every release name in a single invocation, and so does
-`kubectl delete <kind>`. Most teardowns are therefore ONE command, the helm one.
+`kubectl delete <kind>`. Most teardowns are therefore one command, the helm one.
 A second, batched `kubectl delete` shows up only when something hand-applied is
 still running - never for storage, config or the namespace.
 
@@ -283,7 +259,5 @@ shows none of mine, and show me both - do not tell me it is done without them.
 
 ### One more thing
 
-**A refused command does not mean access is gone.** A denied mutation can black
-out reads to the same cluster host for a moment afterwards. Re-test with one
-cheap read before telling me you have lost the cluster - it clears on its own,
-and reporting a dead connection that is actually fine sends me chasing nothing.
+**A refused command does not mean access is gone** - `references/reads.md`
+says what to do instead of reporting the cluster lost.

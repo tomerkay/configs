@@ -15,10 +15,8 @@ Everything production needs to be installed, and only that:
 - **The topology** - which cluster, which namespace, which released version,
   which components. This is the one place a cluster name may appear in a repo:
   nothing else tracked names a person, cluster, namespace or node.
-- **Production values** for the charts this repo owns. Values for a chart
-  another repo owns live in that repo's `examples/`, never here: Helm ignores a
-  key the chart does not know, so when the chart renames or drops one a
-  foreign copy keeps rendering and the setting silently does nothing.
+- **Production values** for the charts this repo owns, and only those - see
+  "Values for a chart live with the chart".
 
 ## `dev/` targets a dev cluster and nothing else
 
@@ -43,6 +41,29 @@ the migration is a move, not a rewrite.
 Do not grow the stopgap. Retries, waiting on a LoadBalancer, per-environment
 branches, health polling: each is a feature the controller already has, and
 each is a reason the migration never happens.
+
+## Values for a chart live with the chart
+
+**A repo never carries a values file for a chart it does not own.** Helm
+ignores a key the chart does not know, so when the chart renames or drops a
+key the foreign copy keeps rendering and the setting silently does nothing -
+that is how a monitor fleet's endpoint rotted. No pin file, no checker and
+no header fixes that; they only guard the copy. Do not make the copy.
+
+- **The values go in the chart's own repo as an example** under its
+  `examples/`, which that repo's CI renders on every change, so a rename
+  breaks at the commit that causes it and not in somebody else's dev run.
+- **The consumer repo points at the example** from a checkout of the chart
+  repo, and adds only what is per install - the node pin, the cluster name,
+  the image tag - as `--set` flags. Whatever commit the checkout is at is the
+  version; chart and example come from one commit and cannot disagree.
+- **An example is not a dev setup**: placeholders no node or cluster carries
+  where the install-time values go, the chart's own conventions for versions,
+  no person, node, namespace or cluster named.
+
+A `values.schema.json` with `additionalProperties: false` in the chart makes
+Helm refuse the unknown key for every installer, the ones that paste values
+into a UI included; propose it to the chart's repo when the chance comes.
 
 ## Naming
 
