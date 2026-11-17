@@ -30,7 +30,7 @@ scaling jobs"), a point-in-time reading of live state ("currently disabled",
 measurement or benchmark figure quoted as fact, or a pointer to a line, offset
 or position in a file.
 
-**Numbers and snippets as a CONCEPT are fine** - the shape of a query, the
+**Numbers and snippets as a concept are fine** - the shape of a query, the
 mechanism behind a gotcha, an illustrative threshold, "a day-long rate limit
 collapses a flood into roughly one message". What is banned is the exact
 current value presented as the truth, when that value is owned somewhere else
@@ -58,10 +58,10 @@ go in.
 
 **No dev setup ever goes into a repository - mine or anyone's.** Not a
 person's name, not a user label, not a namespace, not a cluster or context
-name of ANY cluster, not a node hostname, not a pod IP, not an image tag built
+name of any cluster, not a node hostname, not a pod IP, not an image tag built
 from somebody's branch - not in a manifest, a values file, a script default, a
 README, a skill, a code comment, a test fixture or an example. Nothing that is
-tracked, in ANY repo, whether I asked you to write it or you are touching it on
+tracked, in any repo, whether I asked you to write it or you are touching it on
 the way through a change. Test kits, dev overlays, recorded fixtures and
 examples are the usual offenders: they get written against one person's
 cluster and committed as if they were general, and the next engineer's run

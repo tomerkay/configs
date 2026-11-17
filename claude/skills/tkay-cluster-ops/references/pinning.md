@@ -48,7 +48,7 @@ prompt and cover everything an investigation needs.
 - `-A` / `--all-namespaces` is a deliberate choice, never an escape from `-n`. Use
   it only when I asked for a cluster-wide view, and pin `--context` regardless.
 
-## The loopholes that are NOT loopholes
+## The loopholes that are not loopholes
 
 - **`kubectl config current-context` is not permission to omit the flag.** Neither
   is my having named the cluster three messages ago, nor an earlier command in this

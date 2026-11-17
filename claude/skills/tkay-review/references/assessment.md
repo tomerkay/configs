@@ -11,11 +11,27 @@ commits - adds that kind's calls and Profiles in the same frame.
 
 **Every change you propose carries its Full Assessment**, above the change
 itself - a diff, a fix, the settlement of an open issue, a step of a plan -
-or under the line that asks me whether to make it. The one exception is
-the offer to delete what a session left to clean up, a bare ❓ line as
-`issue-tree.md` says. When I ask for an assessment by name, give the Full
-Assessment of anything, proposed or not, or the TL;DR Assessment when I
-ask for that.
+or under the line that asks me whether to make it. When I ask for an
+assessment by name, give the Full Assessment of anything, proposed or
+not, or the TL;DR Assessment when I ask for that.
+
+**Two proposals are bare ❓ lines with no assessment under them:**
+
+- **The offer to delete what a session left to clean up**, as
+  `issue-tree.md` says: it has nothing to weigh.
+- **A post or an upload to Slack or GitLab** - a message, a thread reply,
+  an MR comment, a file. Its text or its file is shown above the line,
+  and I judge it by reading that; an assessment only restates it.
+
+The case that taught the second, a draft reply to a colleague's thread:
+
+```
+❌ ❓ **Q3** **Post the draft into the thread**: post it as a reply to its root?
+     - **Call:** ✅ Do it
+     - **Why Not?**
+       - it goes out under my name, so the wording should read like me
+✅ ❓ **Q3** **Post the draft into the thread**: post it as a reply to its root?
+```
 
 **What stops for my answer is a proposal or a question, and only a
 proposal carries an assessment.** What a yes does decides which, never the
@@ -23,7 +39,8 @@ wording:
 
 - **A proposal** - my yes makes a change: a file, a commit, a command, a
   message. "Is that the line you want?" and "keep it this way?" are
-  proposals. It carries its Full Assessment.
+  proposals. It carries its Full Assessment, unless it is one of the two
+  bare lines above.
 - **A question** - my yes changes nothing: a fact you need, or which of two
   readings of my words I meant. It carries no assessment, even when you
   lean one way.

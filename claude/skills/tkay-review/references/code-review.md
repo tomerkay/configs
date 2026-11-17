@@ -98,7 +98,7 @@ done in this session.
 
 ## Is it a real bug or a nit - and must I fix it now?
 
-**One question I must be able to answer about every single finding, without reading between the lines: is this code BROKEN or merely IMPERFECT?** The colour answers it, and the colour alone decides whether the merge waits:
+**One question I must be able to answer about every single finding, without reading between the lines: is this code broken or merely imperfect?** The colour answers it, and the colour alone decides whether the merge waits:
 
 - **MUST HAVE** is 🔴 and 🟠. It blocks the merge: I fix it now, or I don't ship.
 - **NICE TO HAVE** is 🟡 and ⚪. I ship without it; worth doing when I'm in there anyway, and my call by definition.
@@ -232,7 +232,7 @@ case that set it for a commit:
 
 ### Mandatory output shape per commit
 
-Open each commit's review with the FINDINGS line and its Full Assessment, then dive straight into details. (This is NOT the banned "recap of the findings before the findings" - it's a count and an assessment, not a recap.)
+Open each commit's review with the FINDINGS line and its Full Assessment, then dive straight into details. (This is not the banned "recap of the findings before the findings" - it's a count and an assessment, not a recap.)
 
 **The FINDINGS line counts each colour**, in the order 🔴 🟠 🟡 ⚪, only the colours with a finding, and `none` when nothing was found:
 
@@ -474,7 +474,7 @@ When nothing is open, the heading stays and the table is one line instead:
 
 ### Rules that keep the tags honest
 
-- **No severity inflation.** If you cannot write the concrete failure scenario, it is NOT a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
+- **No severity inflation.** If you cannot write the concrete failure scenario, it is not a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG**:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED)** and state exactly what you couldn't check.
 - **✅ Ship it, 🪓 Split and 📝 Reword need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the assessment, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
@@ -485,7 +485,7 @@ When nothing is open, the heading stays and the table is one line instead:
   - **Sure with it** - an Evidence level, and what would still be unproven after the test passes.
 - **State confidence when you're unsure**, as an Evidence level from `assessment.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
 - **Where the borderline cases land:**
-  - Weak/vague commit message → 🟡. Commit message making a FALSE CLAIM about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commits table says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
+  - Weak/vague commit message → 🟡. Commit message making a false claim about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commits table says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
   - A name that holds more than its words say, is named for a cause instead of a meaning, or kept its name after its meaning changed (see "A name means one thing, literally" in `clean-code.md`) → 🟡. A reader already acting on the literal word and doing the wrong thing → 🔴 for that reader, with the rename as the fix. A label (enum, metric label value, status word) whose words are false for some case that produces it → 🟡.
@@ -509,7 +509,7 @@ Each category below has a **default severity** - deviate only with a stated reas
 2. **Critical Bugs** [default: 🔴 if you can show the failure, 🟠 if you can only name the trigger condition]
    - Will this break production?
    - Are there metrics defined but never called?
-   - **When functions/methods/metrics are REMOVED: verify they're not called anywhere in HEAD**
+   - **When functions/methods/metrics are removed: verify they're not called anywhere in HEAD**
    - **Check if later commits on the same branch broke what this commit did correctly**
    - Are there function calls with wrong parameters?
    - Any nil pointer risks?
@@ -521,7 +521,7 @@ Each category below has a **default severity** - deviate only with a stated reas
 
 4. **Metrics & Observability** [default: 🟠 for missing/partial metric calls and wrong metric type, 🟡 for naming]
    - Is every bad path counted, and the unit of work too? "Every bad path is counted, then logged" in `clean-code.md` says what counts as one
-   - Are metrics called BEFORE logs? (metric-first pattern)
+   - Are metrics called before logs? (metric-first pattern)
    - Are metric names/labels correct?
    - Right metric type? (Counter vs Gauge vs Histogram)
    - Any missing metric calls?
@@ -532,19 +532,19 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Consistent formatting across similar log messages?
    - Include all necessary context (pod_name, pod_ip, model_name)?
 
-6. **Code Quality** [default: 🟡, EXCEPT "logical correctness of NEW code" below - wrong logic is 🔴/🟠]
+6. **Code Quality** [default: 🟡, except "logical correctness of new code" below - wrong logic is 🔴/🟠]
    - Duplicated logic or values? "One source of truth" in `clean-code.md` says what counts
    - Ordering issues? (should things be grouped differently?)
    - Naming clarity? Does each name mean one thing, literally, that a cold reader gets from the name alone? A name that only a comment explains is the wrong name: make it longer or split it. Any state that hides a compound condition, is named for its cause, or kept its name when a change shifted its meaning? When a diff changes what a field means, grep every reader of it.
    - Any TODOs or FIXMEs that shouldn't be there?
-   - **Redundant comments**: the comment rules and their worked examples are in `clean-code.md`. Flag ANY comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be DELETED.
+   - **Redundant comments**: the comment rules and their worked examples are in `clean-code.md`. Flag any comment that states the obvious or repeats what code/logs say. When in doubt, the comment should be deleted.
    - **Inconsistent spacing/indentation in YAML/config files**:
      - Check for extra blank lines between similar sections (e.g., model entries in config)
      - Flag trailing whitespace (spaces after content on a line)
      - Verify consistent indentation (2 spaces for YAML, not tabs or 4 spaces)
      - Example violations: random blank line between two model entries, trailing space after `checkImage: true `
    - **Unused parameters**: Flag function parameters that are defined but never used in the body (YAGNI violation)
-   - **Logical correctness of NEW code**: Don't just check for bugs, analyze if the logic makes sense:
+   - **Logical correctness of new code**: Don't just check for bugs, analyze if the logic makes sense:
      - **Question suspicious patterns**: Why access `list[0]` when there might be multiple items with different values?
      - **Trace variable usage**: Follow variables from definition to all uses - does the usage match the intent?
      - **Check assumptions**: If code assumes "first item represents all items", verify that's actually true
@@ -628,27 +628,27 @@ second commit's message:
 
 ### Review Process
 
-**DO:**
+**Do:**
 - **Read the whole branch diff before the first commit, and judge the outcome at HEAD after the last** (see "The branch is what ships, not the commits")
-- Review commits ONE BY ONE (commit-by-commit)
+- Review commits one by one (commit-by-commit)
 - **When reviewing a commit, check HEAD state to verify later commits didn't break it**
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
-- **Read and understand NEW code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of NEW code" in the checklist above)
+- **Read and understand new code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of new code" in the checklist above)
 - **Lay the CR out in the four sections of "The CR is four sections"**, the findings first and the bycatch table last, and one CR per repo
 - **Open with the FINDINGS line and the Full Assessment, colour every finding (🔴/🟠/🟡/⚪), and split MUST HAVE from NICE TO HAVE with the divider** (see the colour section above)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a section is empty** - I need to hear it, not deduce it (exact wording in "Mandatory output shape per commit" above)
 - **Write every SHA as its first 10 characters** (`git rev-parse --short=10`), everywhere in the CR, so one commit reads the same in every place it is named
 - Order findings within each section by colour (🔴 → 🟠, then 🟡 → ⚪)
-- Fix issues IMMEDIATELY when I ask (don't ask for permission) - but until I ask, report and wait, even for a 🔴 (see "When to Fix vs When to Ask" below)
+- Fix issues immediately when I ask (don't ask for permission) - but until I ask, report and wait, even for a 🔴 (see "When to Fix vs When to Ask" below)
 - Be specific: show me the exact line numbers and code
 - If something is wrong, say it's wrong - don't sugarcoat
 
-**DON'T:**
-- Give me a recap of the findings before the findings - the FINDINGS line and the Full Assessment are the ONLY things allowed above the details, then dive straight in
+**Don't:**
+- Give me a recap of the findings before the findings - the FINDINGS line and the Full Assessment are the only things allowed above the details, then dive straight in
 - **Mix nits in with real bugs** - if I have to guess which findings matter, the review failed
 - **Colour everything 🟠 to look thorough** - that's the same trust-burning move as severity inflation
-- **Call something a 🔴 BUG when you can't show it failing** - if you can still name the trigger condition it's 🟠 RISK, which blocks the merge. Only when there's no demonstrable failure AND no nameable trigger does it drop to 🟡. Never let "I couldn't prove it" collapse a hazard into a nit
+- **Call something a 🔴 BUG when you can't show it failing** - if you can still name the trigger condition it's 🟠 RISK, which blocks the merge. Only when there's no demonstrable failure and no nameable trigger does it drop to 🟡. Never let "I couldn't prove it" collapse a hazard into a nit
 - **Present a clean commit as if it were dangerous** - lots of ⚪ nits is not a problem, say so
 - Be vague ("there might be an issue...") - tell me what IS wrong, or tag it speculative and say why
 - Skip over minor issues because "they're not critical" - report them, just below the divider
@@ -695,10 +695,10 @@ Fix: [show fix]
 ### NICE TO HAVE — 🟡⚪
 
 #### 🟡 QUALITY: subject makes a claim the diff can't back
-"Reduce validation time by 50%" is an OUTCOME, and nothing in the body shows
+"Reduce validation time by 50%" is an outcome, and nothing in the body shows
 where 50% comes from. Fails "If applied, this commit will... reduce validation
 time" (awkward). Should be: "use hashY instead of hashX for lookups" - and the
-50% goes in the BODY with the 100ms → 50ms numbers behind it.
+50% goes in the body with the 100ms → 50ms numbers behind it.
 
 #### 🟡 QUALITY: body missing the WHY
 Doesn't say: hashX did O(n) iteration → CPU spikes; hashY is O(1).

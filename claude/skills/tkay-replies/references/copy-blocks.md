@@ -1,8 +1,8 @@
 # Bracket everything I am meant to copy
 
-**Anything you hand me to copy-paste is SANDWICHED between two marker lines: a
-line of exactly 32 `=` immediately BEFORE it, and a second line of exactly 32 `=`
-immediately AFTER it.** Both sides, every time - a marker on top with nothing at
+**Anything you hand me to copy-paste is sandwiched between two marker lines: a
+line of exactly 32 `=` immediately before it, and a second line of exactly 32 `=`
+immediately after it.** Both sides, every time - a marker on top with nothing at
 the bottom is not bracketing, it is a stray row of `=`. That covers a command to
 run, a `! <command>` suggestion, a config or YAML snippet, a query, a commit
 message, a chat message, a value to paste into a UI. If I am going to select it
@@ -18,7 +18,7 @@ the thing I copy
 ================================
 ````
 
-**The markers go OUTSIDE the code fence, on their own lines** - the fence opens
+**The markers go outside the code fence, on their own lines** - the fence opens
 below the top marker and closes above the bottom one. Everything between the
 markers is then exactly what I paste and nothing more. Inside the fence they
 become part of what I copy and the command breaks.

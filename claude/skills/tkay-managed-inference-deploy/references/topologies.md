@@ -92,7 +92,7 @@ Only rank 0 (the leader) serves the inference API. Worker ranks are **headless**
 and do not carry the `<backend>.ai/role` label that router/ISM discovery selects
 on.
 
-**"Headless" does NOT mean "no HTTP" — it depends on the backend.** VERIFIED
+**"Headless" does not mean "no HTTP" — it depends on the backend.** VERIFIED
 in-cluster (H100, TP=16 over 2 nodes), leader serving as the control:
 
 | | leader (rank 0) | worker (rank>0) |

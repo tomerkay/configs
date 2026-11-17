@@ -252,7 +252,7 @@ purpose: that prefix is not a release, and the guard saying so is correct.
 
 **The Header (≤72 chars, ≤50 preferred):**
 - **Subject line test**: "If applied, this commit will... `<your subject>`"
-- **Describe the ACTION, not the outcome**: State what code structure changed
+- **Describe the action, not the outcome**: State what code structure changed
 - **Use imperative mood**: "add" not "added", "fix" not "fixed"
 - **Lowercase, no period**: `feat(auth): add login` not `Add login.`
 
@@ -338,7 +338,7 @@ Bycatch:
 The ❌ bullet is a behaviour change with its own reason: it gets a commit of
 its own.
 
-**Examples (WRONG vs RIGHT):**
+**Examples (Wrong vs right):**
 
 **Performance (perf):**
 - ❌ `perf(validator): reduce validation time by 50%` (outcome in subject)
@@ -461,7 +461,7 @@ Without showing what specifically changed in the code.
 ✅ **Accurate description:**
 ```
 - Change "QPS Per GPU" notation to "Avg Achieved QPS/GPU" (use /GPU format)
-  NOT "Fix /GPU spacing" (misleading - there was no space before slash to fix)
+  not "Fix /GPU spacing" (misleading - there was no space before slash to fix)
 ```
 
 **The Test:**

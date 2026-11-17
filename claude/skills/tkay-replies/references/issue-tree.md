@@ -15,7 +15,7 @@ The shape, with its outline numbers and states:
   - **a.** rebase onto main 👉
   - **b.** MR description ⏳
 - **2.** Detector change 🤝 kept as one commit (just now)
-- **3.** Board panel ✅ left as it is
+- **3.** Board panel 🙅 left as it is
 ```
 
 **When issues pile up in a session, a reply that moves to
@@ -44,8 +44,8 @@ question a later one replaced.
 - **Something left to clean up** - scratch files, a working directory, test
   leftovers you made: the reply opens with "Yes - nothing open left, only
   <the cleanup> to delete.", says what it holds, and ends with deleting it as
-  a ❓ line with no assessment under it - the one proposal that carries
-  none, since deleting what the session left behind has nothing to weigh.
+  a ❓ line with no assessment under it, as `assessment.md` says, since
+  deleting what the session left behind has nothing to weigh.
   The cleanup is not open work, so the answer to "are we done?" is yes.
 - **Nothing to clean up**, or I have answered the cleanup either way: the
   reply opens with "Yes, you can exit now." Under it comes "Here's a short
@@ -74,7 +74,8 @@ The case that taught the first step:
   clear what it is, then its state: ⏳ open; 👉 the one this reply is on;
   🤝 decided, with what was decided in a few words, and not carried out yet -
   staged, planned, or waiting on a step; ✅ done, carried out - committed,
-  installed, posted, or settled with nothing to carry out, such as "left as
+  installed, posted, or settled with nothing to carry out, such as a
+  question answered; 🙅 declined, a change I turned down, such as "left as
   it is". Nest only where the sub-items are separate decisions, never to
   list how a decided item was done.
 - **Only what my latest answer sealed ends with `(just now)`**, after its
@@ -94,8 +95,9 @@ The case that taught the first step:
   that - so "**1.b.ii**" names one item. An outline number never changes for the rest of the
   session: a settled or collapsed item keeps its outline number, and a new
   item takes the next free one. The words after it are free to change.
-- **A branch whose items are all done collapses** into one ✅ line, and the
-  tree stops appearing once nothing in it is open.
+- **A branch whose items are all done or declined collapses** into one line - 🙅
+  when every item was declined, ✅ otherwise - and the tree stops appearing
+  once nothing in it is open.
 - **It is navigation, not a recap.** No reasoning, no repeated findings, no
   question text: the proposals and questions still end the reply as ❓ lines.
   A code review in the same reply keeps its own shape below the tree.

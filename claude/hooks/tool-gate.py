@@ -88,6 +88,7 @@ CHDIR_PROGRAMS = {"cd", "pushd", "popd"}
 READ_PROGRAMS = {
     "cat", "head", "tail", "less", "more", "wc", "grep", "egrep", "fgrep", "zgrep", "rg", "ag",
     "ack", "fd", "ls", "tree", "stat", "file", "du", "df", "echo", "printf", "true", "false",
+    "exit", "return",
     "test", "[", "[[", "which", "whereis", "type", "whoami", "id", "hostname", "uname", "date",
     "pwd", "printenv", "jq", "sort", "uniq", "cut", "tr", "column", "diff", "cmp", "comm",
     "md5", "md5sum", "sha1sum", "sha256sum", "shasum", "base64", "xxd", "od", "strings",
@@ -2558,10 +2559,14 @@ SED_SAFE_SHORT_FLAGS = set("nrEsuz")
 SED_SAFE_LONG_FLAGS = {"--regexp-extended", "--quiet", "--silent", "--separate", "--null-data",
                        "--posix", "--sandbox"}
 SED_SAFE_SUBSTITUTE_FLAGS = set("gIipmM0123456789")
+# A line number or a range of them (`3`, `3,7`, `5,$`) only narrows where an s command runs.
+SED_LINE_ADDRESS_RE = re.compile(r"^(?:\d+|\$)(?:,(?:\d+|\$))?")
 
 
 def sed_substitution(script):
-    """True when script is one s command whose flags neither write (w) nor run (e) anything."""
+    """True when script is one s command, on every line or on a line number or range, whose
+    flags neither write (w) nor run (e) anything."""
+    script = SED_LINE_ADDRESS_RE.sub("", script, count=1)
     if len(script) < 4 or script[0] != "s" or script[1] in "\\\n":
         return False
     delim, seen, i = script[1], 0, 2
@@ -4103,6 +4108,10 @@ def selftest():
         ("echo `ls`; rm -rf /etc", DANGER),
         ("for f in $(ls); do rm -rf /etc; done", DANGER),
         ("echo $(ls); ls", READ),
+        # Leaving the shell or a function changes nothing, so a chain is rated by its work.
+        ("exit 1", READ),
+        ("return 0", READ),
+        ("cp a /x/b || exit 1", WRITE),
         ("glab mr update 3 --description-file d.md", DANGER),
         ("python3 /x/board.py publish g /x/g.json --org 2 --message m", DANGER),
         ("python3 /x/board.py fetch g --org 2 --out=/x/g.json", WRITE),
@@ -4290,6 +4299,12 @@ def selftest():
             ("Bash", {"command": f"cd {scratch_dir} && sed -i '' 's/a b/c/' f.md"}, None),
             ("Bash", {"command": f"sed -i.bak 's/a/b/' {scratch_dir}/f.md"}, None),
             ("Bash", {"command": f"sed -Ei '' 's/a+/b/' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' -e '3s/a/b/' -e '5,$s|c|d|g' {scratch_dir}/f.md"},
+             None),
+            ("Bash", {"command": f"sed -i '' 3s/a/b/ {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '3s/a/b/w {on_main}/out' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '3d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '/x/s/a/b/' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i 's/a/b/' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -Ei 's/a+/b/' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i -e 's/a/b/' {scratch_dir}/f.md"}, DENY),
