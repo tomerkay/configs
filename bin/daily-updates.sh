@@ -10,6 +10,7 @@ CLAUDE="$HOME/.local/bin/claude"
 ATERO_MARKETPLACE=atero-skills
 ATERO_BUNDLE="atero-skills@$ATERO_MARKETPLACE"
 PLUGINS_FILE="$HOME/.claude/plugins/installed_plugins.json"
+ATERO_CACHE="$HOME/.claude/plugins/cache/$ATERO_MARKETPLACE/${ATERO_BUNDLE%@*}"
 LOG_FILE="$(cd "$(dirname "$0")/.." && pwd)/daily-updates.log"
 BREW_FORMULAE="crusoe k9s gh glab uv kubectx py-spy argocd pomerium/tap/pomerium-cli"
 GO_PIN_REPO="$HOME/repos/data-path"
@@ -137,6 +138,49 @@ bundle_report() {
 	done
 }
 
+# A running session keeps reading the copy it started on, and marks it with a file
+# in .in_use named by its pid that holds the pid's start time in UTC, so a marker
+# whose pid was reused by another process does not count.
+bundle_copy_in_use() {
+	for marker in "$1"/.in_use/*; do
+		[ -f "$marker" ] || continue
+		started=$(jq -r '.procStart // empty' "$marker" 2>/dev/null | tr -s ' ')
+		running=$(TZ=UTC ps -o lstart= -p "${marker##*/}" 2>/dev/null | tr -s ' ' | sed 's/ $//')
+		[ -n "$running" ] && [ "$running" = "$started" ] && return 0
+	done
+	return 1
+}
+
+# Claude Code stamps a copy no install points at with .orphaned_at but never
+# deletes it, so every bundle release leaves a full copy behind.
+prune_bundle_cache() {
+	label="$ATERO_MARKETPLACE cache"
+	if ! installed=$(jq -r '.plugins[][].installPath' "$PLUGINS_FILE" 2>&1); then
+		echo "$label: FAILED: could not read $PLUGINS_FILE: $installed"
+		return
+	fi
+	removed= in_use= failed=
+	for dir in "$ATERO_CACHE"/*/; do
+		dir=${dir%/}
+		[ -f "$dir/.orphaned_at" ] || continue
+		echo "$installed" | grep -qxF "$dir" && continue
+		if bundle_copy_in_use "$dir"; then
+			in_use="$in_use ${dir##*/}"
+		elif rm -rf "$dir"; then
+			removed="$removed ${dir##*/}"
+		else
+			failed="$failed ${dir##*/}"
+		fi
+	done
+	result="removed${removed:- nothing}"
+	[ -n "$in_use" ] && result="$result; kept in use by a running session:$in_use"
+	if [ -n "$failed" ]; then
+		echo "$label: FAILED: could not remove$failed - $result"
+	else
+		echo "$label: $result"
+	fi
+}
+
 # A subshell body, so its cd leaves the script's directory alone.
 install_lint() (
 	cd "$lint_dir" &&
@@ -186,6 +230,7 @@ marketplace_reason=$(step_reason)
 if [ "$marketplace_status" -eq 0 ]; then
 	bundle_report=$(bundle_report)
 fi
+bundle_cache_report=$(prune_bundle_cache)
 
 go_before=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 if [ "$tailscale_state" = Running ]; then
@@ -275,6 +320,7 @@ body=$(
 	report "claude" "$claude_before" "$claude_after" "$claude_status" "$claude_reason"
 	report_status "$ATERO_MARKETPLACE marketplace" "$marketplace_status" "$marketplace_reason"
 	[ -n "$bundle_report" ] && echo "$bundle_report"
+	echo "$bundle_cache_report"
 	if [ "$tailscale_state" = Running ]; then
 		report "go (data-path pin)" "$go_before" "$go_after" "$go_status" "$go_reason"
 	else
