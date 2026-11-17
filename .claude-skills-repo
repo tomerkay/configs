@@ -1,0 +1,3 @@
+This repo keeps a published copy of the tkay skills. A session working here
+is working on them, so the tkay-code and tkay-review skills' clash hook does
+not ask before the second of them loads.
