@@ -7,10 +7,9 @@ PATH="/opt/homebrew/bin:$PATH"
 export PATH
 
 CLAUDE="$HOME/.local/bin/claude"
-ATERO_MARKETPLACE=atero-skills
-ATERO_BUNDLE="atero-skills@$ATERO_MARKETPLACE"
 PLUGINS_FILE="$HOME/.claude/plugins/installed_plugins.json"
-ATERO_CACHE="$HOME/.claude/plugins/cache/$ATERO_MARKETPLACE/${ATERO_BUNDLE%@*}"
+MARKETPLACES_FILE="$HOME/.claude/plugins/known_marketplaces.json"
+PLUGIN_CACHE="$HOME/.claude/plugins/cache"
 LOG_FILE="$(cd "$(dirname "$0")/.." && pwd)/daily-updates.log"
 BREW_FORMULAE="crusoe k9s gh glab uv kubectx py-spy argocd pomerium/tap/pomerium-cli"
 GO_PIN_REPO="$HOME/repos/data-path"
@@ -41,16 +40,29 @@ brew_version() {
 	brew list --versions "$1" 2>/dev/null | awk '{print $NF}'
 }
 
-# $1 is the project path of a project-scope install, or empty for the user one.
-bundle_version() {
-	jq -r --arg p "$ATERO_BUNDLE" --arg dir "$1" \
+# $1 is the plugin id, $2 the project path of a project-scope install or empty for
+# the user one.
+plugin_version() {
+	jq -r --arg p "$1" --arg dir "$2" \
 		'.plugins[$p][] | select((.projectPath // "") == $dir) | .version' \
 		"$PLUGINS_FILE" 2>/dev/null
 }
 
-bundle_project_dirs() {
-	jq -r --arg p "$ATERO_BUNDLE" '.plugins[$p][] | select(.scope == "project") | .projectPath' \
+plugin_project_dirs() {
+	jq -r --arg p "$1" '.plugins[$p][] | select(.scope == "project") | .projectPath' \
 		"$PLUGINS_FILE" 2>/dev/null
+}
+
+# A marketplace added from a local directory or file loads its plugins in place,
+# so a pull or a re-copy has nothing to fetch for it.
+fetched_marketplaces() {
+	jq -r 'to_entries[] | select(.value.source.source != "directory" and
+		.value.source.source != "file") | .key' "$MARKETPLACES_FILE" 2>/dev/null
+}
+
+# $1 is a marketplace name.
+marketplace_plugins() {
+	jq -r --arg m "$1" '.plugins | keys[] | select(endswith("@" + $m))' "$PLUGINS_FILE" 2>/dev/null
 }
 
 # $5 is the cause, printed only when $4 is a failing exit code.
@@ -83,11 +95,11 @@ worktree_record() {
 	[ -f "$1/.git" ]
 }
 
-# $1 is the record's project path. A session started there recreates a missing
-# record at the current version.
-drop_bundle_record() {
+# $1 is the plugin id, $2 the record's project path. A session started there
+# recreates a missing record at the current version.
+drop_plugin_record() {
 	tmp=$(mktemp "$PLUGINS_FILE.XXXXXX") || return 1
-	if jq --arg p "$ATERO_BUNDLE" --arg dir "$1" \
+	if jq --arg p "$1" --arg dir "$2" \
 		'.plugins[$p] |= map(select((.projectPath // "") != $dir))' "$PLUGINS_FILE" > "$tmp" &&
 		mv "$tmp" "$PLUGINS_FILE"; then
 		return 0
@@ -97,17 +109,22 @@ drop_bundle_record() {
 }
 
 # The user install is the copy every directory gets, so a project record that ends
-# the run on another version is a failure, whatever its own update said.
-bundle_report() {
-	user_before=$(bundle_version "")
-	# The update's own output belongs in the cron log, not in the captured report.
-	run_step "$CLAUDE" plugin update "$ATERO_BUNDLE" >&2
-	user_status=$?
-	user_after=$(bundle_version "")
-	report "$ATERO_BUNDLE" "$user_before" "$user_after" "$user_status" "$(step_reason)"
-	for dir in $(bundle_project_dirs); do
-		label="$ATERO_BUNDLE (${dir##*/})"
-		before=$(bundle_version "$dir")
+# the run on another version is a failure, whatever its own update said. A plugin
+# installed only for projects has no user copy to measure against. $1 is the
+# plugin id.
+plugin_report() {
+	user_before=$(plugin_version "$1" "")
+	user_after=
+	if [ -n "$user_before" ]; then
+		# The update's own output belongs in the cron log, not in the captured report.
+		run_step "$CLAUDE" plugin update "$1" >&2
+		user_status=$?
+		user_after=$(plugin_version "$1" "")
+		report "$1" "$user_before" "$user_after" "$user_status" "$(step_reason)"
+	fi
+	plugin_project_dirs "$1" | while IFS= read -r dir; do
+		label="$1 (${dir##*/})"
+		before=$(plugin_version "$1" "$dir")
 		drop_why=
 		if [ ! -d "$dir" ]; then
 			drop_why="its directory is gone"
@@ -119,7 +136,7 @@ bundle_report() {
 			drop_why="a stale worktree record, recreated by the next session there"
 		fi
 		if [ -n "$drop_why" ]; then
-			if drop_bundle_record "$dir"; then
+			if drop_plugin_record "$1" "$dir"; then
 				echo "$label: dropped $before, $drop_why"
 			else
 				echo "$label: FAILED: could not drop $before, $drop_why"
@@ -127,10 +144,11 @@ bundle_report() {
 			continue
 		fi
 		echo "project-scope update in $dir:" >&2
-		(cd "$dir" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$ATERO_BUNDLE") >&2
+		# stdin is the list of project paths this loop reads.
+		(cd "$dir" 2>"$STEP_ERR" && run_step "$CLAUDE" plugin update --scope project "$1" </dev/null) >&2
 		status=$?
-		after=$(bundle_version "$dir")
-		if [ "$status" -eq 0 ] && [ "$after" != "$user_after" ]; then
+		after=$(plugin_version "$1" "$dir")
+		if [ "$status" -eq 0 ] && [ -n "$user_after" ] && [ "$after" != "$user_after" ]; then
 			echo "$label: FAILED: on $after while the user install is on $user_after"
 		else
 			report "$label" "$before" "$after" "$status" "$(step_reason)"
@@ -141,7 +159,7 @@ bundle_report() {
 # A running session keeps reading the copy it started on, and marks it with a file
 # in .in_use named by its pid that holds the pid's start time in UTC, so a marker
 # whose pid was reused by another process does not count.
-bundle_copy_in_use() {
+plugin_copy_in_use() {
 	for marker in "$1"/.in_use/*; do
 		[ -f "$marker" ] || continue
 		started=$(jq -r '.procStart // empty' "$marker" 2>/dev/null | tr -s ' ')
@@ -152,24 +170,27 @@ bundle_copy_in_use() {
 }
 
 # Claude Code stamps a copy no install points at with .orphaned_at but never
-# deletes it, so every bundle release leaves a full copy behind.
-prune_bundle_cache() {
-	label="$ATERO_MARKETPLACE cache"
+# deletes it, so every plugin release leaves a full copy behind. A copy is named
+# <plugin>/<version> in the report, since versions repeat across plugins.
+prune_plugin_cache() {
+	label="plugin cache"
 	if ! installed=$(jq -r '.plugins[][].installPath' "$PLUGINS_FILE" 2>&1); then
 		echo "$label: FAILED: could not read $PLUGINS_FILE: $installed"
 		return
 	fi
 	removed= in_use= failed=
-	for dir in "$ATERO_CACHE"/*/; do
+	for dir in "$PLUGIN_CACHE"/*/*/*/; do
 		dir=${dir%/}
 		[ -f "$dir/.orphaned_at" ] || continue
 		echo "$installed" | grep -qxF "$dir" && continue
-		if bundle_copy_in_use "$dir"; then
-			in_use="$in_use ${dir##*/}"
+		copy="${dir%/*}"
+		copy="${copy##*/}/${dir##*/}"
+		if plugin_copy_in_use "$dir"; then
+			in_use="$in_use $copy"
 		elif rm -rf "$dir"; then
-			removed="$removed ${dir##*/}"
+			removed="$removed $copy"
 		else
-			failed="$failed ${dir##*/}"
+			failed="$failed $copy"
 		fi
 	done
 	result="removed${removed:- nothing}"
@@ -223,14 +244,20 @@ claude_reason=$(step_reason)
 
 # An installed plugin is a frozen copy pinned to its plugin.json version, so the
 # marketplace pull alone changes nothing until `plugin update` re-copies it. Each
-# scope is its own copy, and the default update touches only the user one.
-run_step "$CLAUDE" plugin marketplace update "$ATERO_MARKETPLACE"
-marketplace_status=$?
-marketplace_reason=$(step_reason)
-if [ "$marketplace_status" -eq 0 ]; then
-	bundle_report=$(bundle_report)
-fi
-bundle_cache_report=$(prune_bundle_cache)
+# scope is its own copy, and the default update touches only the user one. A
+# plugin whose marketplace did not pull keeps its copy and is not re-copied.
+plugins_report=$(
+	for marketplace in $(fetched_marketplaces); do
+		run_step "$CLAUDE" plugin marketplace update "$marketplace" >&2
+		marketplace_status=$?
+		report_status "$marketplace marketplace" "$marketplace_status" "$(step_reason)"
+		[ "$marketplace_status" -eq 0 ] || continue
+		for plugin in $(marketplace_plugins "$marketplace"); do
+			plugin_report "$plugin"
+		done
+	done
+)
+plugin_cache_report=$(prune_plugin_cache)
 
 go_before=$(ls "$HOME/.gvm/gos" | tr '\n' ' ')
 if [ "$tailscale_state" = Running ]; then
@@ -318,9 +345,8 @@ body=$(
 	fi
 	report "oh-my-zsh" "$omz_before" "$omz_after" "$omz_status" "$omz_reason"
 	report "claude" "$claude_before" "$claude_after" "$claude_status" "$claude_reason"
-	report_status "$ATERO_MARKETPLACE marketplace" "$marketplace_status" "$marketplace_reason"
-	[ -n "$bundle_report" ] && echo "$bundle_report"
-	echo "$bundle_cache_report"
+	[ -n "$plugins_report" ] && echo "$plugins_report"
+	echo "$plugin_cache_report"
 	if [ "$tailscale_state" = Running ]; then
 		report "go (data-path pin)" "$go_before" "$go_after" "$go_status" "$go_reason"
 	else
