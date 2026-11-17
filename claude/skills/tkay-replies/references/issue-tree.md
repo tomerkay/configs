@@ -2,7 +2,7 @@
 
 **Whenever I ask where we stand - "open issues", "open questions", "a
 table", "a list", "what's left", in whatever words - or for a plan we are
-still shaping, the answer is the issue tree below, shaped like a document's
+still brainstorming, the answer is the issue tree below, shaped like a document's
 table of contents.** A plan's items say what we want, never how it is built:
 no tests, commits or contract until I ask for the full plan. Never a markdown
 table with columns, and never a list whose items run to sentences: not when

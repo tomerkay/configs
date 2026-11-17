@@ -70,7 +70,9 @@ top-level heading:**
 The last three are built from the findings: the overview and the commits
 table judge what the findings found, and the bycatch is what they set
 aside. A CR in the session that wrote the code opens with the ⚠️ line
-this skill's `SKILL.md` gives, above everything else.
+this skill's `SKILL.md` gives, above everything else, and every CR ends
+with the line naming its file that `SKILL.md` gives, under the bycatch
+table.
 
 ### The CR Summary
 
@@ -468,6 +470,19 @@ three rows:
 ✅ | **B3** | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). | 🟠 1 | ⏸ Leave for now (...) |
 ```
 
+**Bycatch is a finding, so what has no colour gets no row.** Something with
+nothing to fix in the code - a folder a tool left behind, state the harness
+keeps for itself, a leftover the session made - is no defect at HEAD. It is
+named in a line of prose if at all, never as a row.
+
+The case that taught it, a row with no colour and no call, in columns made up
+for it:
+
+```
+❌ | **B1** | An empty `.claude/.cc-writes` folder the harness created. | skills/<skill>/hooks/.claude |
+✅ No bycatch.
+```
+
 When nothing is open, the heading stays and the table is one line instead:
 "No bycatch." Never skip it silently - an absent section reads as
 "did not look".
@@ -640,7 +655,7 @@ second commit's message:
 - **Say it out loud when a section is empty** - I need to hear it, not deduce it (exact wording in "Mandatory output shape per commit" above)
 - **Write every SHA as its first 10 characters** (`git rev-parse --short=10`), everywhere in the CR, so one commit reads the same in every place it is named
 - Order findings within each section by colour (🔴 → 🟠, then 🟡 → ⚪)
-- Fix issues immediately when I ask (don't ask for permission) - but until I ask, report and wait, even for a 🔴 (see "When to Fix vs When to Ask" below)
+- Write out the fix for every finding and apply none (see "Writing out the fix" below)
 - Be specific: show me the exact line numbers and code
 - If something is wrong, say it's wrong - don't sugarcoat
 
@@ -744,40 +759,15 @@ helper remain in HEAD (grepped).
 `config/models.yaml:14`
 ```
 
-Then wait for me to say "fix it" or "its ok" or "next commit" before continuing.
+Then wait for me to say "next commit" or "its ok" before continuing.
 
-### When to Fix vs When to Ask
+### Writing out the fix
 
-**The default for every review is: report it, write out the fix, and WAIT** - same as "Then wait for me to say 'fix it' or 'its ok' or 'next commit'" at the end of the example flow. Finding a 🔴 is not permission to edit my files. I review commit-by-commit, so unbidden edits land while I'm still reading the finding.
-
-**Fix on sight, no permission needed - only when I've already told you to:**
-- When I say "fix description" or "fix commit message"
-- When I explicitly say "fix it"
-- When I say "fix the must haves" - fix every 🔴 and 🟠, and nothing else
-- When I set a target for the fixes - within the limits of "Fixing toward a target" below
-
-**A fix shown under a finding carries that finding's tags, never an
-assessment.**
-
-**Show me the exact fix, then wait for my word:**
-- **🔴 BUG and 🟠 RISK** - show me the diff you'd apply, don't apply it. Whether a merge-blocker gets fixed now, ticketed, or shipped knowingly is my call
-- Design choices (Gauge vs Histogram) where both are valid
-- Large refactors that change behavior
-- Anything that might be intentional
-
-**Never touch unless I say so:**
-- Every 🟡 and ⚪ - NICE TO HAVE means it's my call by definition
-
-### Fixing toward a target
-
-When I set a target for the fixes - "fix until no 🔴 or 🟠 is left and the call is ✅ Ship it", in whatever words - the target is a correct branch, and the FINDINGS line only measures it. A fix that brings a bug of its own is worse than the finding it closed: the finding was named and visible, the new bug is neither.
-
-- **Every fix is the smallest, plainest change that closes its finding** - delete, reorder, rename, add the missing guard or the missing call: a change a reader verifies at a glance. A fix that needs a new mechanism, a new code path or a restructure, or that touches code the finding never named, is not easy: show it and wait, whatever the target says.
-- **Every fix answers two questions as it is made: does it do what it claims, and did it break anything around it?** Read its diff against this standard, trace what it touches - its callers, the paths beside it, the rest of the branch - and run what can be run. Striking the finding it closed answers neither.
-- **A fix that fails either question gets an easy fix of its own, or it stops.** When no easy fix makes both answers yes, stop and ask me: name the finding, what the fix failed to do or broke, and the options as you see them. Never stack a hard fix on top of it to reach the target.
-- **One round of fixes, then one more review of the whole branch at HEAD** - not only the findings it fixed: a fix lands in code the rest of the branch depends on. When that review still finds anything the target needs fixed, stop and ask me before a second round, even in the middle of a goal: the goal is why the fixes run, never permission to keep going past this point.
-- **A finding closes only because the code got better.** Never reach the target by recolouring a finding, softening it, or deleting the test, check or log that exposed the problem.
-- **Fix only what the target needs.** A NICE TO HAVE outside it stays my call, and every extra fix is another chance at a new bug.
+**Every fix is written out under its finding and never applied**: the diff
+you would apply, the new commit message, the split. Whether a finding is
+fixed now, ticketed or shipped knowingly is my call, and the fix itself is
+made outside the review, as `SKILL.md` says. A fix shown under a finding
+carries that finding's tags, never an assessment.
 
 ### Tools to Use
 

@@ -11,7 +11,9 @@ frame `frame_checks.py` holds, and on top:
 - a change call is followed, before the next Call line, by a Change line with Evidence, Size
   and Difficulty, and by Why Yes and Why Not - or, for an alternative, Gains and Losses - so
   one complete assessment cannot cover for another;
-- a count of Equivalent proposals stands only beside a Better proposal.
+- a count of Equivalent proposals stands only beside a Better proposal;
+- a Better proposal's call outranks its proposal's, and an Equivalent's matches it, both
+  compared on the bare call, so a reason or a badge beside either changes nothing.
 
 A CR's blocks are tkay-review's own hook's, so no block is checked twice.
 
@@ -39,6 +41,12 @@ HARM_BADGES = {
 }
 COUNTED_EQUIVALENT_RE = re.compile(r"\*\*\d+ Equivalent proposals? (is|are) possible\*\*")
 BETTER_RE = re.compile(r"\*\*\d+ Better proposals?:\*\*")
+WRITTEN_OUT_RE = re.compile(r"\*\*\d+ (Better|Equivalent) proposals?:\*\*")
+CALL_WORDS_RE = re.compile(rf"\*\*Call:\*\* {frame.CHANGE_CALL}")
+# The change calls from the strongest yes to the strongest no; the variation selector after ⚖
+# is dropped before the lookup.
+RANK = {"💪✅ Strongly do it": 4, "✅ Do it": 3, "⚖ Close call": 2, "❌ Don't": 1,
+        "❌❌ Strongly don't": 0}
 PROFILE = ("**Change:**", "**Evidence:**", "**Size:**", "**Difficulty:**")
 WHYS = ("**Why Yes?**", "**Why Not?**")
 GAINS = ("**Gains:**", "**Losses:**")
@@ -72,6 +80,44 @@ def counted_equivalents(lines):
     return found
 
 
+def indent_of(line):
+    return len(line) - len(line.lstrip())
+
+
+def rank(line):
+    match = CALL_WORDS_RE.search(line)
+    return RANK[match.group(1).replace("⚖️", "⚖")] if match else None
+
+
+def alternative_calls(lines):
+    found = []
+    for k, line in enumerate(lines):
+        field = WRITTEN_OUT_RE.search(line)
+        if not field:
+            continue
+        indent = indent_of(line)
+        # The proposal is the nearest Call line above the field at its indent or shallower;
+        # the field's alternatives are the Call lines nested under it.
+        above = next((lines[i] for i in range(k - 1, -1, -1) if frame.CALL_LINE_RE.match(lines[i])
+                      and indent_of(lines[i]) <= indent), None)
+        proposal = rank(above) if above else None
+        if proposal is None:
+            continue
+        for other in lines[k + 1:]:
+            if other.strip() and indent_of(other) <= indent:
+                break
+            alternative = rank(other) if frame.CALL_LINE_RE.match(other) else None
+            if alternative is None:
+                continue
+            if field.group(1) == "Better" and alternative <= proposal:
+                found.append(f"{other.strip()[:60]}... is a Better proposal whose call does not "
+                             "outrank the proposal's; a worse call is counted as Lesser")
+            if field.group(1) == "Equivalent" and alternative != proposal:
+                found.append(f"{other.strip()[:60]}... is an Equivalent proposal with a call "
+                             "other than the proposal's")
+    return found
+
+
 def problems(text):
     lines = frame.prose_lines(text)
     outside, blocks = frame.split(lines)
@@ -94,7 +140,7 @@ def problems(text):
         gaps = missing(block[1:])
         if gaps:
             found.append(f"{head}... has nothing under it for {', '.join(gaps)}")
-    return found + counted_equivalents(lines)
+    return found + counted_equivalents(lines) + alternative_calls(lines)
 
 
 def selftest():
@@ -104,6 +150,13 @@ def selftest():
     better = ("- **1 Better proposal:**\n  - **1. other**\n"
               "    - **Call:** 💪✅ Strongly do it\n"
               "    - **Change:** **Evidence:** LIKELY · **Size:** small · **Difficulty:** easy\n")
+    judged = "    - **Gains:**\n      - a\n    - **Losses:**\n      - b\n"
+
+    def alternative(field, call):
+        return (f"- **1 {field} proposal:**\n  - **1. other**\n    - **Call:** {call}\n"
+                "    - **Change:** **Evidence:** LIKELY · **Size:** small · **Difficulty:** easy\n"
+                + judged)
+
     commit = ("- **Call:** ✅ Ship it\n"
               "- **Commit:** **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy\n")
     cases = [
@@ -171,6 +224,29 @@ def selftest():
         ("Equivalent counted beside a Better",
          full + better + "    - **Gains:**\n      - a\n    - **Losses:**\n      - b\n"
          "- **2 Equivalent proposals are possible**\n", False),
+        # The case that taught it: a scaling proposal judged ✅ Do it, with a "Better" way
+        # written out under it that its own author called ❌ Don't.
+        ("a Better proposal whose call ranks below the proposal's",
+         full + "- **1 Better proposal:**\n"
+         "  - **1. Scale through the scale subresource with a version precondition**\n"
+         "    - **Call:** ❌ Don't\n"
+         "    - **Change:** **Evidence:** 50-50 · **Size:** large · **Difficulty:** hard\n"
+         "    - **Gains:**\n      - atomic by construction, the way the autoscaler works\n"
+         "    - **Losses:**\n      - a rewrite of the step for a gap it cannot hit\n", True),
+        ("a Better proposal with the same call", full + alternative("Better", "✅ Do it"), True),
+        ("leaving it as is, the Better proposal under a Don't",
+         full.replace("✅ Do it", "❌ Don't")
+         + "- **1 Better proposal:**\n  - **1. Leave everything as is**\n"
+         "    - **Call:** ✅ Do it\n"
+         "    - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** super easy\n"
+         + judged, False),
+        ("an Equivalent proposal with the same call",
+         full + alternative("Equivalent", "✅ Do it"), False),
+        ("an Equivalent proposal with another call",
+         full + alternative("Equivalent", "⚖️ Close call"), True),
+        ("an Equivalent whose call differs only by a badge and a reason",
+         full.replace("✅ Do it", "⚖️ Close call (stops the leak) (🙌 Stops harm)")
+         + alternative("Equivalent", "⚖ Close call"), False),
     ]
     ok = True
     for name, text, expect_block in cases:

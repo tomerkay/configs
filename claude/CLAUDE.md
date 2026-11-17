@@ -402,11 +402,13 @@ action of that kind.**
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-code` |
 | write or amend any commit message, or commit at all | `tkay-code` |
-| write an MR or PR description | `tkay-code` |
+| write an MR or PR title or description | `tkay-code` |
 | create or name a git branch | `tkay-code` |
 | take screenshots of UI work - the first one of them | `tkay-code` |
 | create or edit any `CLAUDE.md` - this global one included - a README, a design doc or a `SKILL.md`, including one you touch on the way through a code change | `tkay-writing-mds` |
-| a plan - shaped by default, a TL;DR plan or a full plan only when I say TL;DR PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
+| a plan - brainstormed by default, a shape plan or a full plan only when I say SHAPE PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
+| a goal on a plan file - "give me a goal on <path>.md" | `tkay-writing-plans` |
+| a goal that builds something unattended and names no plan file - "give me a goal for <what to build>" | `tkay-tool-use` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
 | build, edit, fetch or publish a Grafana dashboard, panel or template variable | `atero-skills:grafana-dashboards`, plus `dashboarding` when building or debugging the JSON |
@@ -439,13 +441,13 @@ nobody's standards.
 
 ## My config, skills, hooks and home files have their own rules
 
-**Before you edit this file, a `tkay-*` skill, a hook, my Claude settings or
-a home file the sync publishes, read `~/.claude/.claude/CLAUDE.md` and follow
-it.** It owns how each of them is staged, reviewed, installed and committed,
-what a published file may hold, and what a `tkay-*` skill may say. A session
-opened in `~/.claude` loads it on its own; every other session reads it
-before the first edit, as it loads a skill before the first action of its
-kind.
+**Before you edit this file, a `tkay-*` skill, a hook, my Claude settings
+or a home file the sync publishes, read `~/.claude/.claude/CLAUDE.md` and
+follow it.** It owns how each of them is staged, reviewed, installed and
+committed, what a published file may hold, and what a `tkay-*` skill may
+say. A session opened in `~/.claude` loads it on its own; every other
+session reads it before the first edit, as it loads a skill before the
+first action of its kind.
 
 The `atero-skills` plugin is edited in `~/repos/atero-skills/.claude/skills/`,
 never in the plugin cache.
@@ -637,13 +639,14 @@ does not track.
 # Tool use is the `tkay-tool-use` skill's
 
 Reads that run without asking, long runs, background watchers, JSON into
-jq, waiting under a `/goal` and git the sandbox blocks are the
-`tkay-tool-use` skill's, which owns them:
+jq, a path preferred to a `cd`, waiting under a `/goal` and git the sandbox
+blocks are the `tkay-tool-use` skill's, which owns them:
 
 @~/.claude/skills/tkay-tool-use/references/reads.md
 @~/.claude/skills/tkay-tool-use/references/long-runs.md
 @~/.claude/skills/tkay-tool-use/references/watchers.md
 @~/.claude/skills/tkay-tool-use/references/jq.md
+@~/.claude/skills/tkay-tool-use/references/working-directory.md
 @~/.claude/skills/tkay-tool-use/references/goals.md
 @~/.claude/skills/tkay-tool-use/references/git-in-sandbox.md
 

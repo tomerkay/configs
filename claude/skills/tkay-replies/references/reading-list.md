@@ -28,6 +28,17 @@ The reply then reads, top to bottom:
   decision, a correction, a question I asked. What you say about it comes
   after the `---`, headed by the same `R<n>`; a line that needs nothing
   more gets no part of its own.
+- **In your own words, never mine copied back**, so we see we are really on
+  the same page. A line that pastes my phrasing proves only that you can
+  copy it; a reading in your words shows what you understood, and a
+  misreading shows in it. The case that taught it:
+
+  ```
+  I wrote: "q24 remove them, the review only should write out the fixes"
+  ❌ **R1.** **Q24**: remove them, the review only should write out the fixes.
+  ✅ **R1.** **Q24**: take both fix sections out; a review lists fixes and
+     never makes one.
+  ```
 - **Two readings that lead to different work are asked** as a ❓ question;
   the line says it reads two ways and names both.
 - **It is for replies to me in chat** - never a chat post, a commit

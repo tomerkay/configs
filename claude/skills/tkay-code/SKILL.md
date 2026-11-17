@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to commit, amend or write a commit message; to write an MR or PR description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; to take screenshots of UI work; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
+description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to make any glab call - reading a GitLab MR, its review threads or its CI, or uploading a file to GitLab; to fix what a code review found; to commit, amend or write a commit message; to write an MR or PR title or description; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; to take screenshots of UI work; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
 hooks:
   PreToolUse:
     - matcher: "Skill|Read"
@@ -21,9 +21,10 @@ task-specific standards.
 |---|---|
 | Anything on a GitLab MR - its review threads, its pipeline, a job log - or any `glab` call | `references/gitlab.md` — **before the first glab call** |
 | Writing or amending any commit message, or committing at all | `references/commits.md` — **before you type the message** |
+| Fixing what a code review found - a CR, an MR's review threads, a review summary | `references/fixing-review-findings.md` — **before the first fix** |
 | Running a throwaway test, or handing a tool a file of your own, inside a repo | `references/scratch-in-a-repo.md` |
 | The first change in a repo, or creating, naming or deleting a branch | `references/branches.md` — **before the first change** |
-| Writing an MR or PR description | `references/mr-description.md` — **before you look for the MR** |
+| Writing an MR or PR title or description | `references/mr-page.md` — **before you look for the MR** |
 | Writing or moving deploy tooling, a topology file or values — anything that decides what lives under `dev/` versus `deploy/` | `references/deploy-layout.md` — before creating or moving the file |
 | Writing or changing any code, a chart, a dashboard or config, or unsure whether a comment, mechanism, default or config key is acceptable | `references/clean-code.md` and `references/security.md` — **read both in full before the first line** |
 | Writing any line into a repo - code, a chart, config, a doc, a test - that could carry a specific value or a person's setup | `references/stale-and-personal.md` |

@@ -1,6 +1,6 @@
 ---
 name: tkay-writing-plans
-description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked for a plan, a TL;DR plan, a design doc or an implementation write-up, to update, re-check or keep alive one, and when implementing an agreed plan. A plan is shaped first - talked through, nothing built - becomes a TL;DR plan in chat when one is asked for in those words, and a document only when a full plan is asked for in those words.
+description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked for a plan, a shape plan, a design doc or an implementation write-up, to update, re-check or keep alive one, when implementing an agreed plan, and when asked for a goal on a plan file. A plan is brainstormed first - talked through, nothing built - becomes a shape plan in chat when one is asked for in those words, and a document only when a full plan is asked for in those words.
 ---
 
 # Writing Plans
@@ -9,15 +9,16 @@ When I ask for a full plan, this is the shape I want. Write it to a directory th
 survives the session unless I name somewhere else - never `/tmp` or a session
 scratchpad, which can vanish while the plan is still in use.
 
-## Three modes: shaping, a TL;DR plan, a full plan
+## Three modes: a brainstorm plan, a shape plan, a full plan
 
-**A plan is shaped until I ask for a TL;DR plan or a full plan in those words.** Shaping settles what
-we want: the problem in plain words, what is in scope and what is out, the decisions
-still open, and what is already settled or not a problem. It is shaping as Basecamp's
-[Shape Up](https://basecamp.com/shapeup/1.1-chapter-02) means it - judging, cutting,
-naming the rabbit holes - never a brainstorm where every idea stands unchallenged.
+**A plan is brainstormed until I ask for a shape plan or a full plan in those words.** The
+brainstorm settles what we want: the problem in plain words, what is in scope and what
+is out, the decisions still open, and what is already settled or not a problem. It
+judges as shaping does in Basecamp's
+[Shape Up](https://basecamp.com/shapeup/1.1-chapter-02) - judging, cutting, naming the
+rabbit holes - never a list where every idea stands unchallenged.
 
-- **What shaping produces**: a list in chat, one line per item, each with an outline
+- **What the brainstorm produces**: a list in chat, one line per item, each with an outline
   number I can answer by - `1`, `1.a`, `1.a.i` - that never changes once given. Each
   item is a dash opening with its number in bold, `- **1.** <item>`, at every depth:
   a terminal renders a plain `1.` list nested in another with letters.
@@ -28,9 +29,9 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
 - **One line never stands for a bundle.** An item that names another plan, a
   handed-over list or a run of commits hides every change inside it, and I approve
   what I cannot see. Each change it delivers is a decision of its own, so it nests
-  under the item as a sub-item - every time the shape is shown, not only when I ask
+  under the item as a sub-item - every time the brainstorm is shown, not only when I ask
   what is in it. The case that taught it, a page
-  column that was in the plan but in no line of the shape:
+  column that was in the plan but in no line of the brainstorm:
 
   ```
   ❌ - **5.d** The load-balancing weights plan, on this branch
@@ -39,33 +40,33 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
        - **ii.** A new name for the scaling page's pins tab
        - **iii.** A column on that tab showing which way each pin scaled
   ```
-- **Shaping thinks as hard as the full plan; only what it writes is smaller.** The
-  full plan's checks run while shaping, and what they find reaches me as items and
+- **The brainstorm thinks as hard as the full plan; only what it writes is smaller.** The
+  full plan's checks run while brainstorming, and what they find reaches me as items and
   decisions in chat, never as a drafted section:
   1. The problem first, in plain words.
   2. The known architecture: "Start from a known architecture" in full - search
      outward, bring the candidates with links and your recommendation - before any
-     item rests on a design. The chosen one is an item of the shape.
+     item rests on a design. The chosen one is an item of the brainstorm.
   3. What must always be true.
   4. The questions of "Check security" and "Check high availability", asked of what
-     we are shaping.
-  5. What has failed here before, and which of those the shape must answer.
+     we are brainstorming.
+  5. What has failed here before, and which of those the brainstorm must answer.
   6. What is not a problem, what rests on an inference, and when planning turns into
      a rabbit hole.
 
   What waits for the full plan is the writing: the document, the contract and its
   tests, the commits, the incidents table, the questions and answers, and TBD. The
-  case that taught it, a shaping rule that left the architecture search for the
+  case that taught it, a brainstorm rule that left the architecture search for the
   full plan:
 
   ```
-  ❌ shaping asks "which known design does this resemble?" and moves on
-  ✅ shaping brings the known designs it found, with links, and a pick,
-     before any item of the shape rests on one
+  ❌ the brainstorm asks "which known design does this resemble?" and moves on
+  ✅ the brainstorm brings the known designs it found, with links, and a pick,
+     before any item of it rests on one
   ```
-- **The TL;DR plan** is what I need before work starts and nothing that is itself
-  work, sent in chat when I ask for a "TL;DR plan" - never a file, and built from what
-  shaping settled, so it needs no document to exist first; when a full plan exists it
+- **The shape plan** is what I need before work starts and nothing that is itself
+  work, sent in chat when I ask for a "shape plan" - never a file, and built from what
+  the brainstorm settled, so it needs no document to exist first; when a full plan exists it
   is cut from that instead. A few bullets under each of these headings, in this
   order, and no other:
   1. **Problem and motivation** - one heading; two only when the motivation is not
@@ -85,12 +86,12 @@ naming the rabbit holes - never a brainstorm where every idea stands unchallenge
   9. **TBD** - only what I agreed to defer.
 
   Tests, commits, the glossary, the incidents table and the reference material stay
-  out: they are the full plan's work. A TL;DR plan hands off to implementation with
-  the commits shaped as we go, one at a time, each proposed before it is written;
+  out: they are the full plan's work. A shape plan hands off to implementation with
+  the commits cut as we go, one at a time, each proposed before it is written;
   a change large enough to want its commits fixed in advance is a reason to ask for
   the full plan instead.
 - **The full plan** is the document the rest of this skill describes, written when I
-  ask for it, and it starts from what shaping settled, or from the TL;DR plan when
+  ask for it, and it starts from what the brainstorm settled, or from the shape plan when
   one was sent. A design doc asked for by name is one.
 
 ## The problem comes first. Always.
@@ -311,11 +312,11 @@ a finding: it goes below the divider, and you raise it with me. It moves to TBD 
 after I agree to defer it. A TBD you invented reads as a commitment I never made.
 
 **Nothing raised or found falls out of the plan unasked.** Along the way, keep what
-landed nowhere: an item of the shape no section carries, a thing I raised and never
+landed nowhere: an item of the brainstorm no section carries, a thing I raised and never
 settled, something you found and we did not chase. A finding that changes what we want
 is raised the moment it is found, as "Executing a plan" says for a hole. Everything
 else is floated once, before the full plan is written: a numbered list in chat, each
-number in bold as in shaping, one line per item with why it matters, and for each I pick its bucket - in scope, TBD, or
+number in bold as in the brainstorm, one line per item with why it matters, and for each I pick its bucket - in scope, TBD, or
 a rejected decision below the divider. Only then is the plan written, with every item
 in its bucket.
 
@@ -324,7 +325,9 @@ in its bucket.
 Not a pile of edits. One section per commit, cut and ordered as
 `references/commits.md` says under "Two Suits: a Fix Stands Alone, a Feature
 Is a Series". For each one: the subject
-line, the files, the tests, and **what the commit body has to say**. Each black-box
+line, the files, the tests, **a "Builds on" line naming the sections it needs** -
+"Builds on: none" for one that stands alone - and **what the commit body has to
+say**. Each black-box
 test of the contract lands in the commit that delivers the behaviour it pins, so no
 prefix of the list claims a promise nothing tests.
 
@@ -426,9 +429,18 @@ the options with your recommendation, and wait. Search for how known architectur
 handle the same case first, and anchor each option in one where one fits, as "Start
 from a known architecture" says.
 
-That stop is for what needs a discussion: a flaw in the design, a fix that changes how
-components interact, adds state or a read, changes the contract, or reverses a
-decision the plan settled.
+**Where the plan edit would land decides whether it is a stop**, since every decision
+edits the plan (below):
+
+- **Stop and ask** when the edit would change the contract - an API, an invariant or a
+  test that pins one - reverse a decision the plan settled, or replace the architecture
+  it follows because that architecture fails a concrete scenario.
+- **Decide and record** every other gap the plan left - a field, a read, a helper, how
+  two pieces it names talk - picked the way its architecture would pick it. Each goes
+  under a "Decided while executing" heading in the plan, one line with the commit that
+  carries it, so a reviewer checks every one against the architecture, and you name it
+  in your next message. It is never a stop.
+
 A bug you can fix inside the agreed design - a wrong comparator, a missed condition, an
 off-by-one - in the code this plan's commits write is not a stop: fix it and name it in
 your next message. A bug in code the plan does not touch is a finding: report it, do not
@@ -442,6 +454,10 @@ decision, before the next piece of code. Change the sections it touches - design
 commits, risks, decisions - and add a question and answer when the reader will ask
 why. The plan must describe the branch as it stands, so the reviewer never meets a
 plan the code already contradicts.
+
+**When I ask for a goal on a plan file** - "give me a goal on <plan>.md", in
+whatever words - read `references/plan-goal.md` and `references/unattended-run.md`
+first and follow them.
 
 ## Committing a plan to a repo
 

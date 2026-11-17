@@ -9,9 +9,9 @@ edits one.
 ## A staged change, installed on one question
 
 **A file that is live the moment it is saved is never edited in place** - the
-root `CLAUDE.md`, a `tkay-*` skill, a hook, a home file the sync publishes.
-The sections below name what each kind adds; the procedure itself is this
-one:
+root `CLAUDE.md`, a `tkay-*` skill, a hook, a home file the sync publishes,
+a file of the `~/repos/configs` repo the sync runs from. The sections below
+name what each kind adds; the procedure itself is this one:
 
 1. **Stage it.** Copy the file into this session's handoff directory and make
    every edit to the copy.
@@ -19,12 +19,22 @@ one:
    full shape that standard gives a one-commit branch: the FINDINGS line and
    the commit's Full Assessment, both buckets, the branch overview, the
    commits table and the bycatch table. The diff stands in for the
-   commit; a Full Assessment on its own is not a review. A MUST HAVE finding is fixed on the
-   staged copy before the question, not after it: the standard's "show the
-   fix and wait" does not apply here, because the question is my sign-off.
-3. **Ask once**: show the diff, the review and the commit message, written by
-   the `tkay-code` commit standard, then end the reply with "❓ Q<n> Install
-   it into `<file>` and commit?".
+   commit; a Full Assessment on its own is not a review.
+   **Then fix, in one round, on the staged copy**: every MUST HAVE finding,
+   every bycatch row whose call is 🔧 Add fix, and the NICE TO HAVE findings
+   when the commit's Fix 🟡⚪ line rates their fix super easy. A bycatch fix
+   is staged as a commit of its own, installed on the same yes. The
+   standard's warning before a fix stays silent here: a session in this
+   repo or in `~/repos/configs` is one it exempts. **Then review the fixed copy once more, in the same
+   shape** - a fix lands in code the rest of the change depends on, and can
+   bring a problem of its own. When that review still finds a MUST HAVE,
+   fix nothing more: ask me about it as a ❓ of its own, and the install
+   question waits for my answer. Anything else it finds stays as it is.
+3. **Ask once**: show the diff, the last review and the commit message,
+   written by the `tkay-code` commit standard, then end the reply with
+   "❓ Q<n> Install it into `<file>` and commit?". The last review judges
+   the copy that installs; when a round of fixes ran, one line above it
+   says what the first review found and what the fixes changed.
 4. **On my yes, install and commit it yourself**, as plain commands with the
    sandbox off - it denies these paths, and gpg cannot sign inside it. Never
    hand me the `cp` to paste while that route is open: the question is the
@@ -93,6 +103,19 @@ and two things are its own:
 - **A refused run names the other home files with a pending change.** Each
   gets its own reason from me before this one is committed, never folded into
   this message.
+
+## The sync's own repo takes the same staged change
+
+**A file of `~/repos/configs` that the sync does not copy in - the scripts
+under `bin/`, the README, the `.gitignore` - goes through "A staged change,
+installed on one question"**, and is committed in that repo, on `main`,
+in the same turn. The scripts are live: launchd runs the sync on its
+schedule and cron runs the daily updates, so a half-made edit runs on the
+next tick, and the sync pushes whatever that repo has committed.
+
+**Its `claude/` and `home/` are copies the sync rebuilds on every run.** A
+change goes to the source - the file in `~/.claude` or under the home
+directory - never to the copy, which the next run overwrites.
 
 ## My Claude config is a git repo - every change is reviewed and committed
 

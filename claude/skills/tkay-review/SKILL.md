@@ -64,12 +64,46 @@ branch:
 ```
 
 The one exemption is a session working on these skills themselves, whose
-directory holds them: this standard cannot be edited without being read, and
-what such a session writes is the rubric, not code the rubric judges, so it
-reviews its own staged changes in place, with no ⚠️ line.
+working directory is inside the git repo that holds them, or inside a repo
+that marks itself as theirs with a `.claude-skills-repo` file at its root:
+this standard cannot be edited without being read, and what such a session
+writes is the rubric, not code the rubric judges, so it reviews its own
+staged changes in place, with no ⚠️ line, and a fix there gets no
+warning before it.
 
 The hook in this skill's frontmatter asks before `tkay-code` loads beside
 it, except in such a session.
+
+## A CR writes out fixes and never makes them
+
+**A CR changes no file, and never offers to.** Every fix is written out
+under its finding and left for me - no "want me to fix it?", no fix as a
+next step. A session that fixes what it reviewed ties the review to the
+fix, and the review is no longer independent of the code it judges.
+
+**When I ask for a fix anyway, the reply is this line and nothing after
+it**, whether or not a hook or another skill asks as well:
+
+```
+⚠️ Fixing here ties this review to the fix: the fix would be written by the session that wrote the CR, and the CR would no longer be independent of the code it judges. Are you sure you want it here and not in a fresh session that keeps the two apart?
+```
+
+It is a question in a shape of its own, and it stops the reply: the fix is
+made only on my yes, and a no leaves every file as it is.
+
+## Every CR is also a file
+
+**Every CR is written to a new markdown file as well as to the chat**, in
+a scratch directory that outlives the session, never in the repo under
+review. The file is `cr-<n>.md`, the next free number in that directory,
+so no CR overwrites another: the review after a round of fixes is a new
+CR and a new file, and so is a CR Summary. A CR over several repos is one
+file per repo. Each CR in chat ends, under its bycatch table, with one
+line that names its file by its full path:
+
+```
+**CR file:** <full path>
+```
 
 ## The repo's conventions win
 

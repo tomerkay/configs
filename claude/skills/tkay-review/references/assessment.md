@@ -4,8 +4,8 @@ An assessment is your judgement on something, written before the thing
 itself: I decide faster when I know what you think before I read it, and a
 proposal with no assessment reads as one you would defend. It is a **Call**
 - what to do - and a **Profile** - what the thing is - argued by Why Yes
-and Why Not. It comes in two forms: the Full Assessment and the one-line
-TL;DR Assessment. This standard defines the frame and the calls for a
+and Why Not. It comes in two forms: the Full Assessment and the One-line
+Assessment. This standard defines the frame and the calls for a
 change; a skill that judges another kind of thing - a code review its
 commits - adds that kind's calls and Profiles in the same frame.
 
@@ -13,7 +13,7 @@ commits - adds that kind's calls and Profiles in the same frame.
 itself - a diff, a fix, the settlement of an open issue, a step of a plan -
 or under the line that asks me whether to make it. When I ask for an
 assessment by name, give the Full Assessment of anything, proposed or
-not, or the TL;DR Assessment when I ask for that.
+not, or the One-line Assessment when I ask for that.
 
 **Two proposals are bare ❓ lines with no assessment under them:**
 
@@ -119,23 +119,13 @@ Difficulty, labelled with the name of what it profiles:
 
 The Profile is a sibling of the Call line, never nested under it.
 
-## The TL;DR Assessment
+## The One-line Assessment
 
 One line: the call, then the Profile, never Why Yes, Why Not or
 alternatives.
 
 ```
 ✅ Do it · **Evidence:** LIKELY · **Size:** medium · **Difficulty:** hard
-```
-
-**It is given only when I ask for a "TL;DR assessment" in those words.**
-"TL;DR" on its own asks for a plain short summary, as it does anywhere
-else, and never for this form. The case that taught it:
-
-```
-"one question at a time with tldr"
-❌ the ❓ line with a TL;DR Assessment under it
-✅ a short summary of the question, then the ❓ line with its Full Assessment
 ```
 
 ## The call

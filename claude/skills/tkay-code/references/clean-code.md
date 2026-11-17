@@ -877,7 +877,8 @@ caller.
   leaves the bug, and brings the nesting above with it. Make the state
   converge instead: an idempotent write, a reconcile loop that reads the
   truth and repairs the copy, a reader that takes a stale value as a retry.
-  The race then costs one repair and never a hang.
+  The race then costs one repair and never a hang. "A heal converges on
+  every path" below says what counts as one.
 - **Row locks in a database fall outside this section: the database finds
   the deadlock.** It aborts one side with an error instead of hanging, so
   the silent hang this section guards against never happens. One atomic
@@ -902,6 +903,41 @@ async with self._lock:
     pod = self._registry[name]
     self._cache[name] = pod.snapshot()
 ```
+
+---
+
+# A heal converges on every path
+
+**When I ask for a heal, I mean a flow that ends in the correct state
+whatever path it takes - any interleaving of the actors, any crash between
+two steps, any message lost or repeated - never a change that only makes
+the bad path rarer.** Kubernetes controllers are the model: they are
+[level-triggered](https://kubernetes.io/docs/concepts/architecture/controller/),
+comparing the desired state with the actual one on every pass instead of
+acting on the event that announced a change, so a missed or reordered event
+costs one pass and nothing more.
+
+A heal names three things, and is not one until all three hold:
+
+- **The truth it reads**, fresh on every pass: the store, the cluster
+  object, the request's own record - never the event, a cached copy or what
+  the last pass remembers.
+- **The repair**: a step that moves the copy toward the truth and is safe
+  run twice, run late, or run by two actors at once - an idempotent write,
+  or one whose condition makes the stale actor's write a no-op.
+- **What brings the repair back**: a loop or a periodic resync that runs
+  until the state is right, and the setting that bounds how long a wrong
+  state can last.
+
+**Not a heal, however much it helps**: a sleep or a delay before acting, a
+retry that gives up, jitter, a lock or an ordering that narrows the window,
+a check before an unconditional write. Each makes the race rarer; the race
+still wins sometimes, and nothing comes back to fix what it left.
+
+**The test: pick any interleaving and any crash, then ask what the state is
+after the next pass of the repair.** Correct for every one is a heal. Wrong
+for any one, until someone notices, is not - and in a review, a change
+offered as a heal that only narrows the window is a finding.
 
 ---
 
