@@ -32,8 +32,9 @@ part of its own.
 Ask me only for what none of this answers - the repo, and the files that
 must never be staged.
 
-**The reply lays out two goals that run the same way, each ready to paste,
-in this order:**
+**The reply prints two goals that run the same way, in full and in this
+order, and writes each into a markdown file of its own in a scratch
+directory that outlives the session:**
 
 1. **Short** - verified at a glance. It tells the run to follow the work's
    goal file and this one, each by its skill and file name, and states only
@@ -55,6 +56,12 @@ in this order:**
 - **Drawbacks:** two or three on where it may stall, what it will not
   catch and what it decides without me, then one for each option on what
   it alone costs.
+
+**The reply ends with each goal file's full path and, under it, the
+`/goal` line to paste.** The harness caps the length of a `/goal`
+condition, so the line names the file and states its stop condition in
+full - the goal's checker may judge that line alone - and stays far under
+the cap.
 
 ## What the run does
 

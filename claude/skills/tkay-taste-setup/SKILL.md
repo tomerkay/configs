@@ -1,6 +1,6 @@
 ---
 name: tkay-taste-setup
-description: My own taste and setup - who I am, my paths and repos, my branch habits, the handoff directory, and how reads, long runs and alerts go on my machine. My root CLAUDE.md @-imports this file, which @-imports every reference, so each session already has them; invoke it only to find which file holds a personal rule before editing one.
+description: My own taste and setup - who I am, my paths and repos, my branch habits, the handoff directory, and how reads and long runs go on my machine. My root CLAUDE.md @-imports this file, which @-imports every reference, so each session already has them; invoke it only to find which file holds a personal rule before editing one.
 ---
 
 # Personal taste and setup
@@ -21,13 +21,10 @@ it, so a session that imports this file loads every reference with it.
 - **Pushes and MRs**: @references/push-and-mr.md
 - **`SendFeedback` and auto memory**: @references/off-switches.md
 - **What my setup adds to the reply shapes**: @references/replies.md
-- **Where my coordinates come from**: @references/coordinates.md
 - **The steps only I can run**: @references/blocked-steps.md
 - **The handoff directory and its cleanup**: @references/handoff.md
 - **Long runs on my Mac**: @references/tool-use.md
 - **My screenshots**: @references/screenshots.md
-- **How a cell namespace is named**: @references/cell-namespaces.md
-- **HTTP and log reads, a refused rewrite**: @references/investigations.md
-- **Alert investigations**: @references/alerts.md
+- **HTTP and log reads**: @references/investigations.md
 - **My git identity and what my sandbox blocks for git**:
   @references/git-config.md

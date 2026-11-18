@@ -249,6 +249,19 @@ def selftest():
         ("an Equivalent whose call differs only by a badge and a reason",
          full.replace("✅ Do it", "⚖️ Close call (stops the leak) (🙌 Stops harm)")
          + alternative("Equivalent", "⚖ Close call"), False),
+        # The cases that taught it: an install question whose Why Not was the files going live,
+        # and a move whose Why Not was the root file growing.
+        ("a Why Not point that is the change going live",
+         full.replace("  - b", "  - **1.** The root `CLAUDE.md` and the skills are live, so any "
+                      "session picks up the new text as soon as it's copied in."), True),
+        ("a Why Not point that is the change's size",
+         full.replace("  - b", "  - **1.** The root `CLAUDE.md` grows by a section."), True),
+        ("a Why Not point on a queue that grows", full.replace(
+            "  - b", "  - the retry queue grows without bound while the API is down"), False),
+        ("a Why Yes point may say the change goes live",
+         full.replace("  - a", "  - the fix goes live on the next restart"), False),
+        ("an empty Why Not with its check",
+         full.replace("  - b", "  - none (checked: every caller keeps its decision)"), False),
     ]
     ok = True
     for name, text, expect_block in cases:

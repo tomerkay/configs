@@ -17,8 +17,9 @@ These are the steps to look for:
   call with nothing chained to it, has passed where a rebase bundled with
   other mutations, or driven by a script that deletes `pick` lines, was
   refused as destructive. A fix to HEAD is an amend and needs none of this;
-  when a rewrite I allowed does arise, shape it the plain way first, and a
-  refusal of that shape is then mine.
+  when a rewrite I allowed does arise, shape it the plain way first - a
+  bundled shape already refused gets one retry in it - and a refusal of the
+  plain shape is then mine.
 
 What I am to apply is staged in the session's handoff directory - "Every
 file you write goes under ~/.cache/claude-handoff" says why there and when

@@ -200,10 +200,13 @@ of mine or any other skill. When you write or edit one:
   in it carries `--context`/`--kube-context` and `-n`, a safety rule it
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine
   is the price of standalone; keep it to what that skill actually needs.
-- **Atero-specific knowledge stays in `tkay-cluster-ops` and
-  `tkay-taste-setup`** - my workplace's clusters, cells, backoffice, charts
-  and repos. Every other `tkay-*` skill works for an engineer anywhere;
-  an example taken from my work that names no Atero system is fine.
+- **Atero-specific knowledge stays in `tkay-cluster-ops` and the root
+  `CLAUDE.md`** - my workplace's clusters, cells, backoffice, charts and
+  repos: what an operation on a cluster or a cell needs goes in
+  `tkay-cluster-ops`, everything else in the root `CLAUDE.md`. Every other
+  `tkay-*` skill works for an engineer anywhere, `tkay-taste-setup`
+  included; an example taken from my work that names no Atero system is
+  fine.
 - **It names nobody and nowhere**: not me, no cluster, node,
   namespace or label value. It says "me" and "my", which reads as whoever
   loaded it, and derives anything personal at run time (`git config
@@ -236,9 +239,9 @@ standard - stays in that skill. Every rule lands on one side, so
 
 - **It is published, for reference, not for others to install.** So it
   may name my paths and point at other skills, and the rest of "My
-  `tkay-*` skills are standalone and generic" does not bind it - but
-  like every published file it holds no internal identifier and no
-  secret.
+  `tkay-*` skills are standalone and generic" does not bind it, save
+  where Atero knowledge goes - but like every published file it holds no
+  internal identifier and no secret.
 - **The root `CLAUDE.md` `@`-imports its `SKILL.md`, which `@`-imports
   every reference**, so every session loads them before the first change.
   A new reference joins by its own import line in `SKILL.md`.

@@ -15,8 +15,9 @@ flags per tool, the command shapes that run without a prompt, and what to do
 when I did not name the cluster or the namespace.
 
 **Every workload I deploy lands in my cell.** Read `references/cells.md`
-before any install or upgrade: the checks before an install, and what to do
-when the namespace is not mine.
+before any install or upgrade: how a cell is named and how mine is found,
+the checks before an install, and what to do when the namespace is not
+mine.
 
 ## Upgrading a live release
 

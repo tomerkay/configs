@@ -30,7 +30,8 @@ cherry-pick, revert or am that lands on a repo's default branch is denied in eve
 outside the repos in DEFAULT_BRANCH_EXEMPT, which are committed on main by design. A
 rebase in any form, a pull that rebases and a reset that moves the branch back ask in
 every state: history below HEAD is rewritten only on the user's words, while amending
-HEAD is free.
+HEAD is free. A new worktree - `git worktree add` or the EnterWorktree tool - asks, since
+it is made only on the user's words; before `LFG!` the gate denies one in a repo.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -786,6 +787,8 @@ MR_MOVES = {"create", "new", "for", "reopen", "close", "merge", "accept", "appro
 # "Some commands need my words and the prompt, every time".
 ON_WORDS = ("run it only when the user's message allowed this command in words, otherwise "
             "print it as `! <command>`")
+WORKTREE_REASON = ("adds a worktree, which keeps its branch checked out and undeletable until "
+                   f"the worktree is removed: {ON_WORDS}")
 CONTEXT_SETTER_REASON = ("sets the current context or namespace, which every command that "
                          "relies on it then hits; it never replaces --context and -n")
 MR_MOVE_REASON = ("opens, closes, merges or approves an MR/PR, writes to its branch, or posts "
@@ -1073,13 +1076,15 @@ def classify_npm(args):
     if not pos or has_flag(args, "--version", "-v"):
         return READ
     sub = pos[0]
-    if sub in ("test", "t", "ls", "list", "view", "info", "outdated", "why", "explain", "ping",
+    if sub in ("test", "t") or (sub in ("run", "run-script") and pos[1:2] == ["test"]):
+        return RUNS_CODE
+    if sub in ("ls", "list", "view", "info", "outdated", "why", "explain", "ping",
                "doctor", "search", "config"):
         return WRITE if sub == "config" and len(pos) > 1 and pos[1] != "get" else READ
     if sub == "audit":
         return WRITE if "fix" in pos else READ
     if sub in ("run", "run-script") and len(pos) > 1:
-        return READ if pos[1] in ("test", "lint", "typecheck", "type-check", "check") else WRITE
+        return READ if pos[1] in ("lint", "typecheck", "type-check", "check") else WRITE
     if sub in ("publish", "unpublish", "deprecate"):
         return DANGER
     return WRITE
@@ -2842,6 +2847,13 @@ def rewrites_history(prog, args):
     return False
 
 
+def adds_worktree(prog, args):
+    if prog != "git":
+        return False
+    rest = git_subcommand_args(args)
+    return rest[:1] == ["worktree"] and positionals(rest[1:])[:1] == ["add"]
+
+
 def pin_decisions(prog, args):
     """The rows that apply in every gate state, for one program invocation."""
     out = []
@@ -3179,15 +3191,11 @@ def script_decisions(command, cwd):
     return out
 
 
-CARGO_VALUE_FLAGS = {"-p", "--package", "--features", "-F", "--target", "-j", "--jobs",
-                     "--manifest-path", "--profile", "--test", "--bench", "--bin", "--example"}
 SHELL_PATH_REASON = ("a write path, or the directory a cd before it moves to, is built by the "
                      "shell at run time, so the gate cannot tell whether it lands in a repo: "
                      "write it out literally")
 NAMED_REF_FETCH_REASON = ("a fetch into a named ref leaves the ref in the repo: drop the "
                           "`:<dst>` and pin the commit with `git rev-parse FETCH_HEAD`")
-SUITE_REASON = ("runs a whole test suite: ask before it starts, and run the tests the change "
-                "touches unless the user asked for the suite")
 
 
 def named_ref_fetch(words):
@@ -3203,29 +3211,6 @@ def named_ref_fetch(words):
     return bool(dests) and all(d.startswith("refs/")
                                and not d.startswith(("refs/heads/", "refs/tags/"))
                                for d in dests)
-
-
-def runs_whole_suite(prog, args):
-    """True for a test runner with nothing narrowing it to a file, a test or a filter."""
-    pos = positionals(args)
-    if prog == "uv" and pos[:1] == ["run"]:
-        tail = uv_run_tail(args)
-        return bool(tail) and runs_whole_suite(program_of(tail), tail[1:])
-    if PYTHON_RE.fullmatch(prog) and args[:2] == ["-m", "pytest"]:
-        return runs_whole_suite("pytest", args[2:])
-    if prog == "pytest":
-        return not (has_flag(args, "-k") or any(".py" in a or "::" in a for a in pos))
-    if prog == "go":
-        return pos[:1] == ["test"] and any("..." in a for a in pos) and not has_flag(args, "-run")
-    if prog == "cargo":
-        rest, _ = split_globals(args, CARGO_VALUE_FLAGS)
-        rest = rest[:rest.index("--")] if "--" in rest else rest
-        return positionals(rest) == ["test"]
-    if prog in ("make", "gmake"):
-        return "test" in pos
-    if prog in ("npm", "pnpm", "yarn"):
-        return pos[:1] in (["test"], ["t"]) or pos[:2] == ["run", "test"]
-    return False
 
 
 # A statement of its own, ending the way the shell ends one, whose value is an absolute path
@@ -3266,8 +3251,10 @@ def decide_bash(tool_input, gate_open, cwd, named):
         out.append((ASK, ENV_WRITE_REASON))
     for prog, args in invocations(command):
         out.extend(pin_decisions(prog, args))
-        if runs_whole_suite(prog, args):
-            out.append((ASK, SUITE_REASON))
+        # Not a pin decision: gate_blockers passes a command a pin decision asks about,
+        # which would turn the closed gate's deny into an ask.
+        if adds_worktree(prog, args):
+            out.append((ASK, WORKTREE_REASON))
     out.extend(default_branch_commits(command, cwd))
     out.extend(script_decisions(command, cwd))
     out.extend(clone_decisions(command, cwd))
@@ -3333,7 +3320,7 @@ def decide(tool_name, tool_input, gate_open, cwd=None, named=()):
         if not gate_open and inside_repo(path):
             out.append((DENY, REFUSAL))
     elif tool_name == "EnterWorktree":
-        out = [] if gate_open else [(DENY, REFUSAL)]
+        out = [(ASK, WORKTREE_REASON)] if gate_open else [(DENY, REFUSAL)]
     elif tool_name.startswith("mcp__"):
         out = decide_mcp(tool_name, tool_input)
     else:
@@ -3530,8 +3517,14 @@ def selftest():
         (False, "Bash", "git stash", DENY),
         (False, "Bash", "git restore .", DENY),
         (False, "Bash", "git checkout -- .", DENY),
-        (False, "Bash", "make test", ASK),
-        (False, "Bash", "make test 2>&1", ASK),
+        (False, "Bash", "git worktree add ../y b", DENY),
+        (True, "Bash", "git worktree add ../y b", ASK),
+        (True, "Bash", "git -C /x worktree add -b n ../y", ASK),
+        (True, "Bash", "git worktree list", None),
+        (True, "Bash", "git worktree remove ../y", None),
+        (False, "Bash", "git -C /x worktree add ../y", ASK),
+        (False, "Bash", "make test", None),
+        (False, "Bash", "make test 2>&1", None),
         (False, "Bash", "crusoe kubernetes clusters get-credentials --help 2>/dev/null | head", None),
         (False, "Bash", "ls; 2>&1 ls", None),
         (False, "Bash", "(ls)2>&1", None),
@@ -3655,15 +3648,16 @@ def selftest():
         (True, "Bash", "helmfile apply", DENY),
         (True, "Bash", "helmfile --kube-context X diff", None),
         (False, "Bash", "helmfile template", None),
-        (True, "Bash", "pytest", ASK),
-        (False, "Bash", "pytest tests/", ASK),
-        (True, "Bash", "uv run pytest -q", ASK),
-        (True, "Bash", "python3 -m pytest tests", ASK),
-        (True, "Bash", "go test ./...", ASK),
-        (True, "Bash", "cargo test", ASK),
-        (True, "Bash", "cargo test -p mycrate", ASK),
-        (True, "Bash", "make test", ASK),
-        (False, "Bash", "npm test", ASK),
+        # A whole suite is asked about in chat, never by the hook, so a goal can run one.
+        (True, "Bash", "pytest", None),
+        (False, "Bash", "pytest tests/", None),
+        (True, "Bash", "uv run pytest -q", None),
+        (True, "Bash", "python3 -m pytest tests", None),
+        (True, "Bash", "go test ./...", None),
+        (True, "Bash", "cargo test", None),
+        (True, "Bash", "cargo test -p mycrate", None),
+        (True, "Bash", "make test", None),
+        (False, "Bash", "npm test", None),
         (True, "Bash", "pytest tests/test_x.py", None),
         (True, "Bash", "pytest -k name", None),
         (True, "Bash", "pytest x.py::test_y", None),
@@ -4053,7 +4047,7 @@ def selftest():
         (False, "Bash", "stern x --context X -n Y", None),
         (False, "Bash", "stern x", DENY),
         (False, "Bash", "kubectl --help", None),
-        (False, "Bash", "python3 -m pytest tests/", ASK),
+        (False, "Bash", "python3 -m pytest tests/", None),
         (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
         (False, "Bash", 'which claude; stat -f "%Sm %N" "$(readlink -f "$(which claude)")" 2>&1', None),
         (False, "Bash", "claude auth status", None),
@@ -4417,6 +4411,9 @@ def selftest():
         ("python3 -c 'print(1)'", RUNS_CODE),
         ("cp a b && go test ./x", RUNS_CODE),
         ("make test", RUNS_CODE),
+        ("npm test", RUNS_CODE),
+        ("pnpm run test", RUNS_CODE),
+        ("yarn t", RUNS_CODE),
         ("make -n build", READ),
         ("go test ./x && frobnicate", UNCLASSIFIED),
         ("cd /x/src && GOFLAGS=-mod=mod go vet ./... 2>&1 | tail -5; "
@@ -4678,7 +4675,8 @@ def selftest():
                 print(f"{'ok  ' if ok else 'FAIL'} gate {tool} {tool_input} -> {got}"
                       + ("" if ok else f" (want {expected})"))
             got = decide("EnterWorktree", {}, True, on_main)
-            ok = got is None
+            got = got[0] if got else None
+            ok = got == ASK
             failures += not ok
             print(f"{'ok  ' if ok else 'FAIL'} gate EnterWorktree, gate open -> {got}")
         finally:

@@ -9,6 +9,3 @@
   prompts on every `gcloud`, a read included; the data-mcp tools are on its
   allow list. `gcloud logging read` only for a bulk pull past the tool's
   sample cap, and then it prompts.
-- **A history rewrite refused in a bundled shape** gets one retry in the
-  plain shape of "What only my setup blocks", and a second refusal is the
-  stop.

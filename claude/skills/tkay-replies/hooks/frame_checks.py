@@ -100,7 +100,39 @@ def frame_problems(block):
         found.append(f"{head}... carries no call, or one not in its emoji-and-word shape")
     if EVIDENCE_RE.search(call):
         found.append(f"{head}... carries an Evidence; a call takes none")
-    return found + stray_problems(block)
+    return found + stray_problems(block) + padded_why_not(block)
+
+
+# A Why Not point that is the change taking effect, or its size - the first two of the four
+# tests in references/assessment.md. It matches wordings, not meaning: "grows" counts only
+# after a file or a section, so a queue that grows - a real hazard - passes.
+PADDED_WHY_NOT_RE = re.compile(
+    r"\b(goes live|go live|(is|are) live\b|live the moment|picks? up the (new|change)"
+    r"|takes? effect|as soon as (it|they)\S* (is |are )?(copied|saved|installed)"
+    r"|one more (section|file|line|rule|commit))"
+    r"|(root|file|section|skill|doc|\.md`?)\s+grows", re.IGNORECASE)
+
+
+def why_not_points(block):
+    """The lines nested under a block's Why Not label."""
+    points = []
+    for k, line in enumerate(block):
+        if "**Why Not?**" not in line:
+            continue
+        indent = len(line) - len(line.lstrip())
+        for other in block[k + 1:]:
+            if not other.strip():
+                continue
+            if len(other) - len(other.lstrip()) <= indent:
+                break
+            points.append(other)
+    return points
+
+
+def padded_why_not(block):
+    return [f"{point.strip()[:60]}... is a Why Not point that is the change taking effect or "
+            "its size; cut it, and an empty list says none (checked: <what was checked>)"
+            for point in why_not_points(block) if PADDED_WHY_NOT_RE.search(point)]
 
 
 def run(problems, standard, shape):
