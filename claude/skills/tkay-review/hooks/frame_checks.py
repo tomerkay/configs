@@ -17,14 +17,15 @@ FENCE_RE = re.compile(r"^\s*(```|~~~)")
 CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Strongly don't|❌ Don't)"
 CR_CALL = (r"(✅ Ship it|👌 Fixed later|🔧 Needs change|🪓 Split|📝 Reword|🔀 Squash into"
            r"|🗑️? Drop|✅ Merge it|🔧 Merge after fixes|✂️? Split first|⚖️? Close call|❌ Don't merge"
-           r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|⏸️? Leave for now)")
+           r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|⏸️? Leave for now"
+           r"|🧪 Needs test|🧪 Merge after tests)")
 # The retired Verdict label opens a block too, so whoever owns its call sends the label back.
 CALL_LINE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* ")
 CHANGE_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* {CHANGE_CALL}")
 # A CR's ⚖️ Close call shares its words with a change's; `owned_by_cr` tells them apart by the
 # Profile under it.
 CR_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* {CR_CALL}")
-CR_PROFILE_RE = re.compile(r"^\s*- \*\*(Commit|Bycatch|Fix [🔴🟠🟡⚪]+):\*\*")
+CR_PROFILE_RE = re.compile(r"^\s*- \*\*(Commit|Bycatch|Fix [🔴🟠🟡⚪]+|Test 🧪):\*\*")
 # A call is an emoji, then a word that opens with a capital and goes on in lower case, so
 # "DO IT" or a bare "Do it" fails.
 CALL_SHAPE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* [^\w\s*]+ [A-Z][a-z']")

@@ -13,7 +13,7 @@ These are the steps to look for:
 - a history rewrite below HEAD, which needs my words in any case - see
   "Some commands need my words and the prompt, every time" - and which auto
   mode judges by the command's text, not its effect: the plain
-  sequence-editor shape in `tkay-code`'s commits reference, run as its own
+  sequence-editor shape in `branches.md`'s rewrite section, run as its own
   call with nothing chained to it, has passed where a rebase bundled with
   other mutations, or driven by a script that deletes `pick` lines, was
   refused as destructive. A fix to HEAD is an amend and needs none of this;

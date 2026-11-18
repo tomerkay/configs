@@ -80,15 +80,22 @@ in this order:**
   fresh subagent reviews the run's commits at HEAD.
 - **The fix loop stops itself** when a CR finds a blocking finding that a
   fix commit brought in, or a finding a fix commit claimed to close.
+- **A finding that asks for a run, not a code change, gets the run**: a
+  claim the review traced and found sound but could not prove. When the
+  run it names is one the goal already allows - one of its suites or test
+  commands - it runs with the suites, and a failure is handled as theirs
+  is; any other goes in the report as waiting on me.
 - **The full suites run last**, in the background, holding the machine awake
   (`caffeinate -i` on a Mac), each with its log in a scratch directory that
   outlives the session. Each failure gets a dedicated fix commit and a rerun
   of that suite, at most twice per failure.
 - **A report in that scratch directory stays current**: each piece of work
   done or stopped with its reason, every decision made without asking, the
-  path of every CR file with the last CR's commits table, and each suite's
-  result.
+  path of every CR file with the last CR's commits table, each suite's
+  result, and each finding that asks for a run, with that run's result or
+  "waiting on me".
 - **It stops** when the report shows every piece of work done or stopped
-  for a recorded reason, the last CR blocking nothing, and every suite
-  passing - or when the fix loop's stop or a failure cap ends it, with the
-  reason in the report.
+  for a recorded reason, the last CR blocking nothing, every suite
+  passing, and every run a finding asks for passing or waiting on me - or
+  when the fix loop's stop or a failure cap ends it, with the reason in
+  the report.

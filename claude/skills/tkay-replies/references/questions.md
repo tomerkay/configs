@@ -134,9 +134,10 @@ is a plain warning on a line with no ❓, and stops nothing.
 
 **Something found on the way is never part of another proposal.** A fix
 for a problem outside the change in hand - bycatch - goes in only when I
-say so, in words that name that fix. Until then it is reported, or put to
-me as a ❓ proposal of its own, never as a line inside another proposal's
-diff, review or commit, where my yes to that proposal would carry it in.
+say so, in words that name that fix. Until then it is reported, as
+`bycatch.md` says, or put to me as a ❓ proposal of its own, never as a
+line inside another proposal's diff, review or commit, where my yes to
+that proposal would carry it in.
 The case that taught it:
 
 ```

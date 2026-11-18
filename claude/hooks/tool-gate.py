@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/UNCLASSIFIED/DANGER rating on Bash
-commands.
+"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/RUNS CODE/UNCLASSIFIED/DANGER rating
+on Bash commands.
 
 For Bash it classifies what the command can change and rewrites the tool's `description`
 so a permission dialog opens with the rating:
 
     🟢 READ    changes nothing
     🟠 WRITE   changes local, recoverable state (files, commits, installs, helm releases)
+    🔵 RUNS CODE  a known program running code the hook cannot read: a test run, a Python
+                  script
     🟣 UNCLASSIFIED  a program or a line the classifier does not recognise
     🔴 DANGER  destroys data or changes live cluster / remote state
 
@@ -18,16 +20,17 @@ WRITE.
 For Bash, Edit, Write, NotebookEdit, EnterWorktree and every MCP tool it then decides,
 from the gate state lfg-state.py records per session: a change to a git repo before
 `LFG!` is denied with the refusal line, while opaque code - an interpreter, a container,
-a script - passes and repo-watch.py reports a repo change it makes; every command that
-needs the user's words for that one command asks in every state, and so does, once per
-run, a script whose text holds one; a push is denied in every state, since the user runs
-it; and the pin rules for kubectl, helm and helmfile are enforced. A program the
-classifier does not know asks instead of denying, so a read it has not met never gets the
-refusal line. A commit, merge, cherry-pick, revert or am that lands on a repo's default
-branch is denied in every state, outside the repos in DEFAULT_BRANCH_EXEMPT, which are
-committed on main by design. A rebase in any form, a pull that rebases and a reset that
-moves the branch back ask in every state: history below HEAD is rewritten only on the
-user's words, while amending HEAD is free.
+a script, a test run - passes and repo-watch.py reports a repo change it makes, unless a
+test run's own flags write beside the tests; every command that needs the user's words
+for that one command asks in every state, and so does, once per run, a script whose text
+holds one; a push is denied in every state, since the user runs it; and the pin rules for
+kubectl, helm and helmfile are enforced. A program the classifier does not know asks
+instead of denying, so a read it has not met never gets the refusal line. A commit, merge,
+cherry-pick, revert or am that lands on a repo's default branch is denied in every state,
+outside the repos in DEFAULT_BRANCH_EXEMPT, which are committed on main by design. A
+rebase in any form, a pull that rebases and a reset that moves the branch back ask in
+every state: history below HEAD is rewritten only on the user's words, while amending
+HEAD is free.
 
 An `rm` whose every path is a literal under the scratch root is dropped from the command
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
@@ -56,10 +59,13 @@ import shlex
 import subprocess
 import sys
 
-READ, WRITE, UNCLASSIFIED, DANGER = "🟢 READ", "🟠 WRITE", "🟣 UNCLASSIFIED", "🔴 DANGER"
-# An unknown program could do anything, so it outranks a known local write, never a known danger.
-RANK = {READ: 0, WRITE: 1, UNCLASSIFIED: 2, DANGER: 3}
-LABEL_RE = re.compile(r"^(?:🟢 READ|🟠 WRITE|🟣 UNCLASSIFIED|🔴 DANGER)\s*[·:|-]?\s*")
+READ, WRITE, RUNS_CODE, UNCLASSIFIED, DANGER = (
+    "🟢 READ", "🟠 WRITE", "🔵 RUNS CODE", "🟣 UNCLASSIFIED", "🔴 DANGER")
+# Code the hook cannot read may write anything, so it outranks a known local write; an unknown
+# program is less known still, and neither outranks a known danger.
+RANK = {READ: 0, WRITE: 1, RUNS_CODE: 2, UNCLASSIFIED: 3, DANGER: 4}
+LABEL_RE = re.compile(
+    r"^(?:🟢 READ|🟠 WRITE|🔵 RUNS CODE|🟣 UNCLASSIFIED|🔴 DANGER)\s*[·:|-]?\s*")
 
 SEPARATORS = {";", ";;", "|", "||", "&&", "&", "(", ")", "|&"}
 REDIRECT_OUT = {">", ">>", "&>", "&>>", ">|"}
@@ -99,7 +105,7 @@ READ_PROGRAMS = {
     "bindkey", "zstyle", "cd", "pushd", "popd",
     "dirs", "local", "readonly", "shift", "wait", "hash", "umask", "read", "zcat", "gzcat",
     "bzcat", "xzcat", "dig", "nslookup", "host", "ping", "traceroute", "mtr", "whois",
-    "journalctl", "kustomize", "pytest", "mypy", "pyright", "flake8", "pylint", "shellcheck",
+    "journalctl", "kustomize", "mypy", "pyright", "flake8", "pylint", "shellcheck",
     "yamllint", "hadolint", "glow", "bat", "fzf", "tldr", "man", "info", "cksum", "iconv",
     "look", "join", "split", "fmt", "pr", "tac", "expr", "let", "arch", "nproc", "sysctl",
     "ifconfig", "ip", "route", "arp", "ioreg", "system_profiler", "pbpaste", "mdfind",
@@ -975,18 +981,18 @@ def classify_python(args):
     if os.path.realpath(os.path.expanduser(args[0])) == os.path.realpath(__file__):
         return READ
     if args[0] == "-m" and len(args) > 1:
-        if args[1] in ("json.tool", "unittest", "tomllib"):
+        if args[1] in ("json.tool", "tomllib"):
             return READ
         if args[1] in ("pytest", "mypy", "pyright", "ruff", "black", "isort", "flake8", "pylint"):
             return classify_program(args[1], args[2:])
         if args[1] == "pip":
             return classify_pip(args[2:])
-        return WRITE
+        return RUNS_CODE
     if os.path.basename(args[0]) in PUBLISHING_SCRIPTS:
         return DANGER
     if os.path.basename(args[0]) == "board.py":
         return classify_board(args[1:])
-    return WRITE
+    return RUNS_CODE
 
 
 def classify_board(args):
@@ -1110,6 +1116,14 @@ def go_build_discards_output(args):
     return len(packages) > 1 or "./..." in packages
 
 
+def go_may_rewrite_module(args):
+    """True for a go command run with -mod=mod, which lets any build command rewrite go.mod
+    and go.sum (https://go.dev/ref/mod#build-commands). strip_prefix puts a GOFLAGS
+    assignment's flags among the arguments."""
+    return any(re.fullmatch(r"--?mod=mod", a) for a in args) or any(
+        re.fullmatch(r"--?mod", a) and nxt == "mod" for a, nxt in zip(args, args[1:]))
+
+
 def classify_go(args):
     pos = positionals(args)
     if not pos:
@@ -1117,12 +1131,14 @@ def classify_go(args):
     sub = pos[0]
     if sub == "env":
         return WRITE if has_flag(args, "-w", "-u") else READ
-    if sub in ("test", "vet", "list", "version", "doc", "help", "bug"):
+    if sub == "test":
+        return RUNS_CODE
+    if sub in ("vet", "list") or (sub == "build" and go_build_discards_output(args)):
+        return WRITE if go_may_rewrite_module(args) else READ
+    if sub in ("version", "doc", "help", "bug"):
         return READ
     if sub == "mod":
         return READ if len(pos) > 1 and pos[1] in ("graph", "why", "verify") else WRITE
-    if sub == "build" and go_build_discards_output(args):
-        return READ
     return WRITE
 
 
@@ -1131,8 +1147,10 @@ def classify_cargo(args):
     if not pos or has_flag(args, "--version", "-V"):
         return READ
     sub = pos[0]
-    if sub in ("check", "test", "clippy", "tree", "metadata", "doc", "version", "search",
-               "verify-project", "pkgid", "locate-project", "read-manifest", "bench"):
+    if sub in ("test", "bench"):
+        return RUNS_CODE
+    if sub in ("check", "clippy", "tree", "metadata", "doc", "version", "search",
+               "verify-project", "pkgid", "locate-project", "read-manifest"):
         return READ
     if sub == "fmt":
         return classify_formatter(args)
@@ -1146,7 +1164,7 @@ def classify_make(args):
                 "-p", "--print-data-base"):
         return READ
     targets = [a for a in positionals(args) if "=" not in a]
-    return READ if targets == ["test"] else WRITE
+    return RUNS_CODE if targets == ["test"] else WRITE
 
 
 def classify_terraform(args):
@@ -1156,7 +1174,7 @@ def classify_terraform(args):
     sub = pos[0]
     nested = pos[1] if len(pos) > 1 else ""
     if sub in ("plan", "show", "validate", "output", "providers", "version", "graph", "console",
-               "get", "test"):
+               "get"):
         return READ
     if sub == "fmt":
         return classify_formatter(args)
@@ -1164,7 +1182,9 @@ def classify_terraform(args):
         return READ if nested in ("list", "show", "pull") else DANGER
     if sub == "workspace":
         return READ if nested in ("list", "show") else WRITE
-    if sub in ("apply", "destroy", "import", "taint", "untaint", "force-unlock"):
+    # test applies every run block's configuration and destroys it after, unless the block
+    # says `command = plan`, which the command line does not show.
+    if sub in ("apply", "destroy", "import", "taint", "untaint", "force-unlock", "test"):
         return DANGER
     return WRITE
 
@@ -1482,6 +1502,7 @@ HANDLERS = {
     "crontab": classify_crontab,
     "sysctl": classify_sysctl,
     "nvidia-smi": classify_nvidia_smi,
+    "pytest": lambda _: RUNS_CODE,
 }
 
 _unknown_level = UNCLASSIFIED
@@ -1525,11 +1546,15 @@ def classify_program(prog, args):
 
 
 def strip_prefix(words):
-    """Drop env assignments, transparent wrappers and `timeout <args>` ahead of the program."""
+    """Drop env assignments, transparent wrappers and `timeout <args>` ahead of the program,
+    keeping GOFLAGS for a go command."""
     words = list(words)
+    goflags = []
     # GOTCHA: shlex leaves a bare `$` behind when nested quotes split `$(...)` apart.
     while words and (ENV_ASSIGN_RE.match(words[0]) or words[0] in TRANSPARENT or words[0] == "$"):
         wrapper, words = words[0], words[1:]
+        if wrapper.startswith("GOFLAGS="):
+            goflags = wrapper.split("=", 1)[1].split()
         if wrapper == "caffeinate":
             while words and words[0].startswith("-"):
                 words = words[2:] if words[0] in CAFFEINATE_VALUE_OPTS else words[1:]
@@ -1539,6 +1564,9 @@ def strip_prefix(words):
             words = words[1:]
     while words and words[0] in SYNTAX_ONLY:
         words = words[1:]
+    # Go reads GOFLAGS as flags given before its own, so they are judged as arguments.
+    if goflags and words and program_of(words) == "go":
+        words = words[:1] + goflags + words[1:]
     return words
 
 
@@ -2318,11 +2346,45 @@ def git_archive_outputs(args):
 
 
 GO_MODULE_FILES = ("go.mod", "go.work")
-# The subcommands whose writes are the module files, vendor/ and a build's binary, and
+# The subcommands whose own writes are the module files, vendor/ and a build's binary, and
 # nothing a directive or a script decides. `go work sync` rewrites the go.mod of every
 # module in the workspace, wherever it sits.
-GO_SCRATCH_SUBCOMMANDS = {"mod", "get", "build"}
+GO_SCRATCH_SUBCOMMANDS = {"mod", "get", "build", "vet", "list", "test"}
 GO_PATH_FLAGS = {"-C", "-o", "-modfile"}
+
+
+def test_run_of(prog, args):
+    """The runner and its arguments when the command is a test run, by itself or through
+    python -m or uv run, or None."""
+    pos = positionals(args)
+    if prog == "uv" and pos[:1] == ["run"]:
+        tail = uv_run_tail(args)
+        return test_run_of(program_of(tail), tail[1:]) if tail else None
+    if PYTHON_RE.fullmatch(prog) and args[:2] == ["-m", "pytest"]:
+        return "pytest", args[2:]
+    if prog == "pytest" or (prog in ("go", "cargo") and pos[:1] == ["test"]):
+        return prog, args
+    return None
+
+
+# A test rewrites its golden files or snapshots behind a flag named for the update:
+# Go's -update, syrupy's --snapshot-update, a crate's own flag after `--`.
+UPDATE_FLAG_RE = re.compile(r"--?[A-Za-z0-9_-]*update")
+
+
+def test_run_writes_beside_tests(here, prog, args):
+    """True for a test run whose own flags make it write files beside the tests, outside a
+    gate scratch root: an update flag, or Go's -mod=mod rewriting go.mod and go.sum."""
+    run = test_run_of(prog, args)
+    if run is None:
+        return False
+    runner, run_args = run
+    if not (any(UPDATE_FLAG_RE.match(a) for a in run_args)
+            or (runner == "go" and go_may_rewrite_module(run_args))):
+        return False
+    if runner == "go":
+        return not go_writes_into_scratch(here, run_args)
+    return here is None or not inside_gate_scratch(os.path.join(here, "."))
 
 
 def go_writes_into_scratch(here, args):
@@ -2449,12 +2511,16 @@ def gate_blockers(command, cwd, run_time_dir=None):
             if prog in CHDIR_PROGRAMS:
                 here = (cd_target(here, prog, args) or run_time_dir) if moves else None
                 continue
-            if classify_program(prog, args) == READ:
+            level = classify_program(prog, args)
+            if level == READ:
                 continue
             # A command that needs the user's words is the words rule's, never the gate's.
             if any(decision == ASK for decision, _ in pin_decisions(prog, args)):
                 continue
-            if runs_opaque_code(words):
+            if test_run_writes_beside_tests(here, prog, args):
+                blockers.append(words)
+                continue
+            if level == RUNS_CODE or runs_opaque_code(words):
                 continue
             if prog in ("gh", "glab") and gh_writes_remote_only(args):
                 continue
@@ -3606,6 +3672,27 @@ def selftest():
         (True, "Bash", "go test ./pkg/foo", None),
         (True, "Bash", "cargo test name", None),
         (True, "Bash", "./scripts/run-tests.sh", None),
+        # -mod=mod lets a build command rewrite go.mod and go.sum where it runs.
+        (False, "Bash", "go test -mod=mod ./pkg/foo", DENY),
+        (False, "Bash", "GOFLAGS=-mod=mod go test ./pkg/foo", DENY),
+        (False, "Bash", "GOFLAGS=-mod=mod go vet ./pkg/foo", DENY),
+        (False, "Bash", "go list -mod=mod ./...", DENY),
+        (False, "Bash", f"cd {scratch}d && GOFLAGS=-mod=mod go vet ./...", None),
+        # A test run passes the gate like other opaque code, unless its own flags write
+        # beside the tests: an update flag, or Go's -mod=mod.
+        (False, "Bash", "go test ./pkg/foo", None),
+        (False, "Bash", "uv run pytest tests/test_x.py", None),
+        (False, "Bash", f"cd {scratch}d && go test -mod=mod ./pkg/foo", None),
+        (False, "Bash", "go test ./pkg/foo -update", DENY),
+        (True, "Bash", "go test ./pkg/foo -update", None),
+        (False, "Bash", "pytest tests/test_x.py --snapshot-update", DENY),
+        (False, "Bash", "python3 -m pytest tests/test_x.py --snapshot-update", DENY),
+        (False, "Bash", "uv run pytest tests/test_x.py --snapshot-update", DENY),
+        (False, "Bash", "cargo test name -- --update", DENY),
+        (False, "Bash", f"cd {scratch}d && go test ./pkg/foo -update", None),
+        (False, "Bash", f"cd {scratch}d && pytest tests/test_x.py --snapshot-update", None),
+        # A script's flags are its own.
+        (False, "Bash", "python3 /x/run.py --update", None),
         (True, "Bash", "xh PUT https://example.com/x a:=1", ASK),
         (True, "Bash", "xh https://example.com/x a=1", ASK),
         (True, "Bash", "curl -X DELETE https://example.com/x", ASK),
@@ -4309,6 +4396,35 @@ def selftest():
         ("go build", WRITE),
         ("go build -o /x/out ./...", WRITE),
         ("go build -toolexec /x/t ./...", WRITE),
+        # -mod=mod, as a flag or in GOFLAGS, lets a build command rewrite go.mod and go.sum.
+        ("go vet ./...", READ),
+        ("go vet -mod=mod ./...", WRITE),
+        ("go build -mod mod ./...", WRITE),
+        ("GOFLAGS=-mod=mod go vet ./...", WRITE),
+        ("GOFLAGS='-tags=x -mod=mod' go list ./...", WRITE),
+        ("GOFLAGS=-mod=readonly go vet ./...", READ),
+        # A test run or a script runs code the hook cannot read: above a known write, below
+        # an unknown program.
+        ("go test ./pkg/foo", RUNS_CODE),
+        ("cargo test name", RUNS_CODE),
+        ("cargo bench", RUNS_CODE),
+        ("pytest tests/test_x.py", RUNS_CODE),
+        ("pytest --version", READ),
+        ("python3 -m pytest -q", RUNS_CODE),
+        ("python3 -m unittest", RUNS_CODE),
+        ("uv run pytest -q", RUNS_CODE),
+        ("python3 /x/run.py", RUNS_CODE),
+        ("python3 -c 'print(1)'", RUNS_CODE),
+        ("cp a b && go test ./x", RUNS_CODE),
+        ("make test", RUNS_CODE),
+        ("make -n build", READ),
+        ("go test ./x && frobnicate", UNCLASSIFIED),
+        ("cd /x/src && GOFLAGS=-mod=mod go vet ./... 2>&1 | tail -5; "
+         "go test -count=1 -race ./... 2>&1 | tail -20", RUNS_CODE),
+        # terraform test creates real infrastructure for its run blocks; plan only reads.
+        ("terraform test", DANGER),
+        ("tofu test -filter=tests/a.tftest.hcl", DANGER),
+        ("terraform plan", READ),
         ("kill 12345", DANGER),
         ("pkill -f temporal", DANGER),
         ("killall temporal", DANGER),

@@ -24,8 +24,8 @@ name what each kind adds; the procedure itself is this one:
    every bycatch row whose call is 🔧 Add fix, and the NICE TO HAVE findings
    when the commit's Fix 🟡⚪ line rates their fix super easy. A bycatch fix
    is staged as a commit of its own, installed on the same yes. The
-   standard's warning before a fix stays silent here: a session in this
-   repo or in `~/repos/configs` is one it exempts. **Then review the fixed copy once more, in the same
+   standard's question before code after a CR is not asked here: a
+   session in this repo or in `~/repos/configs` is one it exempts. **Then review the fixed copy once more, in the same
    shape** - a fix lands in code the rest of the change depends on, and can
    bring a problem of its own. When that review still finds a MUST HAVE,
    fix nothing more: ask me about it as a ❓ of its own, and the install
@@ -224,21 +224,24 @@ repos.
 
 My skills are edited under `skills/`.
 
-## `tkay-taste-setup` holds what I would not hand a colleague unchanged
+## `tkay-taste-setup` holds my way of working
 
-**A rule I would hand a colleague unchanged goes in another skill; one I
-would not goes in `tkay-taste-setup`**: it names my machine, my repos or my
-accounts, or it is a choice another engineer could reasonably make the
-other way. Every rule lands on one side, so `tkay-taste-setup` and the
-other skills never hold the same rule.
+**A rule goes in `tkay-taste-setup` when every other skill still does its
+whole job without it**: it is my way of working, one another engineer may
+not want enforced on them - it names my machine, my repos or my accounts,
+or it is a choice another engineer could reasonably make the other way. A
+rule that is part of what a skill is for - a commit body for the commit
+standard - stays in that skill. Every rule lands on one side, so
+`tkay-taste-setup` and the other skills never hold the same rule.
 
 - **It is published, for reference, not for others to install.** So it
   may name my paths and point at other skills, and the rest of "My
   `tkay-*` skills are standalone and generic" does not bind it - but
   like every published file it holds no internal identifier and no
   secret.
-- **The root `CLAUDE.md` `@`-imports its references**, so every session
-  loads them before the first change.
+- **The root `CLAUDE.md` `@`-imports its `SKILL.md`, which `@`-imports
+  every reference**, so every session loads them before the first change.
+  A new reference joins by its own import line in `SKILL.md`.
 - **The gate and the commands that need my words stay in the root
   `CLAUDE.md`**, beside the hook that enforces them, whatever this test
   says of each row - and so does every line that names the gate, which

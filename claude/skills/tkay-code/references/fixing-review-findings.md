@@ -36,4 +36,4 @@ named and visible, the new bug is neither.
   arguing it down, softening its severity, or deleting the test, check or log
   that exposed the problem.
 
-Which commit each fix lands in is `commits.md`'s.
+Which commit each fix belongs in is `commits.md`'s.

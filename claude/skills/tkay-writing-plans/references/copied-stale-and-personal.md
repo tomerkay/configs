@@ -1,7 +1,21 @@
-# Nothing stale, nothing personal
+# Nothing copied, nothing stale, nothing personal
 
-Two rules bind every line written into a repo or a skill - code, a chart, a
-config, a doc, a comment, a test.
+Three rules bind every line written into a repo or a skill - code, a chart,
+a config, a doc, a comment, a test.
+
+## Nothing copied
+
+**A doc never restates a value and never pastes code** - a README, a design
+doc, a repo `CLAUDE.md`, a plan committed to a repo - whether I asked for it
+or you are touching it on the way through a change. No "(default 15)", no
+example block carrying the current numbers, no table with a Default column,
+no function body, no snippet that is wrong after the next edit. Name the
+key, the function or the file that owns it and point there; describe the
+pattern, do not copy it.
+
+**The one home of a thing is no copy.** A command written in full in the
+one file every reader opens for it - a repo's check commands in its
+`CLAUDE.md` - is the source, and every other file points there.
 
 ## Nothing that goes stale silently
 
@@ -9,8 +23,8 @@ config, a doc, a comment, a test.
 is written** - a skill, a README, a `CLAUDE.md`, a design doc, a code comment.
 It goes on reading as authoritative and nothing ever tells the reader it
 stopped being true. A line number is the obvious case and far from the only
-one. This is the volatility half of "one source of truth": that rule bans the
-second copy, this one bans the copy that rots.
+one. "Nothing copied" bans the second copy in a doc; this rule bans the
+copy that rots, wherever it is written.
 
 **A commit body is the exception**, because it describes a diff that is frozen.
 An exact count, an old value or a measurement there stays accurate forever, and

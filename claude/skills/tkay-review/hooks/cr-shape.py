@@ -95,6 +95,11 @@ def selftest():
          commit.replace("✅ Ship it", "⚖️ Close call · **Evidence:** LIKELY"), True),
         ("a commit call with a reason and the badge",
          commit.replace("✅ Ship it", "🔧 Needs change (one line) (🍰 No brainer)"), False),
+        ("an Evidence on a Needs test call",
+         commit.replace("✅ Ship it", "🧪 Needs test (the nightly suite) · **Evidence:** CONFIDENT"),
+         True),
+        ("an Evidence on the branch call that waits for tests",
+         commit.replace("✅ Ship it", "🧪 Merge after tests (1) · **Evidence:** LIKELY"), True),
         ("bycatch calls",
          "- **Call:** 🗑 Drop\n- **Call:** 🗑️ Drop\n"
          "- **Call:** ⏸ Leave for now (out of scope)\n- **Call:** 🔧 Add fix\n", False),

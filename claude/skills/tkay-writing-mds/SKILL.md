@@ -5,20 +5,10 @@ description: Standards for the markdown files that live in a repo or a skill - a
 
 # Writing markdown files
 
-Two rules bind every file below - nothing that goes stale silently, and
-nothing personal in a repo. **Read `references/stale-and-personal.md` before
-writing the first line of any file.**
-
-## Docs are copies too
-
-This binds every doc. A README, a design doc and a repo `CLAUDE.md` - any repo,
-whether I asked you to write it or you are touching it on the way through a code
-change - never restate a value and never paste code. No "(default 15)", no
-example block carrying the current numbers, no table with a Default column, no
-function body, no snippet that is wrong after the next edit. Name the key, the
-function or the file and point at the one that owns it; describe the pattern, do
-not copy it. A repo `CLAUDE.md`'s check commands are no copy: that file is
-their one home - see "A repo CLAUDE.md".
+Three rules bind every file below - nothing copied, nothing that goes stale
+silently, and nothing personal in a repo. **Read
+`references/copied-stale-and-personal.md` before writing the first line of
+any file.**
 
 ## Where a fact goes
 
@@ -165,7 +155,7 @@ The reader has a task and has not read the code.
 - **The test, typecheck and lint commands are the `CLAUDE.md`'s**: the
   README says where they are and never repeats them.
 
-"Docs are copies too" binds here hardest: a README is where a setup snippet
+"Nothing copied" binds here hardest: a README is where a setup snippet
 gets pasted and then forgotten. Name the file and the key, and give the command
 that reads it.
 

@@ -1,5 +1,3 @@
-@~/.claude/skills/tkay-taste-setup/references/about-me.md
-
 # The LFG gate - the rule that overrides every other rule
 
 **You do not change any git repo until I type the exact token `LFG!`.**
@@ -158,8 +156,7 @@ without `LFG!` and without asking: read the thread, read the runbook,
 investigate, write the TL;DR, **post it into that thread**. Not "the
 investigation is free but the post needs a token". The post IS the deliverable;
 findings sitting in my terminal while the thread stays empty is a failed oncall
-shift. Shape and content are the skill's - "Alert Investigation TL;DRs" names
-it.
+shift. Shape and content are the `atero-skills:investigate-alert` skill's.
 
 The carve-out is exactly that wide and no wider: one message, the TL;DR, into
 the alert thread I linked, and the one pickup reaction the investigate-alert
@@ -301,8 +298,8 @@ not a plan I approved, not my yes to the previous one:
   back, and the history filters; `rewrites_history` in
   `~/.claude/hooks/tool-gate.py` names the shapes. Amending HEAD is free: it
   is the one commit nothing is stacked on. What a rewrite may reword,
-  squash or split, and where a fix lands until I allow one, is the
-  `tkay-code` commit standard's.
+  squash or split, and where a fix lands until I allow one, is "I decide
+  when the branch moves"'s.
 - A kill by name, pattern or file: `pkill`, `killall`, `fuser -k`. It hits
   every process that matches, other sessions' included. Stopping your own
   process needs no words: `pgrep -fl <pattern>` to see the matches, then
@@ -354,9 +351,8 @@ as `! <command>` straight away and do not attempt it.
 
 ## I decide when the branch moves
 
-These hold whether the gate is open or not:
-
-@~/.claude/skills/tkay-taste-setup/references/branches.md
+The rules of `tkay-taste-setup`'s `branches.md` hold whether the gate is
+open or not.
 
 ## If you break this gate
 
@@ -378,7 +374,7 @@ action of that kind.**
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-mr` |
 | write or amend any commit message, or commit at all | `tkay-code` |
 | write an MR or PR title or description | `tkay-mr` |
-| create or name a git branch | `tkay-code` |
+| name a git branch | `tkay-code` |
 | take screenshots of UI work - the first one of them | `tkay-mr` |
 | create or edit any `CLAUDE.md` - this global one included - a README, a design doc or a `SKILL.md`, including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan - brainstormed by default, a shape plan or a full plan only when I say SHAPE PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
@@ -392,9 +388,10 @@ action of that kind.**
 
 `tkay-code` and `tkay-review` then route to their own reference file for the
 specific task - read the one it names before writing a single finding or
-commit message. Each says why the two belong in separate sessions, and their
-own hook asks with a ⚠️ before the second of them loads, except in a session
-editing the skills.
+commit message. `tkay-review` says why the two belong in separate sessions,
+and stops with a ⚠️ question before a CR in a session that wrote the code,
+or code in a session that wrote a CR, except in a session editing the
+skills.
 
 **If you are unsure whether a row applies, invoke the skill.** Loading one I did
 not need costs seconds. Skipping one costs me a bad review, a false commit
@@ -433,9 +430,6 @@ never in the plugin cache.
 **Never implement anything until the gate is open.** "The LFG gate" above is
 the rule, and "What you say when the gate is closed" is the exact reply.
 
-@~/.claude/skills/tkay-taste-setup/references/push-and-mr.md
-@~/.claude/skills/tkay-taste-setup/references/off-switches.md
-
 # Every reply takes the shapes of the `tkay-replies` skill
 
 The shapes of a reply in chat - how an answer is held to the truth, the
@@ -449,11 +443,10 @@ owns them:
 @~/.claude/skills/tkay-replies/references/questions.md
 @~/.claude/skills/tkay-replies/references/reading-list.md
 @~/.claude/skills/tkay-replies/references/issue-tree.md
+@~/.claude/skills/tkay-replies/references/bycatch.md
 @~/.claude/skills/tkay-replies/references/numbered-lists.md
 @~/.claude/skills/tkay-replies/references/copy-blocks.md
 @~/.claude/skills/tkay-replies/references/before-and-after.md
-
-@~/.claude/skills/tkay-taste-setup/references/replies.md
 
 What the gate adds to them:
 
@@ -464,26 +457,20 @@ What the gate adds to them:
   above it, and is the one place a proposal comes with a diff before I ask
   for the full plan.
 
-# Nothing stale, nothing personal
+# Nothing copied, nothing stale, nothing personal
 
-Both rules are the `tkay-code` skill's, which owns them, and bind every line
-written in every session:
+All three rules are the `tkay-code` skill's, which owns them, and bind
+every line written in every session:
 
-@~/.claude/skills/tkay-code/references/stale-and-personal.md
-
-@~/.claude/skills/tkay-taste-setup/references/coordinates.md
+@~/.claude/skills/tkay-code/references/copied-stale-and-personal.md
 
 # Know what only I can run, before you start
 
 @~/.claude/skills/tkay-tool-use/references/protections.md
 
-@~/.claude/skills/tkay-taste-setup/references/blocked-steps.md
-
 # Every file you write goes under ~/.cache/claude-handoff
 
 @~/.claude/skills/tkay-tool-use/references/scratch-files.md
-
-@~/.claude/skills/tkay-taste-setup/references/handoff.md
 
 # Tool use is the `tkay-tool-use` skill's
 
@@ -499,24 +486,21 @@ blocks are the `tkay-tool-use` skill's, which owns them:
 @~/.claude/skills/tkay-tool-use/references/goals.md
 @~/.claude/skills/tkay-tool-use/references/git-in-sandbox.md
 
-@~/.claude/skills/tkay-taste-setup/references/tool-use.md
-
 What the gate adds: **a goal that needs the gate opened** gets a suggested
 line with `LFG!` in it.
-
-@~/.claude/skills/tkay-taste-setup/references/screenshots.md
 
 # Every Bash prompt says what it can change
 
 A PreToolUse hook, `~/.claude/hooks/tool-gate.py`, rewrites every Bash
 `description` to open with a rating: 🟢 READ changes nothing, 🟠 WRITE changes
-local, recoverable state, 🟣 UNCLASSIFIED is a program or a line it does not
-recognise, and 🔴 DANGER destroys data or touches live cluster or remote state.
-Read a 🟣 command before approving it, and give its program a handler. The
-classifier is the one source of that rating: never write the emoji into a
-description yourself, and when a rating is wrong, fix the handler in the
-script and tell me which command it misread. Run the script with commands as
-arguments to see what it would say.
+local, recoverable state, 🔵 RUNS CODE is a known program running code the hook
+cannot read - a test run, a Python script - 🟣 UNCLASSIFIED is a program or a
+line it does not recognise, and 🔴 DANGER destroys data or touches live cluster
+or remote state. Read a 🟣 command before approving it, and give its program a
+handler. The classifier is the one source of that rating: never write the
+emoji into a description yourself, and when a rating is wrong, fix the handler
+in the script and tell me which command it misread. Run the script with
+commands as arguments to see what it would say.
 
 **The sentence after the rating is yours, and it argues the rating.** The
 hook keeps your `description` verbatim after the rating, so write it as what the
@@ -528,6 +512,9 @@ this command's own target. I decide from that line without reading the command.
 - 🟠 names what changes and why it is recoverable: "overwrites a scratch file in
   the session's handoff directory", "commits on the feature branch created
   this session, nothing pushed", "edits a tracked file, revertable with git".
+- 🔵 names the code that runs and what it touches beyond its own output: "runs
+  the package's unit tests, which only read testdata", "runs the repo's
+  migration script against the local dev database".
 - 🔴 names the live target and what goes wrong if it is the wrong call: "helm
   upgrade of release X in context/ns, rolls the running pods", "deletes the PVC,
   its data is not recoverable".
@@ -595,8 +582,6 @@ Every cluster command pins both, as the `tkay-cluster-ops` skill says:
 
 @~/.claude/skills/tkay-cluster-ops/references/pinning.md
 
-@~/.claude/skills/tkay-taste-setup/references/cell-namespaces.md
-
 # My workloads run in my cell, not someone else's
 
 @~/.claude/skills/tkay-cluster-ops/references/cells.md
@@ -610,11 +595,7 @@ read is the same bug as printing the refusal line for one. The TL;DR into
 the linked alert thread is not a change that stops - see "Alert
 investigation is ungated end to end".
 
-@~/.claude/skills/tkay-taste-setup/references/investigations.md
-
 # Alert Investigation TL;DRs
-
-@~/.claude/skills/tkay-taste-setup/references/alerts.md
 
 ## Posting
 
@@ -622,4 +603,4 @@ Post the TL;DR into the thread I linked, as "Alert investigation is ungated
 end to end" allows, then give me the permalink to the post - the link only,
 never the text again.
 
-@~/.claude/skills/tkay-taste-setup/references/git-config.md
+@~/.claude/skills/tkay-taste-setup/SKILL.md

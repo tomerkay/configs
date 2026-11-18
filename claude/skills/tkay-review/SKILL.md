@@ -1,12 +1,7 @@
 ---
 name: tkay-review
-description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, or a CR Summary - never while writing code, which the tkay-code skill owns. In the session that wrote the code under review it still runs, and opens with a warning that the review is not independent.
+description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, or a CR Summary - never while writing code, which the tkay-code skill owns. In a session that wrote the code under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
 hooks:
-  PreToolUse:
-    - matcher: "Skill|Read"
-      hooks:
-        - type: command
-          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/skill-clash.py"'
   Stop:
     - hooks:
         - type: command
@@ -39,26 +34,52 @@ The hook in this skill's frontmatter checks the shape of every assessment
 the CR carries once the skill is loaded, and sends a reply back once when
 one breaks it.
 
-## The author's own session warns, and reviews anyway
+## Code and a CR stay in separate sessions
 
 **A CR belongs in a session that did not write the code and has not loaded
-`tkay-code`.** Two reasons, and either alone is enough: a review by the
-code's author is not independent, and code written with this standard in
-context is written to the rubric rather than to the problem.
+`tkay-code`, and code belongs in a session that wrote no CR.** Two
+reasons, and either alone is enough: a review by the code's author is not
+independent, and code written with this standard in context is written to
+the rubric rather than to the problem.
 
-**When I ask for one in a session that wrote the branch, or has the code
-skill loaded, write the CR, never a refusal.** It opens with one bold ⚠️
-line, above everything else in it, that names what holds - the session
-wrote the branch, has the code skill loaded, or both - and says the review
-is not independent, so I decide whether to rerun it in a fresh session.
-The case that taught it, a CR asked for in the session that wrote the
-branch:
+**So each crossing stops for my yes, and the reply is its question and
+nothing after it:**
+
+- **A CR asked for in a session that wrote the code under review, or has
+  the code skill loaded.** The question names what holds:
+
+  ```
+  ⚠️ This session <wrote the branch | has tkay-code loaded | wrote the branch and has tkay-code loaded>, so a CR here would not be independent of the code it judges. Are you sure you want it here and not in a fresh session?
+  ```
+
+- **Code asked for in a session that wrote a CR** - a fix of what it
+  found, or any other code:
+
+  ```
+  ⚠️ Writing code here ties it to the CR this session wrote: the code would be written to the rubric, and the CR would no longer be independent of the code it judges. Are you sure you want it here and not in a fresh session that keeps the two apart?
+  ```
+
+Each is a question in a shape of its own. A yes lets the work go on, and
+a no leaves every file as it is and writes no CR. **One yes covers the
+rest of the session**: once a session holds both, a second question
+protects nothing, so neither is asked again. After a no, the next such
+request asks again. The question is the one stop: one decision is one
+question, so no hook asks it a second time.
+
+**A CR written after that yes still opens with one bold ⚠️ line**, above
+everything else in it, that names what holds and says the review is not
+independent, so a reader of the CR file sees it too. The case that
+taught both, a CR asked for in the session that wrote the branch:
 
 ```
 ❌ I can't review this branch here: this session wrote it, and it has
    tkay-code loaded. Open a fresh session and ask it for this:
    CR branch <branch>
-✅ ⚠️ **Not an independent CR: this session wrote the branch and has
+✅ ⚠️ This session wrote the branch and has tkay-code loaded, so a CR here
+   would not be independent of the code it judges. Are you sure you want
+   it here and not in a fresh session?
+   (on my yes)
+   ⚠️ **Not an independent CR: this session wrote the branch and has
    tkay-code loaded.** For one, ask a fresh session for `CR branch <branch>`.
    <the CR>
 ```
@@ -68,28 +89,14 @@ working directory is inside the git repo that holds them, or inside a repo
 that marks itself as theirs with a `.claude-skills-repo` file at its root:
 this standard cannot be edited without being read, and what such a session
 writes is the rubric, not code the rubric judges, so it reviews its own
-staged changes in place, with no ⚠️ line, and a fix there gets no
-warning before it.
-
-The hook in this skill's frontmatter asks before `tkay-code` loads beside
-it, except in such a session.
+staged changes in place and fixes them, with no question and no ⚠️ line.
 
 ## A CR writes out fixes and never makes them
 
 **A CR changes no file, and never offers to.** Every fix is written out
 under its finding and left for me - no "want me to fix it?", no fix as a
-next step. A session that fixes what it reviewed ties the review to the
-fix, and the review is no longer independent of the code it judges.
-
-**When I ask for a fix anyway, the reply is this line and nothing after
-it**, whether or not a hook or another skill asks as well:
-
-```
-⚠️ Fixing here ties this review to the fix: the fix would be written by the session that wrote the CR, and the CR would no longer be independent of the code it judges. Are you sure you want it here and not in a fresh session that keeps the two apart?
-```
-
-It is a question in a shape of its own, and it stops the reply: the fix is
-made only on my yes, and a no leaves every file as it is.
+next step. A fix I ask for anyway is code after a CR, and the question
+above comes first.
 
 ## Every CR is also a file
 

@@ -25,8 +25,8 @@ squash and split alike - never the size of the diff, the number of files or
 the length of a bullet.
 
 **Every boundary costs something, so it must earn itself.** One more commit
-is one more message to write and verify, one more row in a CR, and one more
-place a change is spread across. A cut none of the three wants is that cost
+is one more message to write and verify, one more commit for a code review
+to read, and one more place a change is spread across. A cut none of the three wants is that cost
 with no return: a branch of twenty immaculate two-line commits is harder to
 read than one of five that each mean something. Both halves of the test
 bite - a commit that mixes two things a revert would want apart, and two
@@ -48,93 +48,6 @@ line before the commit.** The three cases:
   Shipped Bug Stands Alone".
 - **It stands on its own** when it is a different change for a different
   reason, one that would still make sense if the earlier commit were reverted.
-
-**Where it lands is a different question, and history below HEAD is mine to
-rewrite.** A change that belongs in HEAD is amended into HEAD - that needs
-no word from me. A change that belongs in a commit below HEAD lands as a new
-commit on top, with its own subject, and the CR says `🔀 Squash into <sha>`
-or `🪓 Split`. That call is the only place a rewrite is offered: it starts
-when I ask for one in words, and is never put to me as a proposal. Until
-then the history records the fix as a commit of its own, and that is the
-intended state, not a failure of the rule above.
-
-## A Rewrite Below HEAD Waits for My Word
-
-**Every rewrite of the branch below HEAD needs my words that time, plus the
-prompt**: a rebase in any form, onto a new base included, and a reset that
-moves the branch back. Amending HEAD is free: it is the one commit nothing is
-stacked on. Nothing rewrites on a CR call alone, however clear the squash.
-
-- **Before a rebase I asked for, ask me whether it may reword, squash and
-  split.** My answer scopes that one rebase; with no answer it is a plain
-  replay.
-- **Reword is free only for a commit whose SHA changes anyway in that
-  rebase.** Onto a new base that is every commit; in a squash of the third
-  commit it is the third and everything above it, and the commits below keep
-  their SHAs, so rewording one of them is a rewrite of its own and needs my
-  word.
-- **Squash and split only on my yes** to that question, or my words naming
-  them, and **from a CR of the branch at HEAD in this session**: its commits
-  table says what folds into what. With no such CR, the CR comes first.
-
-**When a rewrite runs: branch a backup first with `git branch <name>`, do it, then check
-`git diff <backup> HEAD`.** It must show exactly the change you meant to
-make - nothing for a squash or a reword, only the intended edits for an
-amend that changes content. When it does, the rewrite is proven: **delete
-the backup branch straight away, without asking permission** - no question in
-chat, no offer, no backup left behind for me to clean up - with `git branch
--D` (rewritten commits never count as merged, so `-d` refuses), and report
-the `Deleted branch ... (was <sha>)` line. Only a diff carrying something you
-did not intend keeps the backup: stop and show me that diff.
-
-**The rewrite itself is scripted, because no interactive editor exists in this
-harness.** `GIT_SEQUENCE_EDITOR=true git rebase -S -i <base>` runs as its own
-command with nothing chained to it: the harness's permission classifier
-judges the command text, and the bare shape has passed where a bundled one
-was refused as destructive. A squash, a reword, a reorder or a drop takes a
-`GIT_SEQUENCE_EDITOR` script that edits the todo and a `GIT_EDITOR` one that
-overwrites the message file it is handed. Edit the todo by SHA -
-`s/^pick <sha>/squash <sha>/` - never by subject: the todo line may carry a
-comment marker between SHA and subject, and a pattern that matches nothing
-leaves every `pick` in place, so the rebase "succeeds" with nothing changed.
-Verify the new SHAs appeared before trusting it. `-S` re-signs every
-rewritten commit - confirm with `git log --format='%h %G? %s'` before deleting
-the backup. When a permission layer refuses such a script as destructive, hand
-me the command to run; never reach the same rewrite by another route.
-
-**The rebase builds every commit whose tree is new, as it replays them.** A
-replay that applies without a conflict proves nothing about the code: git
-merges text, not meaning, so a symbol the new base added or renamed breaks
-a commit whose diff never touched it. `--exec` on that same rebase command
-runs the repo's full build after each commit and stops the rebase on the
-first one that fails. A commit whose tree the backup already has is
-skipped, since the rebase did not change it:
-
-```
---exec 'git log --format=%T <backup> | grep -qx "$(git rev-parse HEAD^{tree})" || <full build>'
-```
-
-Onto a new base every tree is new, so every commit builds; a reword, or a
-squash of a commit into the one under it, keeps the trees and builds
-nothing.
-
-- **The full build, never the packages the commit touched.** The break
-  lands in code that depends on the change, which a list of touched
-  packages leaves out. A toolchain with a build cache already rebuilds
-  only what changed and what depends on it - `go build ./...` in Go - so a
-  narrower list saves nothing that is safe to save.
-- **Never skip a commit because its diff holds no source file.** An
-  embedded file, a generated file or a build config breaks the build as
-  surely as code, and no list of build inputs written here stays complete.
-
-The case that taught it: a plain replay onto a new base merged a gauge the
-base had added cleanly into commits that no longer compiled, and git
-reported success.
-
-**A branch someone else also pushes to or builds on keeps what is already on
-its remote**: rewriting it breaks their copy, so ask before touching any
-commit that is there. When you cannot tell who else pushes to the branch, ask
-once.
 
 ## Two Suits: a Fix Stands Alone, a Feature Is a Series
 
@@ -163,8 +76,9 @@ correct on its own - the shape of the Linux kernel's
 exception is a rename the behaviour change cannot land without, and then the
 body's Change names the rename as such.
 
-A CR calls a mixed commit 🪓 Split, and a series out of order 🟡: the branch
-works either way, and the cost is the reader's. `chore:`, `ci:`, `style:`
+A code review flags a mixed commit as one to split, and a series out of
+order as a quality issue: the branch works either way, and the cost is the
+reader's. `chore:`, `ci:`, `style:`
 and `test:` commits are neither suit and stand alone as they do today.
 
 ## A Fix for a Shipped Bug Stands Alone
@@ -190,10 +104,10 @@ default branch whenever the repo has a remote.
 
 **A bug introduced earlier on this unmerged branch is not a shipped-bug
 fix.** It never ran anywhere, so its fix belongs in the commit that
-introduced it, as the first case of "Commits Serve the Branch" says: amended
-in when that commit is HEAD, otherwise a new commit the CR marks
-`🔀 Squash into` it. A follow-up to a shipped-bug fix while that fix is
-still unmerged belongs in the fix the same way.
+introduced it, as the first case of "Commits Serve the Branch" says, and a
+code review recommends folding a commit that carries it elsewhere into it.
+A follow-up to a shipped-bug fix while that fix is still unmerged belongs
+in the fix the same way.
 
 The case that taught it: one fix commit to a shipped hook carried a second,
 unrelated selftest with it.
@@ -305,18 +219,16 @@ it delivers.
 **Bycatch in a Commit**
 
 **Bycatch - a fix found on the way, outside the change the commit is for -
-belongs in a commit of its own, and is made only when I ask for that fix by
-name.** When one I asked for rides along in another commit, it is written
-down, never left for the reader to find in the diff: a section
-after Why, its label on a line of its own, one bullet per item.
+that rides along in another commit is written down, never left for the
+reader to find in the diff**: a section after Why, its label on a line of
+its own, one bullet per item.
 
 ```
 Bycatch:
 - <what was fixed, in one short line>
 ```
 
-- **Bullets only.** No Before / Change / Why per item, no CR row, no
-  assessment.
+- **Bullets only.** No Before / Change / Why per item.
 - **A bullet that is not one simple line is a sign to apply the one-thing
   test**: an item that needs a reason, a second line or a sub-bullet is
   probably a change a reader, a bisect or a revert would want apart. When
@@ -472,3 +384,23 @@ Before finalizing any commit message, ask of each claim:
 A claim that fails any of the three is deleted or rewritten accurately. A
 false claim in a commit message stays in history for good, so no claim goes
 in that the diff does not show.
+
+## Branch Names
+
+**Before naming a new branch, read the convention of the repo it lives in and
+follow it.** The remote branches show it - `git for-each-ref
+--sort=-committerdate --count=30 --format='%(refname:short)' refs/remotes` -
+whether names carry a person, a type (`feat/`, `fix/`), a ticket key, and which
+separator. Check the repo's `CONTRIBUTING.md`, `CLAUDE.md` and README too, and
+any CI rule that matches on the branch name: a name that misses such a rule
+runs a different pipeline without saying so.
+
+**When the convention puts a person in the name, that person is me**, spelled
+as the handle I have given you, whatever older branches of mine use. With no
+handle given, spell it the way my own recent branches in this repo do; with
+none of those either, the local part of `git config user.email`. When the
+convention carries no person, do not add one.
+
+**The rest of the name is the change, in kebab case** - what the branch does,
+never who asked for it or what wrote it (`fix-by-claude` says nothing). A
+ticket key goes in when the convention has one and the task has one.

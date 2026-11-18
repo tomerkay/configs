@@ -1,12 +1,6 @@
 ---
 name: tkay-code
-description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to fix what a code review found; to commit, amend or write a commit message; to create or name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
-hooks:
-  PreToolUse:
-    - matcher: "Skill|Read"
-      hooks:
-        - type: command
-          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/skill-clash.py"'
+description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to fix what a code review found; to commit, amend or write a commit message; to name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
 ---
 
 # Code standards
@@ -19,13 +13,12 @@ task-specific standards.
 
 | Task | Read first |
 |---|---|
-| Writing or amending any commit message, or committing at all | `references/commits.md` — **before you type the message** |
+| Writing or amending any commit message, committing at all, or naming a branch | `references/commits.md` — **before you type the message** |
 | Fixing what a code review found - a CR, an MR's review threads, a review summary | `references/fixing-review-findings.md` — **before the first fix** |
 | Running a throwaway test, or handing a tool a file of your own, inside a repo | `references/scratch-in-a-repo.md` |
-| The first change in a repo, or creating, naming or deleting a branch | `references/branches.md` — **before the first change** |
 | Writing or moving deploy tooling, a topology file or values — anything that decides what lives under `dev/` versus `deploy/` | `references/deploy-layout.md` — before creating or moving the file |
 | Writing or changing any code, a chart, a dashboard or config, or unsure whether a comment, mechanism, default or config key is acceptable | `references/clean-code.md` and `references/security.md` — **read both in full before the first line** |
-| Writing any line into a repo - code, a chart, config, a doc, a test - that could carry a specific value or a person's setup | `references/stale-and-personal.md` |
+| Writing any line into a repo - code, a chart, config, a doc, a test - that could carry a copy, a specific value or a person's setup | `references/copied-stale-and-personal.md` |
 
 **If you are unsure whether a row applies, read it.** Loading a reference I did
 not need costs seconds. Skipping one costs me a bad review or a false commit
@@ -43,9 +36,9 @@ the `tkay-review` skill, handed out together with this one, which carries
 `references/clean-code.md` and `references/commits.md` too. The two belong in separate sessions:
 code written with the review rubric in context is written to the rubric,
 and a review by the code's author is not independent. When asked for a CR in
-a session that has this skill loaded, load the review skill anyway; it says
-how its CR warns that it is not independent. The hook in this skill's
-frontmatter asks before the review skill loads beside it.
+a session that has this skill loaded, load the review skill anyway; it asks
+whether to review here before it starts, as it asks before any code is
+written in a session that wrote a CR.
 
 ## The repo's conventions win
 

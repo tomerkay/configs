@@ -41,8 +41,7 @@ commit judged against the one before it, and nobody judging what lands.
   assemble the change in their head - recommend `🔀 Squash into` even when no
   commit got anything wrong. A commit earns its place by making the outcome
   easier to understand or to bisect, not by existing. The review recommends
-  every squash and split; the rewrite itself waits for my word, as
-  `commits.md` says.
+  every squash and split; the rewrite itself waits for my word.
 
 ## One CR per repo
 
@@ -100,7 +99,7 @@ done in this session.
 
 ## Is it a real bug or a nit - and must I fix it now?
 
-**One question I must be able to answer about every single finding, without reading between the lines: is this code broken or merely imperfect?** The colour answers it, and the colour alone decides whether the merge waits:
+**One question I must be able to answer about every single finding, without reading between the lines: is this code broken or merely imperfect?** The colour answers it, and the colour alone decides whether the merge waits for a fix; a 🧪 UNTESTED finding, which has no colour, makes it wait for a run instead:
 
 - **MUST HAVE** is 🔴 and 🟠. It blocks the merge: I fix it now, or I don't ship.
 - **NICE TO HAVE** is 🟡 and ⚪. I ship without it; worth doing when I'm in there anyway, and my call by definition.
@@ -122,6 +121,19 @@ A wall of findings where I can't tell the colours apart is a useless review, how
 | 🟠 **RISK** | Not provably broken today, but a real hazard: race window, unbounded growth, missing error path, perf regression on the hot path, silent failure, broken observability. Two that look like quality and are hazards: a bug fix with no test that reproduces it when a unit test could, and a label value (enum, metric label, status word) that is false for some case producing it and has not shipped yet - after it ships, renaming it breaks every dashboard and alert that reads it. | You can name the condition that triggers it (concurrency, scale, empty input, upstream error) |
 | 🟡 **QUALITY** | Behaves correctly. Structure, naming, DRY, missing log, stale docs, a weak or false commit message, a broken rule of the repo's `CLAUDE.md`. | Code is right, but whoever maintains it pays a price |
 | ⚪ **NIT** | Cosmetic. Whitespace, comment wording, ordering, style preference. | If I ignore it forever, nothing bad happens |
+
+**🧪 UNTESTED is a finding with no colour: the code is not in doubt, only unproven.** It marks a claim the commit rests on that you traced and found sound, but that only a run you cannot make yourself proves - "Rules that keep the tags honest" says which runs. It is neither MUST HAVE nor NICE TO HAVE: it asks for a run, never a code change, so it gets a section of its own and a call of its own, `🧪 Needs test`. A doubt you can name - a condition under which the code might fail, which you could not check - is never 🧪: it is a 🟠 RISK (UNVERIFIED), because the doubt is about the code.
+
+```
+#### 🧪 UNTESTED: <the claim only a run proves>
+```
+
+The case that taught it, a fix for a failing nightly suite, traced end to end, that only the hour-long suite could prove:
+
+```
+❌ FINDINGS: 🟠 1 · Call: 🔧 Needs change (not yet run against the suite it fixes)
+✅ FINDINGS: 🧪 1 · Call: 🧪 Needs test (the nightly suite)
+```
 
 **The colour is picked on the hazard, never on the kind of thing.** Docs that now lie are 🟡 - the same as a false commit message - until the lie makes someone do harm: a wrong runbook step, an API contract a caller acts on, and then they are a 🟠 on their own merits, as a silent failure. A broken repo rule is 🟡; when breaking it created a hazard - a secret in a log, a missing pin - that hazard is the 🟠. A departure from `clean-code.md` keeps the colour the checklist below gives it.
 
@@ -146,7 +158,10 @@ judges.
   unblocks the merge, the clean-up fix what is left to my judgement, and
   one with nothing to do is left out. Each fix's label names only the
   colours its findings have: `Fix 🔴`, `Fix 🟠` or `Fix 🔴🟠` for the
-  blocking one, `Fix 🟡`, `Fix ⚪` or `Fix 🟡⚪` for the clean-up.
+  blocking one, `Fix 🟡`, `Fix ⚪` or `Fix 🟡⚪` for the clean-up. A commit
+  with a 🧪 UNTESTED finding adds a `Test 🧪` Profile after them: the run
+  in a few words, with the Evidence the claim would have once the run
+  passes and the Size and Difficulty of making it.
 
 ```
 - **Call:** 🔧 Needs change (hangs on timeout)
@@ -173,6 +188,9 @@ fix.
 - **👌 Fixed later (by `<sha>`)** - a later commit on the branch fixes what
   blocks it; that commit's own call is picked on its own content.
 - **🔧 Needs change** - amending this commit fixes what blocks it.
+- **🧪 Needs test** - nothing in its code blocks it, but a claim it rests on
+  has not run; the run clears it, and my acceptance marks it
+  `accepted untested`. It is not a go-ahead.
 - **🪓 Split (<the parts>)** - nothing blocks it, but it does more than one
   thing; the brackets name the commits it splits into.
 - **📝 Reword (<the reason in a few words>)** - nothing blocks it, but its
@@ -182,9 +200,11 @@ fix.
 
 **A branch** under review, on the one line that opens its overview. It
 follows from the entries, the worst one deciding, in the order ❌, ✂️, ⚖️,
-🔧, ✅:
+🔧, 🧪, ✅:
 
 - **✅ Merge it** - every entry is ✅ Keep it.
+- **🧪 Merge after tests** - an entry is 🧪 Needs test, and every other is
+  ✅ Keep it.
 - **🔧 Merge after fixes** - an entry is 🔧 Needs fixes, and none is ✂️ or ❌.
 - **✂️ Split first** - an entry is ✂️ Carve out; the rest merges once it is
   moved.
@@ -200,6 +220,8 @@ lands:
   code is right, which differ only in what the commit needs.
 - **🔧 Needs fixes** - the change is right, and a commit it lives in must
   change first; the brackets name the commit and what it needs.
+- **🧪 Needs test** - the change is right as far as the code shows, and a
+  commit it lives in waits for a run; the brackets name the run.
 - **⚖️ Close call** - keeping and dropping it are both defensible; the text
   around the call says which way you lean and why.
 - **✂️ Carve out** - the work is sound but does not belong in this branch;
@@ -224,6 +246,20 @@ case that set it for a commit:
 🗑 Drop (🍰 No brainer)               a back-merge of the default branch that carries no change
 ```
 
+**(🙌 Stops harm)** may follow a commit, entry or branch call, on the
+same judgement `assessment.md` gives for a change: the change stops harm
+happening now - an outage, data being lost, a leak - so the merge should
+not wait in a queue. A plain bug fix does not earn it; harm still
+happening does. It never follows 🗑 Drop, ❌ Drop it or ❌ Don't merge. A
+branch's call carries it when an entry does. It goes after the reason in
+brackets and before 🍰. **(😱 Does harm)** is never on a CR call: harm a
+commit does is a 🔴 finding, and the badge would only repeat it. The
+shape:
+
+```
+🧪 Needs test (a run on a live cluster) (🙌 Stops harm)   a hotfix for a live leak, traced, not yet run
+```
+
 **The go-ahead floor.**
 
 - **A commit, bycatch or overview entry whose Profile reads DOUBTFUL,
@@ -236,15 +272,16 @@ case that set it for a commit:
 
 Open each commit's review with the FINDINGS line and its Full Assessment, then dive straight into details. (This is not the banned "recap of the findings before the findings" - it's a count and an assessment, not a recap.)
 
-**The FINDINGS line counts each colour**, in the order 🔴 🟠 🟡 ⚪, only the colours with a finding, and `none` when nothing was found:
+**The FINDINGS line counts each colour**, in the order 🔴 🟠 🟡 ⚪, only the colours with a finding, then the 🧪 UNTESTED findings, and `none` when nothing was found:
 
 ```
 FINDINGS: 🔴 2 · 🟠 1 · 🟡 4
 FINDINGS: 🟠 2 · ⚪ 1
+FINDINGS: 🟡 1 · 🧪 1
 FINDINGS: none
 ```
 
-A 🔴 or 🟠 count on the line means the commit blocks; a line with only 🟡 and ⚪ means it ships. Nothing else goes on it.
+A 🔴 or 🟠 count on the line means the commit blocks; a 🧪 count, that it waits for a run; a line with only 🟡 and ⚪ means it ships. Nothing else goes on it.
 
 **The commit's Full Assessment** follows the FINDINGS line, in the frame of `assessment.md` and with the commit calls of "The calls and Profiles of a CR":
 
@@ -256,7 +293,7 @@ A 🔴 or 🟠 count on the line means the commit blocks; a line with only 🟡 
   ❌ Fix 🔴🟠: a cross_zone flag on the removal check · Fix 🟡⚪: correct the pool-node claim
   ✅ Fix 🔴: a cross_zone flag on the removal check · Fix 🟡⚪: correct the pool-node claim
   ```
-- **Every finding has a fix that changes something.** A finding whose fix would be to leave the code as it is is not a finding: drop it before the assessment, never write it with a Fix Profile that says to leave it. A bycatch row's `⏸ Leave for now` is different: its fix exists, and the call defers it. The case that taught it, a ⚪ on a heading that repeated the repo name the change was asked to add:
+- **Every finding has a fix that changes something.** A finding whose fix would be to leave the code as it is is not a finding: drop it before the assessment, never write it with a Fix Profile that says to leave it. A bycatch row's `⏸ Leave for now` is different: its fix exists, and the call defers it. A 🧪 UNTESTED finding is different too: its run is its fix, and the run changes what is known. The case that taught it, a ⚪ on a heading that repeated the repo name the change was asked to add:
 
   ```
   ❌ FINDINGS: ⚪ 1 · Fix ⚪: none needed; leave the repeat
@@ -264,11 +301,14 @@ A 🔴 or 🟠 count on the line means the commit blocks; a line with only 🟡 
   ```
 - **Why Yes and Why Not hold what the change gains and costs** - behaviour it introduces, alerts it shifts, doors it closes - never its findings, which the sections below list. When nothing is left beyond them, Why Not says "none beyond the findings above (checked: <what was checked>)".
 
-Then exactly two sections, in this order, with the divider, each under a `###` heading inside its commit, worst colour first within each:
+Then two sections, in this order, with the divider, each under a `###` heading inside its commit, worst colour first within each, and a third between them for a commit with a 🧪 UNTESTED finding:
 
 ```
 ### MUST HAVE — 🔴🟠, blocks the merge
 ...🔴 first, then 🟠...
+
+### UNTESTED — 🧪, waits for a run
+...each claim, the run that proves it, and its three lines...
 
 ---
 
@@ -306,7 +346,7 @@ judged:
 - **One line for the whole branch comes first**: the branch's call, one of the
   branch calls of "The calls and Profiles of a CR", answering whether the branch
   merges. It follows from the entries below it and is never a judgement of
-  its own: the worst entry decides it, in the order ❌, ✂️, ⚖️, 🔧, ✅, and
+  its own: the worst entry decides it, in the order ❌, ✂️, ⚖️, 🔧, 🧪, ✅, and
   its bracket names the entries that decided it.
 - **One entry per distinct thing the branch does.** A branch that does one
   thing gets one entry; several changes get one each, never folded into one
@@ -326,7 +366,9 @@ judged:
   what a fix costs is in the commit's row.
 - **The call follows the commits it names.** `✅ Keep it` only when every
   one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split` or
-  `📝 Reword`; any other commit call makes it `🔧 Needs fixes`, naming the
+  `📝 Reword`; `🧪 Needs test` when one or more is `🧪 Needs test` and the
+  rest are among those four, naming the run; any other commit call makes
+  it `🔧 Needs fixes`, naming the
   commit and what it needs, unless the change itself earns
   `⚖️ Close call`, `✂️ Carve out` or `❌ Drop it`. An entry never reads
   greener than a commit it lives in, even when that commit changes nothing
@@ -381,7 +423,8 @@ last commit's review.
   verified against it. Never the subject line pasted in: the subject may be the
   very claim the review flagged as false.
 - **Findings** — the commit's FINDINGS line without the word: `🔴 1 · 🟡 2`,
-  or `✨ Gucci` when it has none.
+  `🧪 1`, or `✨ Gucci` when it has none. A commit with a 🧪 puts its
+  `Test 🧪` Profile in the cell under it, after any Fix Profile.
 - **Call** — the call of that commit's Full Assessment on the head row, with
   the reason in a few words for anything other than ✅ Ship it, in the
   shape of `assessment.md`. The commit call is picked by these
@@ -389,9 +432,10 @@ last commit's review.
 
 | Call | When |
 |---|---|
-| `✅ Ship it` | no 🔴 or 🟠, and it does one thing |
+| `✅ Ship it` | no 🔴, 🟠 or 🧪, and it does one thing |
 | `👌 Fixed later (by <sha>)` | its 🔴 or 🟠 are fixed by a later commit on the branch, named in the bracket |
-| `🔧 Needs change` | a 🔴 or 🟠 in the code, and amending this commit fixes it |
+| `🔧 Needs change` | a 🔴 or 🟠 in the code, and amending this commit fixes it. A 🧪 beside it keeps its `Test 🧪` Profile, and the run waits for the fix |
+| `🧪 Needs test (<the run>)` | no 🔴 or 🟠, and a 🧪 UNTESTED finding. Once I accept the commit untested, the bracket reads `accepted untested`, and the call stays: the commit is still unrun. A commit that also needs 🪓 Split or 📝 Reword keeps this call, and its reason names the other need too. A `🔀 Squash into` or `🗑 Drop` keeps its own call, and the 🧪 moves with a squash to the commit it lands in |
 | `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in `commits.md`. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
 | `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message is false or misleading - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing. When the message and the code disagree, the review says which side is wrong before it picks the call: the code right and the message not is this call; the message describing what the code should have done and the code not doing it is a 🔴 or 🟠 on the code and `🔧 Needs change`; and no way to tell which was meant is a 🟠 on the commit and `🔧 Needs change (message and code disagree)`, the finding stating both readings, what would settle it, and a fix for each |
 | `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
@@ -403,7 +447,7 @@ commit only when it exists because that one got something wrong, and
 `✅ Ship it` when it stands on its own and fixes the earlier one along the way.
 
 The call agrees with that commit's FINDINGS line: never `✅ Ship it`,
-`🪓 Split` or `📝 Reword` while the line counts a 🔴 or a 🟠. `👌 Fixed
+`🪓 Split` or `📝 Reword` while the line counts a 🔴, a 🟠 or a 🧪. `👌 Fixed
 later` is the one call that carries one, the one its named commit fixes. A
 single-commit CR still has a two-row table. The branch overview, the
 commits table and the bycatch table below are the only summaries allowed
@@ -435,9 +479,10 @@ The same two rows per item as the commits table, under its own heading:
 - **#** — **B1**, **B2**, **B3** down the table, in bold, so I answer a row by its number
   instead of describing it back to you. The letter keeps it apart from every
   other number in the reply, and `B2` in my message names that row and
-  nothing else. A repeat CR in the same session keeps a carried row's number
-  and gives a new row the next free one, so my earlier answers still point
-  at the right rows.
+  nothing else. A row takes the next free `B<n>` of the session: a session
+  that already numbered bycatch outside a review goes on from there, and a
+  repeat CR keeps a carried row's number and gives a new row the next free
+  one, so my earlier answers still point at the right rows.
 - **What the bycatch is** — one sentence with the file, so I can tell a
   lying doc from a typo without re-reading the findings.
 - **Findings** — its colour and a count of one, in the commits table's
@@ -472,14 +517,20 @@ three rows:
 
 **Bycatch is a finding, so what has no colour gets no row.** Something with
 nothing to fix in the code - a folder a tool left behind, state the harness
-keeps for itself, a leftover the session made - is no defect at HEAD. It is
-named in a line of prose if at all, never as a row.
+keeps for itself, a leftover the session made, a change going live, such as
+a running session still holding a hook it loaded before a commit removed
+it - is no defect at HEAD. It is named in a line of prose if at all, never
+as a row.
 
-The case that taught it, a row with no colour and no call, in columns made up
-for it:
+The cases that taught it, a row with no colour and no call, in columns made
+up for it, and a row whose only fix was a new session:
 
 ```
 ❌ | **B1** | An empty `.claude/.cc-writes` folder the harness created. | skills/<skill>/hooks/.claude |
+✅ No bycatch.
+
+❌ | **B1** | A skill's hook entry, loaded before a commit deleted its script, blocks every Read in this session. | ⚪ 1 | ⏸ Leave for now |
+   | | ... | **Fix ⚪:** a new session loads the skill without it · ... | |
 ✅ No bycatch.
 ```
 
@@ -493,8 +544,12 @@ When nothing is open, the heading stays and the table is one line instead:
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG**:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED)** and state exactly what you couldn't check.
 - **✅ Ship it, 🪓 Split and 📝 Reword need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the assessment, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
-  **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **🟠 RISK (UNVERIFIED)** is reserved for a claim whose proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. It names the claim and the command that would prove it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past. An UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
-  Every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
+  **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. A run is left to me only when its proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. What the claim becomes depends on what you found when you traced it:
+  - **You traced it and found nothing wrong**: a **🧪 UNTESTED** finding. It names the claim and the command that would prove it, and gives the commit `🧪 Needs test` until it is run; once I accept it untested, the call reads `🧪 Needs test (accepted untested)`.
+  - **You have a doubt you can name**: a **🟠 RISK (UNVERIFIED)**. It names the doubt, the claim and the command that would settle it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past.
+
+  A 🧪 or an UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
+  Every 🧪 and every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
   - **Sure without it** - an Evidence level from `assessment.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
   - **Sure with it** - an Evidence level, and what would still be unproven after the test passes.
@@ -654,7 +709,7 @@ second commit's message:
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand new code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of new code" in the checklist above)
 - **Lay the CR out in the four sections of "The CR is four sections"**, the findings first and the bycatch table last, and one CR per repo
-- **Open with the FINDINGS line and the Full Assessment, colour every finding (🔴/🟠/🟡/⚪), and split MUST HAVE from NICE TO HAVE with the divider** (see the colour section above)
+- **Open with the FINDINGS line and the Full Assessment, colour every finding (🔴/🟠/🟡/⚪) or mark it 🧪 UNTESTED, and split MUST HAVE from NICE TO HAVE with the divider** (see the colour section above)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a section is empty** - I need to hear it, not deduce it (exact wording in "Mandatory output shape per commit" above)
 - **Write every SHA as its first 10 characters** (`git rev-parse --short=10`), everywhere in the CR, so one commit reads the same in every place it is named

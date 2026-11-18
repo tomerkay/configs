@@ -460,7 +460,7 @@ first and follow them.
 ## Committing a plan to a repo
 
 Committed to a repo, a plan becomes a record read by someone who was not in the
-review, and `references/stale-and-personal.md` binds it: a setting in force is
+review, and `references/copied-stale-and-personal.md` binds it: a setting in force is
 named by its owner, and a measurement stays only as the reason for a
 decision. Until then the plan keeps them as they are - the measurements with
 their queries, the settings in force, the branch - because whoever works from
