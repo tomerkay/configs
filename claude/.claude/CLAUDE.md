@@ -181,9 +181,9 @@ undoes it.
 
 ## My `tkay-*` skills are standalone and generic
 
-I hand my `tkay-*` skills to other people as-is, so each one must work in a
-session that has never seen a CLAUDE.md of mine or any other skill. When you
-write or edit one:
+I hand my `tkay-*` skills to other people as-is - all but `tkay-taste-setup`,
+below - so each one must work in a session that has never seen a CLAUDE.md
+of mine or any other skill. When you write or edit one:
 
 - **It points at nothing outside itself** - no CLAUDE.md, no other skill, no
   path on my machine. Its own `references/` and `hooks/` are fine.
@@ -200,6 +200,10 @@ write or edit one:
   in it carries `--context`/`--kube-context` and `-n`, a safety rule it
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine
   is the price of standalone; keep it to what that skill actually needs.
+- **Atero-specific knowledge stays in `tkay-cluster-ops` and
+  `tkay-taste-setup`** - my workplace's clusters, cells, backoffice, charts
+  and repos. Every other `tkay-*` skill works for an engineer anywhere;
+  an example taken from my work that names no Atero system is fine.
 - **It names nobody and nowhere**: not me, no cluster, node,
   namespace or label value. It says "me" and "my", which reads as whoever
   loaded it, and derives anything personal at run time (`git config
@@ -219,3 +223,23 @@ rest - follow their own catalog's conventions and may point across skills and
 repos.
 
 My skills are edited under `skills/`.
+
+## `tkay-taste-setup` holds what I would not hand a colleague unchanged
+
+**A rule I would hand a colleague unchanged goes in another skill; one I
+would not goes in `tkay-taste-setup`**: it names my machine, my repos or my
+accounts, or it is a choice another engineer could reasonably make the
+other way. Every rule lands on one side, so `tkay-taste-setup` and the
+other skills never hold the same rule.
+
+- **It is published, for reference, not for others to install.** So it
+  may name my paths and point at other skills, and the rest of "My
+  `tkay-*` skills are standalone and generic" does not bind it - but
+  like every published file it holds no internal identifier and no
+  secret.
+- **The root `CLAUDE.md` `@`-imports its references**, so every session
+  loads them before the first change.
+- **The gate and the commands that need my words stay in the root
+  `CLAUDE.md`**, beside the hook that enforces them, whatever this test
+  says of each row - and so does every line that names the gate, which
+  lives in that file alone.

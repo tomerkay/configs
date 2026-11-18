@@ -194,7 +194,8 @@ KUBECTL_WRITES_WIDENED = {"replace", "set", "label", "annotate", "taint", "cordo
                           "drain", "evict", "expose", "run", "debug", "autoscale", "certificate"}
 KUBECTL_CONTEXT_SETTERS = {"use-context", "set-context"}
 # Subcommands that never reach a cluster, so the pin rules do not apply.
-KUBECTL_LOCAL = {"config", "kustomize", "completion", "options", "help"}
+KUBECTL_LOCAL = {"config", "kustomize", "completion", "options", "help", "krew"}
+KREW_READS = {"list", "search", "info", "version", "help"}
 HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "registry",
               "create", "env", "verify", "repo", "dependency", "plugin", "version",
               "completion", "help"}
@@ -322,6 +323,19 @@ def split_globals(args, value_flags):
             rest.append(a)
         i += 1
     return rest, seen
+
+
+HELM_SUBCOMMAND_ALIASES = {"dep": "dependency", "dependencies": "dependency"}
+
+
+def helm_words(args):
+    """helm's arguments with its global flags taken out, and the subcommand among the
+    positionals read by its name whichever alias was typed."""
+    rest, seen = split_globals(args, HELM_GLOBAL_VALUE_FLAGS)
+    pos = positionals(rest)
+    if pos:
+        pos[0] = HELM_SUBCOMMAND_ALIASES.get(pos[0], pos[0])
+    return rest, seen, pos
 
 
 def generic_verbs(args):
@@ -488,6 +502,8 @@ def classify_kubectl(args):
         return READ if len(pos) > 1 and pos[1] in ("can-i", "whoami") else WRITE
     if verb == "plugin":
         return READ if len(pos) > 1 and pos[1] == "list" else WRITE
+    if verb == "krew":
+        return READ if len(pos) > 1 and pos[1] in KREW_READS else WRITE
     if verb == "exec":
         # An exec is whatever runs inside the pod. A shell, or stdin/tty with nothing after
         # `--`, is a write because nothing says what will be typed into it.
@@ -504,8 +520,7 @@ def classify_kubectl(args):
 
 
 def classify_helm(args):
-    rest, _ = split_globals(args, HELM_GLOBAL_VALUE_FLAGS)
-    pos = positionals(rest)
+    rest, _, pos = helm_words(args)
     if not pos:
         return READ
     sub = pos[0]
@@ -515,7 +530,7 @@ def classify_helm(args):
                "search", "env", "version", "verify", "completion", "help", "diff"}:
         return READ
     if sub == "repo":
-        return READ if len(pos) > 1 and pos[1] in ("list", "index") else WRITE
+        return READ if len(pos) > 1 and pos[1] == "list" else WRITE
     if sub == "dependency":
         return READ if len(pos) > 1 and pos[1] == "list" else WRITE
     if sub == "plugin":
@@ -2241,6 +2256,11 @@ def runs_opaque_code(words):
         return pos[:1] == ["run"]
     if prog in CONTAINER_ENGINES:
         return pos[:1] == ["run"] or pos[:2] == ["container", "run"]
+    # Each runs the plugin's own install, update or delete hook.
+    if prog == "helm":
+        _, _, helm_pos = helm_words(args)
+        return helm_pos[:1] == ["plugin"] and helm_pos[1:2] in (
+            ["install"], ["add"], ["update"], ["up"], ["uninstall"], ["rm"], ["remove"])
     if prog in ("bash", "sh", "zsh", "dash"):
         return script_of(words) is not None
     # A known program called by its path, such as /bin/cp, keeps its own rating.
@@ -2342,6 +2362,53 @@ def go_writes_into_scratch(here, args):
         d = parent
 
 
+# Flags of helm dependency build and update that take no value. A value flag's word reads
+# as a positional, so it could pose as the chart path.
+HELM_DEPENDENCY_BOOL_FLAGS = {"--skip-refresh", "--verify", "--insecure-skip-tls-verify",
+                              "--plain-http", "--debug", "--kube-insecure-skip-tls-verify"}
+# A HELM_* variable can move any file helm writes, and the words of a command never show it.
+HELM_ENV_RE = re.compile(r"\bHELM_[A-Za-z0-9_]*=")
+
+
+def helm_dependency_writes_into_scratch(here, args):
+    """True for a helm dependency build or update whose every write lands in a gate scratch
+    root: the chart's charts/ and Chart.lock, and the repository index and chart caches
+    wherever a flag moves them."""
+    rest, seen, pos = helm_words(args)
+    if pos[:1] != ["dependency"] or pos[1:2] not in (["build"], ["update"], ["up"]) \
+            or len(pos) > 3:
+        return False
+    written = [pos[2] if len(pos) == 3 else "."]
+    if "--repository-cache" in seen:
+        written.append(seen["--repository-cache"])
+    for a in rest:
+        name, eq, value = a.partition("=")
+        if not a.startswith("-") or name in HELM_DEPENDENCY_BOOL_FLAGS:
+            continue
+        if not eq:
+            return False
+        if name == "--content-cache":
+            written.append(value)
+    return all(inside_gate_scratch(path_from(here, p)) for p in written)
+
+
+HELM_REPO_STATE_WRITES = {"add", "update", "up", "remove", "rm"}
+
+
+def helm_repo_writes_outside_repos(here, args):
+    """True for a helm repo add, update or remove, which writes only helm's repositories file
+    and its caches, when no flag moves one of them outside a gate scratch root."""
+    rest, seen, pos = helm_words(args)
+    if pos[:1] != ["repo"] or len(pos) < 2 or pos[1] not in HELM_REPO_STATE_WRITES:
+        return False
+    for a in rest:
+        name, eq, value = a.partition("=")
+        if name == "--content-cache" and not (eq and inside_gate_scratch(path_from(here, value))):
+            return False
+    return all(inside_gate_scratch(path_from(here, seen[f]))
+               for f in ("--repository-config", "--repository-cache") if f in seen)
+
+
 def gate_blockers(command, cwd, run_time_dir=None):
     """The words of each program the gate holds, a `tee` of each redirect target outside
     scratch, or [None] for a line it cannot parse; empty when nothing changes a repo by a
@@ -2433,6 +2500,10 @@ def gate_blockers(command, cwd, run_time_dir=None):
                     continue
             if prog == "go" and go_writes_into_scratch(here, args):
                 continue
+            if prog == "helm" and not HELM_ENV_RE.search(command) \
+                    and (helm_dependency_writes_into_scratch(here, args)
+                         or helm_repo_writes_outside_repos(here, args)):
+                continue
             # go env -w and -u write Go's own user config file, which sits in no repo.
             if prog == "go" and positionals(args)[:1] == ["env"]:
                 continue
@@ -2442,6 +2513,10 @@ def gate_blockers(command, cwd, run_time_dir=None):
             # Both write only under their own prefix, whose clones are the tool's state; brew
             # bundle is the exception, writing a Brewfile into the working directory.
             if prog == "brew" and positionals(args)[:1] != ["bundle"]:
+                continue
+            # krew writes only under its own root, which KREW_ROOT can move.
+            if prog in ("kubectl", "k") and "KREW_ROOT=" not in command and positionals(
+                    split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)[0])[:1] == ["krew"]:
                 continue
             if prog == "claude" and claude_plugin_user_scope(args):
                 continue
@@ -2764,8 +2839,7 @@ def pin_decisions(prog, args):
             out.append((DENY, "pin the namespace: every cluster command carries -n <ns>, "
                               "or -A when a cluster-wide view is the point"))
     elif prog == "helm":
-        rest, seen = split_globals(args, HELM_GLOBAL_VALUE_FLAGS)
-        pos = positionals(rest)
+        rest, seen, pos = helm_words(args)
         sub = pos[0] if pos else ""
         if not pos or sub in HELM_LOCAL:
             return out
@@ -2779,8 +2853,11 @@ def pin_decisions(prog, args):
         if sub in ("install", "upgrade") and not dry_run(rest):
             out.append((ASK, f"helm {sub} changes what runs on the cluster: {ON_WORDS}"))
         if sub in ("install", "upgrade") and has_flag(rest, "--reuse-values"):
-            out.append((ASK, "--reuse-values replays the previous values onto the new chart: "
-                             f"{ON_WORDS}"))
+            out.append((ASK, "--reuse-values keeps the old chart's defaults and the previous "
+                             f"values, dropping the new chart's defaults: {ON_WORDS}"))
+        if sub in ("install", "upgrade") and has_flag(rest, "--reset-then-reuse-values"):
+            out.append((ASK, "--reset-then-reuse-values carries the previous values onto the "
+                             f"new chart: {ON_WORDS}"))
         if not seen.get("--kube-context"):
             out.append((DENY, "pin the context: every helm command carries --kube-context <ctx>"))
         if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")):
@@ -3319,6 +3396,13 @@ def selftest():
         (True, "Bash", "kubectl config get-contexts", None),
         (True, "Bash", "kubectl config current-context", None),
         (True, "Bash", "kubectl kustomize ./overlay", None),
+        # krew installs kubectl plugins under its own root and never reaches a cluster.
+        (True, "Bash", "kubectl krew install ctx", None),
+        (False, "Bash", "kubectl krew list", None),
+        (False, "Bash", "kubectl krew install ctx", None),
+        (False, "Bash", "kubectl krew upgrade", None),
+        (False, "Bash", f"KREW_ROOT={rx}/k kubectl krew install ctx", DENY),
+        (True, "Bash", "kubectl ctx", DENY),
         (True, "Bash", "kubectl completion zsh", None),
         (True, "Bash", "kubectl version --client", None),
         (True, "Bash", "helm template r ./chart -f values.yaml", None),
@@ -3333,6 +3417,28 @@ def selftest():
         (True, "Bash", "helm env", None),
         (True, "Bash", "helm verify x.tgz", None),
         (True, "Bash", "helm repo list", None),
+        (False, "Bash", "helm repo list", None),
+        (False, "Bash", f"helm repo index {rx}/charts", DENY),
+        # helm's aliases of a subcommand are the subcommand.
+        (False, "Bash", "helm dep list ./chart", None),
+        (False, "Bash", "helm dependencies list ./chart", None),
+        (False, "Bash", f"helm dep build {scratch}c", None),
+        (False, "Bash", "helm dep build ./chart", DENY),
+        # helm repo add, update and remove write only helm's repositories file and caches.
+        (False, "Bash", "helm repo add x https://charts.example.com", None),
+        (False, "Bash", "helm repo up", None),
+        (False, "Bash", "helm repo rm x", None),
+        (False, "Bash", f"helm repo add x u --repository-config {scratch}r.yaml", None),
+        (False, "Bash", f"helm repo add x u --repository-config={rx}/r.yaml", DENY),
+        (False, "Bash", f"helm repo update --repository-cache {rx}/c", DENY),
+        (False, "Bash", f"helm repo update --content-cache={scratch}c", None),
+        (False, "Bash", f"helm repo update --content-cache {scratch}c", DENY),
+        (False, "Bash", f"helm repo update --content-cache={rx}/c", DENY),
+        (False, "Bash", f"HELM_REPOSITORY_CONFIG={rx}/r.yaml helm repo add x u", DENY),
+        # A plugin's hooks are code the hook cannot read; plugin package writes where it runs.
+        (False, "Bash", "helm plugin install https://github.com/x/y", None),
+        (False, "Bash", "helm plugin rm x", None),
+        (False, "Bash", f"helm plugin package {rx}/p", DENY),
         (True, "Bash", "helm dependency update ./chart", None),
         (True, "Bash", "helm plugin list", None),
         (True, "Bash", "helm version", None),
@@ -3466,6 +3572,9 @@ def selftest():
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --force-conflicts", ASK),
         (False, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values", ASK),
+        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --reset-then-reuse-values --dry-run", ASK),
+        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --reuse-values --dry-run", ASK),
+        (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --dry-run", None),
         (True, "Bash", "CRUSOE_PROFILE=p crusoe kubernetes clusters get-credentials --project-name j -y c", ASK),
         (True, "Bash", "crusoe kubernetes clusters get-credentials c --project-name j", ASK),
         (False, "Bash", "crusoe kubernetes clusters get-credentials --project-name j c", ASK),
@@ -3703,6 +3812,23 @@ def selftest():
         (False, "Bash", f"cd {scratch}d && go install example.com/m@v1.0.0", DENY),
         (False, "Bash", f"cd $(echo {scratch}d) && go mod tidy", DENY),
         (False, "Bash", "cd /x && go mod tidy", DENY),
+        # helm dependency build and update write only under the chart and helm's caches.
+        (False, "Bash", f"helm dependency build {scratch}c/model/pd-model", None),
+        (False, "Bash", f"helm dependency update --skip-refresh {scratch}c/chart", None),
+        (False, "Bash", f"cd {scratch}c && helm dependency build model/pd-model", None),
+        (False, "Bash", f"cd {scratch}c && helm dependency up --keyring=/x/k", None),
+        (False, "Bash", f"helm dependency build {rx}/chart", DENY),
+        (False, "Bash", "helm dependency build", DENY),
+        (False, "Bash", "helm dependency build ./chart", DENY),
+        (False, "Bash", "helm dependency build $D/chart", DENY),
+        (False, "Bash", f"helm dependency build --keyring {scratch}k", DENY),
+        (False, "Bash", f"helm dependency build {scratch}c {rx}/chart", DENY),
+        (False, "Bash", f"helm dependency build --repository-cache {rx}/c {scratch}c", DENY),
+        (False, "Bash", f"helm dependency build --content-cache={rx}/c {scratch}c", DENY),
+        (False, "Bash", f"helm dependency build --repository-cache={scratch}r {scratch}c", None),
+        (False, "Bash", f"HELM_REPOSITORY_CACHE={rx}/c helm dependency build {scratch}c", DENY),
+        (False, "Bash", f"export HELM_CONTENT_CACHE={rx}/c && helm dependency build {scratch}c",
+         DENY),
         # go mod download adds the go.sum entries it verifies, read-only flags or not.
         (False, "Bash", "go mod download", DENY),
         (False, "Bash", "GOFLAGS=-mod=readonly go mod download example.com/m", DENY),

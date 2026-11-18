@@ -57,6 +57,20 @@ the work and has two minutes.
 The commit messages are input, not a template: read them for the why, then
 write it once for the whole MR.
 
+## Screenshots
+
+**A screenshot I ask to upload to an MR goes into its description.** The
+upload alone shows nowhere on the MR: the image appears only once its
+markdown is in the description or a note. So the ask covers both steps -
+the upload, as `references/gitlab.md` says, then the description written
+again with the markdown under a `## Screenshots` heading and a caption per
+view. It is the same write as the title and the description, done the same
+way: read the MR's current text right before, keep it, and append the
+section. A note gets the images only when I name a note.
+
+The case that taught it: twelve screenshots uploaded, their links handed
+back in chat, and the MR page still showing none of them.
+
 ## Writing it
 
 **The title and the description describe what the remote holds, so the push

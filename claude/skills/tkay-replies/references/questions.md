@@ -104,15 +104,15 @@ second folds into the last point of the first and the reply shows one where
 it asked two. The case that taught it, two proposals in one block:
 
 ```
-❌ ❓ **Q1** **Refuse a deleting cell on update**: add it to this branch?
+❌ ❓ **Q1** **Refuse a deleting tenant on update**: add it to this branch?
      - **Why Not?**
        - it lands in an unrelated MR
-   ❓ **Q2** **Scope the cell to its cluster**: fix it in a separate MR?
-✅ ❓ **Q1** **Refuse a deleting cell on update**: add it to this branch?
+   ❓ **Q2** **Scope the tenant to its cluster**: fix it in a separate MR?
+✅ ❓ **Q1** **Refuse a deleting tenant on update**: add it to this branch?
      - **Why Not?**
        - it lands in an unrelated MR
 
-   ❓ **Q2** **Scope the cell to its cluster**: fix it in a separate MR?
+   ❓ **Q2** **Scope the tenant to its cluster**: fix it in a separate MR?
 ```
 
 **A proposal asks whether to make the change, even when you advise against

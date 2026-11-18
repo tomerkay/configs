@@ -19,6 +19,15 @@ part of its own.
    Nothing the run needs waits on a prompt in the middle of the night.
 3. **The skills the goal names come from this session's skill list**: the
    one for writing code and fixing a review, and the one for a code review.
+4. **The branch**: the run works on the branch the repo's checkout is
+   on. On the default branch, unless I have said the repo is worked on
+   it, the goal creates a new one. When the work does not belong on the
+   current branch, say why in one sentence and ask whether the goal
+   creates a new one.
+5. **The repo's checkout is clean**, checked with `git status --short`:
+   the run commits there, so uncommitted work would ride along under its
+   builds and tests. The goal says the checkout is the run's until it
+   ends.
 
 Ask me only for what none of this answers - the repo, and the files that
 must never be staged.
@@ -49,8 +58,9 @@ in this order:**
 
 ## What the run does
 
-- **One signed commit per piece of work**, on a new branch in a new
-  worktree, by the code skill's standards and the repo's conventions.
+- **One signed commit per piece of work**, on the branch settled before
+  the goal was handed over, in the repo's checkout, by the code skill's
+  standards and the repo's conventions.
   After each commit, build and test the packages it touched.
 - **Git runs outside the sandbox from the first call** when the harness
   sandboxes it. Stage explicit paths only; no rebase or reset; a tracked
@@ -60,13 +70,14 @@ in this order:**
 - **Every decision made without asking goes in one list**, with the commit
   that carries it. The work's goal file says where the list lives.
 - **Every CR is a fresh subagent spawned for that CR alone.** It invokes the
-  review skill first, gets the worktree path, the branch range and the list
-  of decisions made without asking, to check each against the code around
-  it, and nothing of the session's reasoning, and it returns the path of
-  its CR file. The session fixes each blocking finding in a dedicated commit
-  by the code skill's rules for fixing a review, and writes in the report
-  any fix those rules say to show and wait on. After each batch of fixes, a
-  new fresh subagent reviews the branch at HEAD.
+  review skill first, gets the repo path, the range of the run's own
+  commits from the one it started on, and the list of decisions made
+  without asking, to check each against the code around it, and nothing
+  of the session's reasoning, and it returns the path of its CR file. The
+  session fixes each blocking finding in a dedicated commit by the code
+  skill's rules for fixing a review, and writes in the report any fix
+  those rules say to show and wait on. After each batch of fixes, a new
+  fresh subagent reviews the run's commits at HEAD.
 - **The fix loop stops itself** when a CR finds a blocking finding that a
   fix commit brought in, or a finding a fix commit claimed to close.
 - **The full suites run last**, in the background, holding the machine awake

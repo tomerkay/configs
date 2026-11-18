@@ -140,7 +140,7 @@ Three parts, each its own subsection:
   or removes is marked as such, and a breaking change is named as breaking.
 - **Constraints and invariants**: what is always true, stated as a property, never
   as one example - "at most one replica writes the scaling decision", "a request
-  never reaches a pod outside its cell", "every failure reason is counted from
+  never reaches a pod outside its tenant", "every failure reason is counted from
   zero". Constraints sit beside them: limits, ordering, idempotency, timing bounds.
   Each one names what enforces it - a type, a check at the boundary, a test.
 - **The black-box tests**: the tests that pin the contract through the public
@@ -325,9 +325,7 @@ in its bucket.
 Not a pile of edits. One section per commit, cut and ordered as
 `references/commits.md` says under "Two Suits: a Fix Stands Alone, a Feature
 Is a Series". For each one: the subject
-line, the files, the tests, **a "Builds on" line naming the sections it needs** -
-"Builds on: none" for one that stands alone - and **what the commit body has to
-say**. Each black-box
+line, the files, the tests, and **what the commit body has to say**. Each black-box
 test of the contract lands in the commit that delivers the behaviour it pins, so no
 prefix of the list claims a promise nothing tests.
 
@@ -464,7 +462,9 @@ first and follow them.
 Committed to a repo, a plan becomes a record read by someone who was not in the
 review, and `references/stale-and-personal.md` binds it: a setting in force is
 named by its owner, and a measurement stays only as the reason for a
-decision. Working notes go:
+decision. Until then the plan keeps them as they are - the measurements with
+their queries, the settings in force, the branch - because whoever works from
+it needs them. Working notes go:
 instructions to whoever executes it, people's names, branch names, a section on
 running things on one machine.
 

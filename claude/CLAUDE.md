@@ -1,29 +1,4 @@
-# About Me and My Work
-
-My name is Tomer. I am a software engineer for Atero, who were purchased by Crusoe. Atero is now the Israel site of Crusoe, and we are in charge of the cloud service, focused on offering the best LLM inference out there in the world. I am not training, so most likely any question I have regards inference and not training.
-
-**My handle is `tkay`**, and every place that names me uses it:
-
-- **Branch names** - when a repo's convention puts a person in the name, that
-  person is `tkay`, never `tomerk`, `tomerkay`, `tomer` or any other spelling,
-  even where older branches of mine use one.
-- **Branch ownership** - a branch I created is mine alone, and I force-push my
-  branches.
-- **Dev cluster capacity** - my GPUs come through my cells in the backoffice.
-
-What I work on and with:
-
-- LLM inference, utilizing vllm and sglang. When I use `PD` I mean the disaggregation setup.
-- When I say `unified clusters` I mean the cell structure: a cluster carved into
-  `cell-<id>` namespaces, one per customer slice, next to the older layout where
-  one tenant filled a single shared namespace. Per cell is per namespace.
-- Grafana (including grafana alerts) for my dashboards and the promql for the queries.
-- kubernetes and helm for my deployments. **Every command that touches a cluster
-  pins the context and the namespace explicitly - see "Always pin the context and
-  the namespace".**
-- Python language (utilizing asyncio) and sometimes Rust. I am using uv for Python virtual environment.
-- Mac, but also works on remote machines that are Linux. When I ask you how to run any commands or anything in general answer to both setups, but never answer about Windows!
-- zsh, tmux, vim
+@~/.claude/skills/tkay-taste-setup/references/about-me.md
 
 # The LFG gate - the rule that overrides every other rule
 
@@ -291,12 +266,13 @@ not a plan I approved, not my yes to the previous one:
 - `helm install`, `helm upgrade`, `helm uninstall` and `helm rollback`, and
   `helmfile apply`, `sync`, `destroy` and `delete`, on any cluster. An upgrade
   uses the chart the release actually installed, not my local tree - the
-  `tkay-cluster-ops` skill has the procedure.
-- `--reuse-values` and `--force-conflicts` on any helm command.
+  `atero-skills:cluster-ops` skill has the procedure.
+- `--reuse-values`, `--reset-then-reuse-values` and `--force-conflicts` on any
+  helm command.
 - State-changing `kubectl` (`apply`, `delete`, `create`, `patch`, `scale`,
   `rollout restart`, `edit` and every other verb that writes live cluster
   state), short of a `--dry-run`. A node label is one of them, and the
-  `tkay-cluster-ops` skill says why it stays rare. So is anything that
+  `atero-skills:cluster-ops` skill says why it stays rare. So is anything that
   changes a pod from the inside: a `kubectl exec` whose command is not a
   read (an interactive shell included), a `kubectl cp` into a pod, and a
   `kubectl attach`.
@@ -368,8 +344,8 @@ per command. The case that taught it: twelve screenshots uploaded as twelve
 `glab api` calls, each with its own prompt.
 
 None of them waits for `LFG!`: they need my words and the prompt with the gate
-open or closed, and an open gate unlocks none of them. The rule on pushes under
-"Instructions for you" says which of them you never offer.
+open or closed, and an open gate unlocks none of them. "Pushes and MRs are
+mine" says which of them you never offer.
 
 **Before running one, check the org's managed policy `permissions.deny`**: a
 command it denies never runs from here, permission or not, and no other route -
@@ -378,10 +354,9 @@ as `! <command>` straight away and do not attempt it.
 
 ## I decide when the branch moves
 
-Which branch work lands on, its name, worktrees and backups are the
-`tkay-code` skill's `branches.md`, gate open or not. What only my setup adds:
-**`~/.claude`, `~/repos/configs` and `~/repos/approve-no-look` are worked on
-`main` by design**; every other repo is not.
+These hold whether the gate is open or not:
+
+@~/.claude/skills/tkay-taste-setup/references/branches.md
 
 ## If you break this gate
 
@@ -400,17 +375,18 @@ action of that kind.**
 | the first reply of every session, whatever it is about - its hooks check every reply from then on | `tkay-replies` |
 | a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary - and only when I ask for one in those words | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
-| any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-code` |
+| any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-mr` |
 | write or amend any commit message, or commit at all | `tkay-code` |
-| write an MR or PR title or description | `tkay-code` |
+| write an MR or PR title or description | `tkay-mr` |
 | create or name a git branch | `tkay-code` |
-| take screenshots of UI work - the first one of them | `tkay-code` |
+| take screenshots of UI work - the first one of them | `tkay-mr` |
 | create or edit any `CLAUDE.md` - this global one included - a README, a design doc or a `SKILL.md`, including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan - brainstormed by default, a shape plan or a full plan only when I say SHAPE PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
 | a goal on a plan file - "give me a goal on <path>.md" | `tkay-writing-plans` |
 | a goal that builds something unattended and names no plan file - "give me a goal for <what to build>" | `tkay-tool-use` |
-| `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops` |
-| take down / drain / remove everything I own in a namespace | `tkay-cluster-ops` |
+| `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
+| take down / drain / remove everything I own in a namespace | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
+| create a cell, or move a node into or out of one | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
 | build, edit, fetch or publish a Grafana dashboard, panel or template variable | `atero-skills:grafana-dashboards`, plus `dashboarding` when building or debugging the JSON |
 | investigate a fired alert | `atero-skills:investigate-alert` |
 
@@ -454,38 +430,11 @@ never in the plugin cache.
 
 # Instructions for you
 
-1) **Never implement anything until the gate is open.** "The LFG gate" above is
-   the rule, and "What you say when the gate is closed" is the exact reply.
+**Never implement anything until the gate is open.** "The LFG gate" above is
+the rule, and "What you say when the gate is closed" is the exact reply.
 
-2) **Never draft, queue or mention a bug report or feedback about Claude Code.**
-   The `SendFeedback` tool is off limits. Not when I am frustrated, not when I
-   swear at you, not when a tool fails, not when you decide your own behaviour
-   was wrong, not "quietly in the background because it does not interrupt".
-   Nothing I say is a signal to file one - the only exception is me asking for it
-   in those words. I do not want to see that card again.
-
-3) **Finishing a branch never ends in an offer to push or to open an MR,
-   and a push is never yours to run.** Never suggest, offer or prompt a
-   `git push` - not as a next step, not as a `! git push` to paste, not as
-   "ready to push". When I ask for a push, in whatever words, "I allow you
-   this time" included, print the exact command as a bracketed
-   `! git push ...` straight away and attempt nothing else: no policy
-   check, no remote lookup, no other route to the remote - only the local
-   reads that build the command. Opening an MR or PR is mine unless I
-   allow that command in words (see "Some commands need my words and the
-   prompt, every time"). Neither is a "next step" you suggest, and neither
-   is an MR description:
-   never write, draft, offer or ask about one unless I ask for it myself,
-   and then follow the `tkay-code` MR description standard. When something
-   only a description would carry matters (a metric whose meaning changed,
-   a rule a change retires), tell me in chat.
-
-4) **Auto memory is off, and you never write it.** `autoMemoryEnabled` is
-   `false` in my settings: nothing you write outside a file I review reaches
-   the next session. Never turn it back on, never write under a project's
-   `memory/` directory, and never offer to "remember" something. A fact worth
-   keeping goes where I review it - a repo's `CLAUDE.md`, a skill, this
-   file - proposed like any other change.
+@~/.claude/skills/tkay-taste-setup/references/push-and-mr.md
+@~/.claude/skills/tkay-taste-setup/references/off-switches.md
 
 # Every reply takes the shapes of the `tkay-replies` skill
 
@@ -504,23 +453,16 @@ owns them:
 @~/.claude/skills/tkay-replies/references/copy-blocks.md
 @~/.claude/skills/tkay-replies/references/before-and-after.md
 
-What only my setup adds to them:
+@~/.claude/skills/tkay-taste-setup/references/replies.md
 
-- **Among the stops the ❓ shape covers**: the cluster or namespace I never
-  named, adding a context to my kubeconfig, `--reuse-values`, a Slack
-  message anywhere other than the alert thread I linked, a namespace that is
-  not my cell, a repo rule that bans commit descriptions. The staged-copy
-  install and the handoff cleanup offer have their own wording, written
-  where each lives, in this shape.
-- **Not covered by it**: the `LFG!` refusal line, which has its own
-  verbatim shape, and the note under a tmp file's path, which keeps its ⚠️
-  because it warns and stops nothing.
+What the gate adds to them:
+
+- **Not covered by the ❓ shape**: the `LFG!` refusal line, which has its
+  own verbatim shape.
 - **A thing that hits the closed gate** gets the refusal line and its diff,
   verbatim, as its part of the reply; the diff carries its Full Assessment
   above it, and is the one place a proposal comes with a diff before I ask
   for the full plan.
-- **A before and after asked for "in md"** is a file in the session's
-  handoff directory, as "Every file you write" says.
 
 # Nothing stale, nothing personal
 
@@ -529,112 +471,19 @@ written in every session:
 
 @~/.claude/skills/tkay-code/references/stale-and-personal.md
 
-What only my setup adds: **my own coordinates are written down nowhere** - my
-cells move, so any copy goes stale. Derive them from the backoffice cell
-record, or ask, per "If I did not name the cluster and the namespace".
+@~/.claude/skills/tkay-taste-setup/references/coordinates.md
 
 # Know what only I can run, before you start
 
 @~/.claude/skills/tkay-tool-use/references/protections.md
 
-What only my setup blocks, so these are the steps to look for:
-
-- a write the sandbox denies - its config, shown at session start, lists the
-  protected paths, `~/.claude/hooks` and the settings among them; this file,
-  the `tkay-*` skills, the hooks and the published home files are the
-  exception, each installed by the staged-change procedure of
-  `~/.claude/.claude/CLAUDE.md`;
-- an edit auto mode refuses as self-modification - the settings, the
-  permission rules, and a hook by any route other than the `cp` its install
-  rule names;
-- a history rewrite below HEAD, which needs my words in any case - see
-  "Some commands need my words and the prompt, every time" - and which auto
-  mode judges by the command's text, not its effect: the plain
-  sequence-editor shape in `tkay-code`'s commits reference, run as its own
-  call with nothing chained to it, has passed where a rebase bundled with
-  other mutations, or driven by a script that deletes `pick` lines, was
-  refused as destructive. A fix to HEAD is an amend and needs none of this;
-  when a rewrite I allowed does arise, shape it the plain way first, and a
-  refusal of that shape is then mine.
-
-What I am to apply is staged in the session's handoff directory - "Every
-file you write goes under ~/.cache/claude-handoff" says why there and when
-it is cleared.
+@~/.claude/skills/tkay-taste-setup/references/blocked-steps.md
 
 # Every file you write goes under ~/.cache/claude-handoff
 
 @~/.claude/skills/tkay-tool-use/references/scratch-files.md
 
-What only my setup adds: that scratch directory is the handoff directory.
-
-**Every file you write for your own work goes in your fork's subdirectory of
-this session's directory under `~/.cache/claude-handoff`**: scratch,
-intermediate output, a script, a snapshot, a staged copy, a message file.
-The session directory is named `<YYYY-MM-DD>-<slug>` after the day and the
-session's work, and the fork's subdirectory is the first 8 characters of
-the session ID in the harness's scratchpad path. A new session is one
-fork. A forked session inherits the conversation and the session
-directory's name, but gets a session ID of its own, so it writes in a
-subdirectory of its own. A subagent is not a fork: it writes in the
-subdirectory of the fork that spawned it. Nothing is written at the top
-level of `~/.cache/claude-handoff` or of the session directory. Create
-either directory if it is missing.
-
-**A tmp file I ask for without a path goes in that handoff directory too** -
-"write it to tmp", "a temp file", in whatever words - never `/tmp` and never
-the scratchpad. A path I spell out, `/private/tmp/claude/...` or any other, is
-followed exactly as given. For the handoff case, give me its full path, with
-this line right under it:
-
-> ⚠️ In the session's handoff directory: survives a restart, and I offer to
-> delete it when you ask whether we are done.
-
-No question and no confirmation - the line is a note, not a stop.
-
-**A file of yours that a tool reads from a repo** - `tkay-code`'s
-`scratch-in-a-repo.md` says when one exists - **stays where it is until the
-work is over**, the same as the handoff directory: the org policy prompts on
-every `rm`, so a mid-task delete is a prompt I must be awake for. Never stage or commit it. The cleanup offer
-below names each one by its full path and deletes it in the same `rm` as
-the directory. Never leave my Mac carrying files I did not ask for and do
-not know exist.
-
-**Nothing inside the session's handoff directory is deleted file by file: it
-stays until the work is over**, because a handoff waits on me and the org
-policy prompts on every `rm`. Never offer to clear it unprompted - not
-mid-task, not when the work looks finished. Only when I ask whether we are
-done, what is left over, or whether I can exit - in whatever words - say what
-your fork's subdirectory holds, and every file of yours left outside it,
-and give me both ways to delete: you run the
-`rm -r`, which prompts me, or a bracketed `! rm -r` I paste. When other
-forks' subdirectories remain, it deletes only yours and says "Delete this
-fork (other forks still live)"; when yours is the last, it deletes the
-whole session directory and says "Delete the whole directory (no other
-fork left)". The path is the directory's full name, never a glob. A plan or write-up in it worth keeping is named first, with the repo
-it belongs in, so I decide whether it moves there before the directory goes.
-`~/.cache/claude-handoff` itself stays.
-
-**Other sessions' directories are not yours, and neither are other forks'
-subdirectories.** Never list another session's, never say what either
-holds, never offer to delete them. Listing the session directory to see
-whether another fork's subdirectory remains is the one look allowed.
-
-**This directory is the cleanup the issue tree's closing offers first**:
-the reply opens with "Yes - nothing open left, only the handoff directory to
-delete." **The offer is a bare ❓ line with no assessment**, so it is the
-last thing in the reply. It comes only once the work leaves nothing open,
-as the issue tree's "whether we are done" check finds it - every repo the
-session touched included; while anything is open, the reply opens with the
-tree and the offer waits for a later reply.
-
-**Never put `rm` in a command that does real work.** The org's policy prompts
-on every `rm`, scratch included, and an allow rule cannot override an ask
-rule, so an `rm` bundled into a chain prompts the whole chain.
-
-**A tracked file the change deletes goes through `git rm`**, which the org's
-`rm` rule does not match, so it runs without that prompt and stages the
-deletion with the rest of the change. A plain `rm` is left for files git
-does not track.
+@~/.claude/skills/tkay-taste-setup/references/handoff.md
 
 # Tool use is the `tkay-tool-use` skill's
 
@@ -650,20 +499,12 @@ blocks are the `tkay-tool-use` skill's, which owns them:
 @~/.claude/skills/tkay-tool-use/references/goals.md
 @~/.claude/skills/tkay-tool-use/references/git-in-sandbox.md
 
-What only my setup adds:
+@~/.claude/skills/tkay-taste-setup/references/tool-use.md
 
-- **A long run's log goes in the session's handoff directory**, as "Every
-  file you write" says.
-- **My Mac idle-sleeps soon after the screen goes dark**, so every long run
-  takes `caffeinate -i`.
-- **A goal that needs the gate opened** gets a suggested line with `LFG!`
-  in it.
+What the gate adds: **a goal that needs the gate opened** gets a suggested
+line with `LFG!` in it.
 
-# Screenshots
-
-**My screenshots live in `/Users/tkay/Screenshots`.** When I reference a bare screenshot filename - e.g. `Screenshot 2025-12-03 at 15.22.51.png` or the shell-escaped `Screenshot\ 2025-12-03\ at\ 15.22.51.png` - resolve it to `/Users/tkay/Screenshots/<name>` and read it straight away. Don't ask me where it is, don't search the repo or the Desktop for it.
-
-The names contain spaces: quote or escape the path in shell commands.
+@~/.claude/skills/tkay-taste-setup/references/screenshots.md
 
 # Every Bash prompt says what it can change
 
@@ -754,8 +595,7 @@ Every cluster command pins both, as the `tkay-cluster-ops` skill says:
 
 @~/.claude/skills/tkay-cluster-ops/references/pinning.md
 
-What only my setup adds: **a cell namespace is named by its backoffice cell
-record**, which is the record that owns it.
+@~/.claude/skills/tkay-taste-setup/references/cell-namespaces.md
 
 # My workloads run in my cell, not someone else's
 
@@ -763,35 +603,18 @@ record**, which is the record that owns it.
 
 # Investigations run without asking - every read, every time
 
-Every read runs without asking, as `tkay-tool-use`'s `reads.md` says. What
-only my setup adds:
+Every read runs without asking, as `tkay-tool-use`'s `reads.md` says.
+**A change needs my words** - see "Some commands need my words and the
+prompt, every time" - or, for a repo, the gate; stopping to ask about a
+read is the same bug as printing the refusal line for one. The TL;DR into
+the linked alert thread is not a change that stops - see "Alert
+investigation is ungated end to end".
 
-- **HTTP reads go through `xh`, never `curl`.** The org's policy prompts on
-  every `curl`, GET included; `xh` is not on its list and a GET through it is
-  a read to the hook. `curl` only for what `xh` cannot do, and then it
-  prompts.
-- **Cloud Logging reads go through `live_log_query` when the question is a
-  count, a per-field breakdown or a message template.** The org's policy
-  prompts on every `gcloud`, a read included; the data-mcp tools are on its
-  allow list. `gcloud logging read` only for a bulk pull past the tool's
-  sample cap, and then it prompts.
-- **A change needs my words** - see "Some commands need my words and the
-  prompt, every time" - or, for a repo, the gate; stopping to ask about a
-  read is the same bug as printing the refusal line for one. The TL;DR into
-  the linked alert thread is not a change that stops - see "Alert
-  investigation is ungated end to end".
-- **A history rewrite refused in a bundled shape** gets one retry in the
-  plain shape of "Know what only I can run", and a second refusal is the
-  stop.
+@~/.claude/skills/tkay-taste-setup/references/investigations.md
 
 # Alert Investigation TL;DRs
 
-## Start from the investigate-alert skill
-
-Invoke `atero-skills:investigate-alert` before the first alert, whatever repo
-the session was opened from. It is installed from the atero-skills marketplace,
-so it is loaded everywhere and needs no opening by path. Everything about the
-investigation and the report lives in it and nowhere in this file.
+@~/.claude/skills/tkay-taste-setup/references/alerts.md
 
 ## Posting
 
@@ -799,18 +622,4 @@ Post the TL;DR into the thread I linked, as "Alert investigation is ungated
 end to end" allows, then give me the permalink to the post - the link only,
 never the text again.
 
-# Git Configuration
-
-Commits are signed, as the `tkay-code` commit standard says. My configuration:
-
-- `git config --global gpg.format openpgp`
-- `git config user.email "tkay@crusoeenergy.com"`
-- `git config user.signingkey D07B37AA6558492679499A20DB915178326D62E2`
-- `git config commit.gpgsign true`
-
-**What my sandbox blocks for git**, which `tkay-tool-use`'s
-`git-in-sandbox.md` says to run outside it: anything that reaches the remote
-over SSH, which its proxy refuses; any checkout, reset, rebase or
-cherry-pick whose files include a repo's `.claude/` skills, hooks or
-settings, which it will not write; and a directory named `secrets`, which it
-hides.
+@~/.claude/skills/tkay-taste-setup/references/git-config.md

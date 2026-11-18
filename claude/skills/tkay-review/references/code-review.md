@@ -49,7 +49,7 @@ commit judged against the one before it, and nobody judging what lands.
 **A CR over more than one repo is one CR per repo, one after the other,
 never interleaved.** Each repo gets its own four sections under a heading
 that names the repo, its own branch line, and its own numbering, so
-"atero-charts row 2" names one row and no row carries a repo tag. One line
+"<repo> row 2" names one row and no row carries a repo tag. One line
 above the first repo says whether the branches merge independently or in
 which order. A CR Summary over several repos is split the same way.
 
@@ -253,8 +253,8 @@ A 🔴 or 🟠 count on the line means the commit blocks; a line with only 🟡 
 - **The Fix Profiles are the work the findings ask for.** The blocking fix names what unblocks the merge and what it costs; the clean-up fix names the clean-up and what it costs, and is mine to take or leave. One whose colours have no finding is left out, and each label names only the colours its findings have. The case that taught it, a commit with one 🔴, one 🟡 and one ⚪:
 
   ```
-  ❌ Fix 🔴🟠: a between_cells flag on the removal check · Fix 🟡⚪: correct the pool-node claim
-  ✅ Fix 🔴: a between_cells flag on the removal check · Fix 🟡⚪: correct the pool-node claim
+  ❌ Fix 🔴🟠: a cross_zone flag on the removal check · Fix 🟡⚪: correct the pool-node claim
+  ✅ Fix 🔴: a cross_zone flag on the removal check · Fix 🟡⚪: correct the pool-node claim
   ```
 - **Every finding has a fix that changes something.** A finding whose fix would be to leave the code as it is is not a finding: drop it before the assessment, never write it with a Fix Profile that says to leave it. A bycatch row's `⏸ Leave for now` is different: its fix exists, and the call defers it. The case that taught it, a ⚪ on a heading that repeated the repo name the change was asked to add:
 
@@ -612,6 +612,10 @@ same for the commit in its place in the earlier commits table.
 - **A new tree is a new commit**: an amend that changed content, a fixup
   folded into it or below it, a rebase onto a moved base. It gets a full
   review, tests included, even when its own diff reads the same as before.
+- **"Is it fixed?" after a CR is a repeat CR, never a tick-off of the old
+  findings.** Every line changed since that CR is read as new code: a fix
+  can carry a bug of its own, and a finding the fix closed is dropped while
+  one it opened is reported.
 - **Only a review still in the context is carried.** One that was
   summarised away, or that came from another session, has lost the findings
   it would carry; review that commit again.

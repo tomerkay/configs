@@ -129,14 +129,10 @@ The case that taught it: a plain replay onto a new base merged a gauge the
 base had added cleanly into commits that no longer compiled, and git
 reported success.
 
-**On a branch only I push to, whether it is already pushed is not an input to
-this decision.** I force-push my own branches, so a commit already on the
-remote squashes and amends exactly like one that is not. "It's already pushed"
-is never a reason to make a new commit instead of amending there, and never a
-reason to leave a bad message standing. **A branch someone else also pushes to
-or builds on is different**: rewriting what is already on its remote breaks
-their copy, so ask before touching any commit that is there. When you cannot
-tell which kind the branch is, ask once.
+**A branch someone else also pushes to or builds on keeps what is already on
+its remote**: rewriting it breaks their copy, so ask before touching any
+commit that is there. When you cannot tell who else pushes to the branch, ask
+once.
 
 ## Two Suits: a Fix Stands Alone, a Feature Is a Series
 

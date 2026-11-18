@@ -142,7 +142,8 @@
     "pyright-lsp@claude-plugins-official": true,
     "plumber-claude@crusoe-plumber": true,
     "wrenchmark@wrenchmark": true,
-    "atero-skills@atero-skills": true
+    "atero-skills@atero-skills": true,
+    "atero-charts@atero-charts": true
   },
   "extraKnownMarketplaces": {
     "crusoe-plumber": {
@@ -162,6 +163,12 @@
       "source": {
         "source": "git",
         "url": "https://gitlab.com/crusoeenergy/atero/wrenchmark.git"
+      }
+    },
+    "atero-charts": {
+      "source": {
+        "source": "git",
+        "url": "https://gitlab.com/crusoeenergy/atero/atero-charts.git"
       }
     }
   },

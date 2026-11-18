@@ -245,14 +245,15 @@ three its row already held:
   one-line change to a lock is small and super hard. Doubt about the facts
   - how a system reacts, whether a claim holds - is Evidence and never
   raises the Difficulty, as doubt never moves the Call. The case that
-  taught it, a cell move whose effect on the endpoint manager's pass was
+  taught it, a node move whose effect on the scheduler's next pass was
   unchecked:
 
   ```
   ❌ - **Change:** **Evidence:** LIKELY · **Size:** medium · **Difficulty:** hard
   ✅ - **Change:** **Evidence:** LIKELY · **Size:** medium · **Difficulty:** easy
-  ``` Both describe the thing the Profile
-  names.
+  ```
+
+  Both describe the thing the Profile names.
 - **Never a time estimate** - no minutes, hours or days, for a change, a part
   or a plan step. You cannot know how long the work takes, and the guess
   reads as a fact. Size and difficulty are what I get instead.
