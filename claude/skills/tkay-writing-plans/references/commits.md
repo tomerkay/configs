@@ -53,9 +53,10 @@ line before the commit.** The three cases:
 rewrite.** A change that belongs in HEAD is amended into HEAD - that needs
 no word from me. A change that belongs in a commit below HEAD lands as a new
 commit on top, with its own subject, and the CR says `🔀 Squash into <sha>`
-or `🪓 Split`; the rewrite that folds it in happens when I allow it, never
-on the call alone. Until then the history records the fix as a commit of
-its own, and that is the intended state, not a failure of the rule above.
+or `🪓 Split`. That call is the only place a rewrite is offered: it starts
+when I ask for one in words, and is never put to me as a proposal. Until
+then the history records the fix as a commit of its own, and that is the
+intended state, not a failure of the rule above.
 
 ## A Rewrite Below HEAD Waits for My Word
 
@@ -64,8 +65,9 @@ prompt**: a rebase in any form, onto a new base included, and a reset that
 moves the branch back. Amending HEAD is free: it is the one commit nothing is
 stacked on. Nothing rewrites on a CR call alone, however clear the squash.
 
-- **Before a rebase, ask me whether it may reword, squash and split.** My
-  answer scopes that one rebase; with no answer it is a plain replay.
+- **Before a rebase I asked for, ask me whether it may reword, squash and
+  split.** My answer scopes that one rebase; with no answer it is a plain
+  replay.
 - **Reword is free only for a commit whose SHA changes anyway in that
   rebase.** Onto a new base that is every commit; in a squash of the third
   commit it is the third and everything above it, and the commits below keep
