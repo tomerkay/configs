@@ -16,28 +16,27 @@ name what each kind adds; the procedure itself is this one:
 1. **Stage it.** Copy the file into this session's handoff directory and make
    every edit to the copy. Keep a second, untouched copy beside it: the base
    the edits were made on.
-2. **Review the staged diff with the `tkay-review` standard**, in the
-   full shape that standard gives a one-commit branch: the FINDINGS line and
-   the commit's Full Assessment, both buckets, the branch overview, the
-   commits table and the bycatch table. The diff stands in for the
-   commit; a Full Assessment on its own is not a review.
+2. **Review the staged diff with the `tkay-review` standard**, as a full
+   CR: every section that standard gives, from the overview to the To do
+   list. The diff stands in for the commit; a Full Assessment on its own
+   is not a review.
    **Then fix and review again, up to three rounds**, each on the staged
-   copy: fix every MUST HAVE finding, every bycatch row whose call is
-   🔧 Add fix, and every NICE TO HAVE finding and ⏸ Leave for now bycatch
-   row in a file this procedure covers whose fix is rated super easy, or
-   small and easy - on the commit's Fix 🟡⚪ line or the row's own Fix
-   Profile - then review the fixed copy in the same shape, since a fix
-   lands in code the rest of the change depends on and can bring a problem
-   of its own. A bycatch fix is staged as a commit of its own, installed
-   on the same yes. The standard's question before code after a CR is not
-   asked here: a session in this repo or in `~/repos/configs` is one it
-   exempts. **The rounds end at the first review that finds nothing a
+   copy: fix every MUST HAVE finding, every bycatch row whose call is 🔧 Add
+   fix, and every NICE TO HAVE finding and ⏸ Leave for now bycatch row in a
+   file this procedure covers whose fix is rated super easy, or small and
+   easy, with Evidence at least CONFIDENT - on the commit's Fix 🟡⚪ line or
+   the row's own Fix Profile - then review the fixed copy in the same shape,
+   since a fix lands in code the rest of the change depends on and can bring
+   a problem of its own. A bycatch fix is staged as a commit of its own,
+   installed on the same yes. The standard's question before code after a CR
+   is not asked here: a session in this repo or in `~/repos/configs` is one
+   it exempts. **The rounds end at the first review that finds nothing a
    round fixes, or with the review after the third round**, which is the
-   final one. When the final review still finds a MUST HAVE, fix nothing more
-   and do not ask the install question: explain the problem, propose a
-   different fix as a ❓ of its own, and stop. The fix I pick is staged
-   and reviewed in this same shape before the install question comes.
-   Anything else the final review finds stays as it is.
+   final one. When the final review still finds a MUST HAVE, fix nothing
+   more and do not ask the install question: explain the problem, propose a
+   different fix as a ❓ of its own, and stop. The fix I pick is staged and
+   reviewed in this same shape before the install question comes. Anything
+   else the final review finds stays as it is.
 3. **Ask once**: show the diff, the last review and the commit message,
    written by the `tkay-code` commit standard, then end the reply with
    "❓ Q<n> Install it into `<file>` and commit?", with the change's Full

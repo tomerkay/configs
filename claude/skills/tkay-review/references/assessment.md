@@ -309,6 +309,21 @@ or the Profile: under a ❌ call, Why Yes holds the case you argue against.
   4. **Does it name what goes wrong, and for whom?** A real point names a
      case that breaks, a cost someone pays or a door that closes. A point
      that only describes the change does none of these.
+  5. **Is it checked?** A point that says it was not checked is a check
+     left undone: read or run what settles it before the assessment, and
+     write the point as what you found - or drop it when it does not
+     hold. When settling it truly needs what you cannot do, the point
+     says what the check costs, as `answers.md` asks of a claim you could
+     not test. The case that taught it, a guard whose worst risk was left
+     as a guess:
+
+     ```
+     ❌ - If the split ever gives a cell one side only, that cell waits
+          forever. I haven't checked whether the split can do that.
+     ✅ - The split can give a cell one side only, and that cell then
+          waits forever.
+     ✅ - none (checked: the split always gives a cell both sides)
+     ```
 
   The case that taught it, a rewrite of the branch overview's calls:
 
@@ -364,6 +379,25 @@ it is.
   Better, one with no Gains is Lesser.
 - **A proposal with no alternatives ends at its Why Not**, and a fix to
   the draft goes into the draft, never into an alternative.
+- **An addition is not an alternative.** An alternative is another way to
+  do what the proposal does, in its place. Work that would be done as well
+  as the proposal - "also fix the split" - replaces nothing, so it is
+  never Better, Equivalent or Lesser: it is a proposal of its own, on a ❓
+  line beside the first, with its own assessment. Counted as an
+  alternative, its call is ranked against the proposal's and a worse one
+  shrinks to a bare count - the one piece of work that answers the
+  proposal's Why Not, gone from view. The case that taught it:
+
+  ```
+  ❌ ❓ **Q6** **Never file a step with zero on one side**: add this guard?
+       - **1 Lesser proposal**      (it was "also make the split never
+                                     give a cell one side alone")
+  ✅ ❓ **Q6** **Never file a step with zero on one side**: add this guard?
+
+     ❓ **Q7** **Make the split never give a cell one side alone**: add
+     it too?
+       - **Call:** ⚖️ Close call
+  ```
 - **Beside Equivalents written out, one sentence above the question says
   why the proposal comes first**, where the lean of a ⚖️ Close call goes:
   when two carry the same call, the order is the real choice.

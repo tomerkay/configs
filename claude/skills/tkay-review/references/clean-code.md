@@ -877,8 +877,8 @@ caller.
   leaves the bug, and brings the nesting above with it. Make the state
   converge instead: an idempotent write, a reconcile loop that reads the
   truth and repairs the copy, a reader that takes a stale value as a retry.
-  The race then costs one repair and never a hang. "A heal converges on
-  every path" below says what counts as one.
+  The race then costs one repair and never a hang. "Every copy heals"
+  below says what counts as one.
 - **Row locks in a database fall outside this section: the database finds
   the deadlock.** It aborts one side with an error instead of hanging, so
   the silent hang this section guards against never happens. One atomic
@@ -906,12 +906,14 @@ async with self._lock:
 
 ---
 
-# A heal converges on every path
+# Every copy heals
 
-**When I ask for a heal, I mean a flow that ends in the correct state
-whatever path it takes - any interleaving of the actors, any crash between
-two steps, any message lost or repeated - never a change that only makes
-the bad path rarer.** Kubernetes controllers are the model: they are
+**Whatever the code keeps in step with something else - a cache, a status
+field, a count, a record in a second store - converges on the truth by
+itself, whatever path it takes: any interleaving of the actors, any crash
+between two steps, any message lost or repeated.** That is a heal, whether
+or not anyone asked for one, and a change that only makes the bad path
+rarer is not one. Kubernetes controllers are the model: they are
 [level-triggered](https://kubernetes.io/docs/concepts/architecture/controller/),
 comparing the desired state with the actual one on every pass instead of
 acting on the event that announced a change, so a missed or reordered event

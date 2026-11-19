@@ -3,12 +3,14 @@
 
 It owns the assessment blocks a CR call opens - a commit's, a bycatch's, a plan's
 call - and checks them for the frame `frame_checks.py` holds: a known call in its
-emoji-and-word shape, no Evidence on the call, no retired label, field or badge, no emoji
+emoji-and-word shape, no Evidence on the call, no retired field or badge, no emoji
 before Why Yes or Why Not. Every other block is the assessment hook of tkay-replies', so no
 block is checked twice.
 
-It also checks the commits table and the bycatch table: each opens with the header row the
-standard gives, and a bycatch row is numbered B<n> or is the Profile row under one.
+It also checks every table of a CR - Goals, Contract, Readiness, Incidents, Code quality,
+In short, Bycatch, the two of To do and Was it fixed: each opens with the header row the standard gives, and each row
+is numbered with its table's letters, or is the Profile row under one in the two tables that
+have one.
 
 A blocked reply is returned once: on the retry `stop_hook_active` is set and the hook stays
 quiet, so it can never hold the session in a loop. A failure exits 1, which Claude Code
@@ -29,23 +31,39 @@ SHAPE = ("the commit's assessment as list items: **Call:** with the call alone, 
          "standard's header row")
 
 # A heading of any level, so a CR split by repo, whose sections sit one level down, is held too.
-TABLE_HEADERS = {
-    "Commits": "| # | What the commit does | Findings | Call |",
-    "🎣 Bycatch": "| # | What the bycatch is | Findings | Call |",
+# Each table: its header row, the letters its rows are numbered with, and whether a row may
+# be the unnumbered Profile row under the one above it.
+TABLES = {
+    "Goals": ("| # | Goal | How we know | Work | Call |", "G", False),
+    "Contract": ("| # | The promise | How we know | Work | Call |", "A|IV", False),
+    "Readiness": ("| # | The claim | How we know | Work | Call |", "SE|HA|OP", False),
+    "Incidents": ("| # | Incident | The spec says | How we know | Work | Call |", "IN", False),
+    "Code quality": ("| # | Rule | How we know | Work | Call |", "CQ", False),
+    "In short": ("| # | What the commit does | Findings | Call |", "C", True),
+    "🎣 Bycatch": ("| # | What the bycatch is | Findings | Call |", "B", True),
+    "Before it merges": ("| # | What to do | Where | Who | Fix Profile |", "TD", False),
+    "Optional": ("| # | What to do | Where | Who | Fix Profile |", "TD", False),
+    "Was it fixed": ("| # | What was to do | Where | Now |", "TD", False),
 }
 HEADING_RE = re.compile(r"^#{1,4} (.+?)\s*$")
-BYCATCH_ROW_RE = re.compile(r"^\|\s*(\*\*B\d+\*\*)?\s*\|")
 SEPARATOR_RE = re.compile(r"^\|[\s|:-]+\|$")
 
 
+def row_re(letters, profile_rows):
+    """A row numbered with one of the letters, or - where allowed - the Profile row under it."""
+    number = rf"\*\*({letters})\d+\*\*"
+    return re.compile(rf"^\|\s*({number})?\s*\|" if profile_rows else rf"^\|\s*{number}\s*\|")
+
+
 def table_problems(lines):
-    """Each commits or bycatch table whose header or row numbers depart from the standard."""
+    """Each CR table whose header or row numbers depart from the standard."""
     found = []
     for i, line in enumerate(lines):
         heading = HEADING_RE.match(line)
-        if not heading or heading.group(1) not in TABLE_HEADERS:
+        if not heading or heading.group(1) not in TABLES:
             continue
-        name, want = heading.group(1), TABLE_HEADERS[heading.group(1)]
+        name = heading.group(1)
+        want, letters, profile_rows = TABLES[name]
         rows = []
         for row in (row.strip() for row in lines[i + 1:]):
             if not row and not rows:
@@ -57,9 +75,9 @@ def table_problems(lines):
             continue
         if rows[0] != want:
             found.append(f"the table under '{name}' opens with `{rows[0]}`, not `{want}`")
-        if name == "🎣 Bycatch":
-            found += [f"a bycatch row is not numbered **B<n>**: `{row}`" for row in rows[1:]
-                      if not SEPARATOR_RE.match(row) and not BYCATCH_ROW_RE.match(row)]
+        numbered = row_re(letters, profile_rows)
+        found += [f"a row under '{name}' is not numbered **{letters.replace('|', '<n>** or **')}<n>**: `{row}`"
+                  for row in rows[1:] if not SEPARATOR_RE.match(row) and not numbered.match(row)]
     return found
 
 
@@ -76,7 +94,7 @@ def selftest():
     commit = ("- **Call:** ✅ Ship it\n"
               "- **Commit:** **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy\n")
     commits_table = ("| # | What the commit does | Findings | Call |\n|---|---|---|---|\n"
-                     "| **1** | adds a check | ✨ Gucci | ✅ Ship it |\n"
+                     "| **C1** | adds a check | ✨ Gucci | ✅ Ship it |\n"
                      "| | **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy | | |\n")
     bycatch_table = ("| # | What the bycatch is | Findings | Call |\n|---|---|---|---|\n"
                      "| **B1** | a stale doc (`README.md`) | 🟡 1 | ⏸ Leave for now (scope) |\n"
@@ -90,8 +108,6 @@ def selftest():
          commit.replace("✅ Ship it", "✅ Ship it · **Evidence:** CONFIDENT"), True),
         ("the retired How sure field on a commit",
          commit.replace("**Evidence:**", "**How sure:**"), True),
-        ("the retired Verdict label on a commit", commit.replace("**Call:**", "**Verdict:**"),
-         True),
         ("a CR's Close call with an Evidence",
          commit.replace("✅ Ship it", "⚖️ Close call · **Evidence:** LIKELY"), True),
         ("a commit call with a reason and the badge",
@@ -101,8 +117,13 @@ def selftest():
          True),
         ("an Evidence on the branch call that waits for tests",
          commit.replace("✅ Ship it", "🧪 Merge after tests (1) · **Evidence:** LIKELY"), True),
-        ("an Evidence on the branch call that waits for the plan",
-         commit.replace("✅ Ship it", "⏳ Finish the plan first (G3) · **Evidence:** LIKELY"),
+        ("an Evidence on the branch call that waits for the work",
+         commit.replace("✅ Ship it", "⏳ Finish the work first (G3) · **Evidence:** LIKELY"),
+         True),
+        ("a commit that waits on my call",
+         commit.replace("✅ Ship it", "🙋 Needs your call (required or defaulted)"), False),
+        ("an Evidence on the branch call that waits on my call",
+         commit.replace("✅ Ship it", "🙋 Merge after your call (TD1) · **Evidence:** LIKELY"),
          True),
         ("bycatch calls",
          "- **Call:** 🗑 Drop\n- **Call:** 🗑️ Drop\n"
@@ -115,9 +136,40 @@ def selftest():
          commit.replace("✅ Ship it", "✅ Build it · **Evidence:** CONFIDENT"), True),
         ("a change's block is tkay-replies'", change, False),
         ("plain text", "no assessment here\n", False),
-        ("the commits table in shape", f"# Commits\n\n{commits_table}", False),
-        ("the commits table with made-up columns",
-         "# Commits\n\n| # | Commit | Notes |\n|---|---|---|\n| **1** | x | y |\n", True),
+        ("the In short table in shape", f"# Commits\n\n## In short\n\n{commits_table}", False),
+        ("the In short table with made-up columns",
+         "## In short\n\n| # | Commit | Notes |\n|---|---|---|\n| **C1** | x | y |\n", True),
+        ("an In short row numbered without its C",
+         f"## In short\n\n{commits_table}| **2** | a fix | ✨ Gucci | ✅ Ship it |\n", True),
+        ("the goals table in shape",
+         "# Goals\n\n| # | Goal | How we know | Work | Call |\n|---|---|---|---|---|\n"
+         "| **G1** | users see no error | the retry test | **C2** | ✅ Met |\n", False),
+        ("a contract table with an API and an invariant row",
+         "# Contract\n\n| # | The promise | How we know | Work | Call |\n|---|---|---|---|---|\n"
+         "| **A1** | a header | read | **C3** | ✅ Additive |\n"
+         "| **IV1** | one retry | the test | **C2** | ✅ Met |\n", False),
+        ("a goals row with another table's letter",
+         "# Goals\n\n| # | Goal | How we know | Work | Call |\n|---|---|---|---|---|\n"
+         "| **A1** | users see no error | the retry test | **C2** | ✅ Met |\n", True),
+        ("a goals row with no number, which only a two-row table allows",
+         "# Goals\n\n| # | Goal | How we know | Work | Call |\n|---|---|---|---|---|\n"
+         "| | users see no error | the retry test | **C2** | ✅ Met |\n", True),
+        ("the To do tables in shape",
+         "# To do\n\n## Before it merges\n\n| # | What to do | Where | Who | Fix Profile |\n"
+         "|---|---|---|---|---|\n| **TD1** | stop retries | **C3**'s 🔴 | 🔧 Fix | x |\n\n"
+         "## Optional\n\nNothing optional.\n", False),
+        ("a To do table that still has a Blocks column",
+         "## Before it merges\n\n| # | What to do | Where | Who | Blocks | Fix Profile |\n"
+         "|---|---|---|---|---|---|\n| **TD1** | stop retries | **C3**'s 🔴 | 🔧 Fix | yes | x |\n",
+         True),
+        ("the Was it fixed table in shape",
+         "# Was it fixed\n\n| # | What was to do | Where | Now |\n|---|---|---|---|\n"
+         "| **TD1** | stop retries | **C3**'s 🔴 | ✅ Done (**C6**) |\n", False),
+        ("a Was it fixed table with a made-up column",
+         "# Was it fixed\n\n| # | What was to do | Status |\n|---|---|---|\n"
+         "| **TD1** | stop retries | done |\n", True),
+        ("an empty section's line is no table", "# Incidents\n\nThe spec states no incidents.\n",
+         False),
         ("the bycatch table in shape", f"# 🎣 Bycatch\n\n{bycatch_table}", False),
         ("a CR split by repo keeps the tables a level down",
          f"## 🎣 Bycatch\n\n{bycatch_table}", False),

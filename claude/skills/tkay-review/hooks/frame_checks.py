@@ -18,24 +18,22 @@ CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Stro
 CR_CALL = (r"(✅ Ship it|👌 Fixed later|🔧 Needs change|🪓 Split|📝 Reword|🔀 Squash into"
            r"|🗑️? Drop|✅ Merge it|🔧 Merge after fixes|✂️? Split first|⚖️? Close call|❌ Don't merge"
            r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|⏸️? Leave for now"
-           r"|🧪 Needs test|🧪 Merge after tests|⏳ Finish the plan first"
+           r"|🧪 Needs test|🧪 Merge after tests|⏳ Finish the work first"
+           r"|🙋 Needs your call|🙋 Merge after your call"
            r"|✅ Build it|🔧 Build after fixes|🧪 Build after a spike|❌ Back to design)")
-# The retired Verdict label opens a block too, so whoever owns its call sends the label back.
-CALL_LINE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* ")
-CHANGE_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* {CHANGE_CALL}")
+CALL_LINE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*Call:\*\* ")
+CHANGE_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*Call:\*\* {CHANGE_CALL}")
 # A CR's ⚖️ Close call shares its words with a change's; `owned_by_cr` tells them apart by the
 # Profile under it.
-CR_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* {CR_CALL}")
+CR_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*Call:\*\* {CR_CALL}")
 CR_PROFILE_RE = re.compile(r"^\s*- \*\*(Commit|Bycatch|Fix [🔴🟠🟡⚪]+|Test 🧪):\*\*")
 # A call is an emoji, then a word that opens with a capital and goes on in lower case, so
 # "DO IT" or a bare "Do it" fails.
-CALL_SHAPE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* [^\w\s*]+ [A-Z][a-z']")
+CALL_SHAPE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*Call:\*\* [^\w\s*]+ [A-Z][a-z']")
 EVIDENCE_RE = re.compile(r" · \*\*Evidence:\*\* ")
-RETIRED_CALL_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* 💯 No brainer")
+RETIRED_CALL_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*Call:\*\* 💯 No brainer")
 RETIRED_FIELD = "**How sure:**"
-RETIRED_LABEL = "**Verdict:**"
 RETIRED_BADGE = "(💯 No brainer)"
-OLD_HEADER_RE = re.compile(r"^(Q\d+\. )?VERDICT: ")
 OLD_WHY_RE = re.compile(r"^\s*- \S+ \*\*Why (Yes|Not)\?\*\*")
 
 
@@ -60,7 +58,7 @@ def split(lines):
     return lines[:starts[0]], blocks
 
 
-CLOSE_CALL_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* ⚖️? Close call")
+CLOSE_CALL_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*Call:\*\* ⚖️? Close call")
 
 
 def owned_by_cr(block):
@@ -79,9 +77,6 @@ def stray_problems(lines):
             found.append(f"{head}... carries the retired How sure field; it is Evidence")
         if RETIRED_BADGE in line:
             found.append(f"{head}... carries the retired 💯 badge; it is 🍰")
-        if OLD_HEADER_RE.match(line):
-            found.append(f"{line[:60]}... is the old VERDICT: header; the call goes on a "
-                         "**Call:** list item")
         if OLD_WHY_RE.match(line):
             found.append(f"{head}... carries an emoji before Why Yes or Why Not")
     return found
@@ -92,8 +87,6 @@ def frame_problems(block):
     call = block[0]
     head = call.strip()[:60]
     found = []
-    if RETIRED_LABEL in call:
-        found.append(f"{head}... carries the retired Verdict label; it is Call")
     if RETIRED_CALL_RE.match(call):
         found.append(f"{head}... is the retired 💯 No brainer call; it is a (🍰 No brainer) "
                      "badge on a call")
@@ -101,7 +94,8 @@ def frame_problems(block):
         found.append(f"{head}... carries no call, or one not in its emoji-and-word shape")
     if EVIDENCE_RE.search(call):
         found.append(f"{head}... carries an Evidence; a call takes none")
-    return found + stray_problems(block) + padded_why_not(block)
+    return (found + stray_problems(block) + padded_why_not(block) + unchecked_why_not(block)
+            + additions(block))
 
 
 # A Why Not point that is the change taking effect, or its size - the first two of the four
@@ -136,6 +130,37 @@ def padded_why_not(block):
             for point in why_not_points(block) if PADDED_WHY_NOT_RE.search(point)]
 
 
+# A Why Not point that admits it was never checked. "none (checked: ...)" is the proof of an
+# empty list, so "checked" alone is not the mark: the negation is.
+UNCHECKED_RE = re.compile(
+    r"\b(have ?n[o']t|did ?n[o']t|could ?n[o']t|not yet) (checked|verified|tested|traced)\b",
+    re.IGNORECASE)
+
+
+def unchecked_why_not(block):
+    return [f"{point.strip()[:60]}... is a Why Not point that says it was not checked; check "
+            "it before the assessment, or say what checking it costs"
+            for point in why_not_points(block) if UNCHECKED_RE.search(point)]
+
+
+# An alternative that opens with "Also" adds to the proposal, where an alternative replaces it.
+ADDITION_RE = re.compile(r"^\s*- \*\*\d+\. (Also|Additionally|In addition|Plus)\b", re.IGNORECASE)
+
+
+def additions(block):
+    return [f"{line.strip()[:60]}... is work done as well as the proposal, not another way to "
+            "do it; it is a proposal of its own, on a ❓ line of its own"
+            for line in block if ADDITION_RE.match(line)]
+
+
+# What a session sends after a reply is sent back: the changed lines alone. The reply it
+# corrects is already on my screen, so printing its block again shows me the same paragraph
+# twice.
+CORRECTION = ("Reply with the correction alone: one line saying what was wrong, then only the "
+              "lines that change, each under the Q number, row or heading it belongs to. Do not "
+              "print the block or the table again: the rest of the reply stands as it was read.")
+
+
 def run(problems, standard, shape):
     """The Stop hook around `problems(text)`: quiet on the retry, sends a reply back once."""
     payload = json.load(sys.stdin)
@@ -147,7 +172,7 @@ def run(problems, standard, shape):
     found = problems(message)
     if found:
         reason = (f"The reply breaks {standard}: " + "; ".join(found)
-                  + f". Resend only what is wrong, with {shape}.")
+                  + ". " + CORRECTION + f" A corrected line reads as {shape}.")
         print(json.dumps({"decision": "block", "reason": reason}))
 
 

@@ -1,6 +1,6 @@
 ---
 name: tkay-review
-description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Summary, or a plan review of a full plan - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
+description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the CR's sections from the overview to the To do list, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Summary or a CR Brief, or a plan review of a full plan - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
 hooks:
   Stop:
     - hooks:
@@ -12,8 +12,9 @@ hooks:
 
 **Read `references/code-review.md` before writing a single finding.** It is
 the whole standard: what a finding is, how bad each one is, what blocks the
-merge, the shape of a commit's review, the branch overview, the commits table,
-the bycatch table, and what a CR on an MR link may and may not do.
+merge, the CR's sections from the overview to the To do list, the shape of
+a commit's review, the three views of a CR, and what a CR on an MR link may
+and may not do.
 
 **A plan review reads `references/plan-review.md` as well**, before its first
 finding: it says what changes when the thing judged is a plan, not a branch.
@@ -36,8 +37,11 @@ the first finding of a plan review. **Never answer from memory of a
 reference you have not read this session.**
 
 The hook in this skill's frontmatter checks the shape of every assessment
-the CR carries once the skill is loaded, and sends a reply back once when
-one breaks it.
+and table the CR carries once the skill is loaded, and sends a reply back
+once when one breaks it. **A CR sent back is corrected, never repeated**:
+the next reply is one line saying what was wrong and only the lines or
+rows that change, each under the heading or the row number it belongs to,
+and the CR's file gets the same fix.
 
 ## Code and a CR stay in separate sessions
 
@@ -113,12 +117,15 @@ above comes first. A plan review edits no plan, on the same terms.
 a scratch directory that outlives the session, never in the repo under
 review. The file is `cr-<n>.md`, the next free number in that directory,
 so no CR overwrites another: the review after a round of fixes is a new
-CR and a new file, and so is a CR Summary. A CR over several repos is one
-file per repo. Each CR in chat ends, under its bycatch table, with one
-line that names its file by its full path:
+CR and a new file, and so is a CR Summary or a CR Brief. A CR over
+several repos is one file per repo. Each CR in chat ends, under its To
+do, with one line that names its file by its full path, and then its
+branch call again:
 
 ```
 **CR file:** <full path>
+
+**Branch call:** <the branch's call>
 ```
 
 A plan review is a file the same way, named `plan-review-<n>.md`, and its

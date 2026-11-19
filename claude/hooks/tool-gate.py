@@ -1129,7 +1129,20 @@ def go_may_rewrite_module(args):
         re.fullmatch(r"--?mod", a) and nxt == "mod" for a, nxt in zip(args, args[1:]))
 
 
+def go_without_dir(args):
+    """The go arguments with a leading -C <dir> taken off, so the first positional left is the
+    subcommand. Go takes -C only as the first flag
+    (https://pkg.go.dev/cmd/go#hdr-Build__test__and_run), in -C dir or -C=dir form, and --C
+    for -C."""
+    if args and re.fullmatch(r"--?C", args[0]):
+        return args[2:]
+    if args and re.match(r"--?C=", args[0]):
+        return args[1:]
+    return args
+
+
 def classify_go(args):
+    args = go_without_dir(args)
     pos = positionals(args)
     if not pos:
         return READ
@@ -2285,7 +2298,9 @@ def runs_opaque_code(words):
         return True
     if prog == "uv":
         return pos[:1] == ["run"]
-    if prog in ("go", "cargo"):
+    if prog == "go":
+        return positionals(go_without_dir(args))[:1] == ["run"]
+    if prog == "cargo":
         return pos[:1] == ["run"]
     if prog in CONTAINER_ENGINES:
         return pos[:1] == ["run"] or pos[:2] == ["container", "run"]
@@ -2367,7 +2382,9 @@ def test_run_of(prog, args):
         return test_run_of(program_of(tail), tail[1:]) if tail else None
     if PYTHON_RE.fullmatch(prog) and args[:2] == ["-m", "pytest"]:
         return "pytest", args[2:]
-    if prog == "pytest" or (prog in ("go", "cargo") and pos[:1] == ["test"]):
+    if prog == "go" and positionals(go_without_dir(args))[:1] == ["test"]:
+        return prog, args
+    if prog == "pytest" or (prog == "cargo" and pos[:1] == ["test"]):
         return prog, args
     return None
 
@@ -3678,6 +3695,15 @@ def selftest():
         (False, "Bash", "uv run pytest tests/test_x.py", None),
         (False, "Bash", f"cd {scratch}d && go test -mod=mod ./pkg/foo", None),
         (False, "Bash", "go test ./pkg/foo -update", DENY),
+        # -C names the module's directory; the subcommand after it decides the rating.
+        (False, "Bash", f"go -C {rx} test ./pkg/foo", None),
+        (False, "Bash", f"go -C={rx} test ./pkg/foo", None),
+        (False, "Bash", f"go --C {rx} vet ./...", None),
+        (False, "Bash", f"go -C {rx} build ./...", None),
+        (False, "Bash", f"go -C {rx} build -o bin/x ./cmd/x", DENY),
+        (False, "Bash", f"go -C {rx} mod tidy", DENY),
+        (False, "Bash", f"go -C {rx} test -update ./pkg/foo", DENY),
+        (False, "Bash", f"caffeinate -i go -C {rx} test ./pkg/foo > {home}/.cache/claude-handoff/s/t.log 2>&1", None),
         (True, "Bash", "go test ./pkg/foo -update", None),
         (False, "Bash", "pytest tests/test_x.py --snapshot-update", DENY),
         (False, "Bash", "python3 -m pytest tests/test_x.py --snapshot-update", DENY),

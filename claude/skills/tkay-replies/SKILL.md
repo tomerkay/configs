@@ -35,5 +35,21 @@ The hooks in this skill's frontmatter check every reply's ❓ lines and
 assessments once the skill is loaded, and send a reply back once when one
 breaks its shape.
 
+**A reply sent back is corrected, never repeated.** A hook runs when the
+reply ends, so the reply it objects to is already on my screen. The next
+reply is the correction alone: one line saying what was wrong, then only
+the lines that change, each under the `Q<n>`, the row or the heading it
+belongs to. The block or the table is not printed again, and the rest of
+the first reply stands as I read it. The case that taught it, a Why Not
+point a hook sent back:
+
+```
+❌ ❓ **Q53** <the whole proposal again, with its Call, Change, Why Yes
+   and the one corrected Why Not>
+✅ Correction to **Q53**: its Why Not point was the change taking effect.
+   - **Why Not?**
+     - a cheap fix made at night can bring a bug of its own
+```
+
 These shapes are for replies in chat only - never a commit message, a chat
 post or a file, whose own conventions hold.

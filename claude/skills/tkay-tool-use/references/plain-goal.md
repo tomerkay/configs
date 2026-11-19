@@ -3,7 +3,8 @@
 **When I ask for a goal that builds something and name no plan file -
 "give me a goal for <what to build>" - build it as `unattended-run.md`
 says, with this file as the work's part.** A request that names a plan file
-is not this file's.
+is not this file's. A goal is nightly only when I ask for a nightly goal;
+any other is a regular one.
 
 ## Before the goal is written
 
@@ -20,9 +21,10 @@ answer goes into the goal as a "settled: <decision>" clause.
   the one-thing test of the code skill's commit standard, a refactor before
   the behaviour it makes easy.
 - **A gap that changes what a user or a caller observes, and that neither
-  the request nor a settled clause decides, stops the work that needs it**:
-  write it in the report with its scenario, options and recommendation, and
-  carry on with the work that does not need it.
+  the request nor a settled clause decides, is a 🙋 Your call**: write it
+  in the report with its scenario, options and recommendation. A regular
+  goal asks me and waits; a nightly goal takes it as `unattended-run.md`
+  says a nightly goal takes a 🙋.
 - **Every other gap is decided as the code around it would decide it.** The
   list of decisions made without asking is a "Decided while running"
   section of the report.

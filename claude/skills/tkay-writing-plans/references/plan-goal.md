@@ -2,8 +2,11 @@
 
 **When I ask for a goal on a plan file - "give me a goal on <plan>.md" -
 build it as `unattended-run.md` says, with this file as the work's part.**
-"Executing a plan" in `SKILL.md` holds for the run exactly as it holds by
-day.
+A goal is nightly only when I ask for a nightly goal; any other is a
+regular one. "Executing a plan" in `SKILL.md` holds for a regular goal
+exactly as it holds by day, its stop included: a hole stops the run and
+is asked. In a nightly goal it holds but for that stop: nobody is there
+to answer it.
 
 ## Before the goal is written
 
@@ -21,11 +24,14 @@ day.
   its work split in two - each a new commit on top, never a rebase, squash
   or reorder of what is already committed; each is recorded in the plan's
   commit sections and in "Decided while executing".
-- **Follow "Executing a plan": the first hole ends the section work.** Write
-  it into the plan with its scenario, options and recommendation, and
-  implement no section after it, so the branch stays a prefix of the plan in
-  which every commit is correct on its own. The CR-and-suites cycles still
-  run on what landed.
+- **A hole "Executing a plan" would stop for is a 🙋 Your call.** Write it
+  into the plan with its scenario, options and recommendation. A regular
+  goal asks me and waits. A nightly goal takes it as `unattended-run.md`
+  says a nightly goal takes a 🙋: the sections that do not
+  depend on it are built first, then the recommended option and every
+  section resting on it, as one range of commits at the top, each named in
+  "Decided while executing". Only a choice no revert can undo stops the
+  sections that need it.
 - **The list of decisions made without asking is the plan's "Decided while
   executing"**, and every CR subagent also gets the plan, to check each
   decision against the architecture it follows.

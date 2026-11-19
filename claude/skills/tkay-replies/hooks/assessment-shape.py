@@ -194,7 +194,6 @@ def selftest():
         ("retired 💯 badge",
          full.replace("✅ Do it", "💪✅ Strongly do it (💯 No brainer)"), True),
         ("retired No brainer call", full.replace("✅ Do it", "💯 No brainer"), True),
-        ("retired Verdict label on a change", full.replace("**Call:**", "**Verdict:**"), True),
         ("retired How sure field", full.replace("**Evidence:**", "**How sure:**"), True),
         ("old one-line shape, no Change line",
          "- **Call:** ✅ Do it · **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** "
@@ -202,7 +201,6 @@ def selftest():
         ("call with no emoji", full.replace("✅ Do it", "Do it"), True),
         ("old uppercase call", full.replace("✅ Do it", "✅ DO IT"), True),
         ("an unknown call", full.replace("✅ Do it", "✅ Approve it"), True),
-        ("old VERDICT header", "VERDICT: ✅ DO IT\n", True),
         ("emoji before Why Yes", full.replace("- **Why Yes?**", "- 👍 **Why Yes?**"), True),
         ("a CR's block is tkay-review's", commit.replace("✅ Ship it",
                                                        "✅ Ship it · **Evidence:** CONFIDENT"),
@@ -212,7 +210,7 @@ def selftest():
         ("a CR's Needs test block is tkay-review's",
          commit.replace("✅ Ship it", "🧪 Needs test (accepted untested) (🙌 Stops harm)"), False),
         ("broken shape inside a code fence is an example",
-         "```\nVERDICT: ✅ DO IT\n- **Call:** ✅ Do it · **Evidence:** LIKELY\n```\n", False),
+         "```\n- **Call:** ✅ Do it · **Evidence:** LIKELY\n```\n", False),
         ("plain text", "no assessment here\n", False),
         ("second of two assessments incomplete",
          full + "- **Call:** ❌ Don't\n- **Change:** **Evidence:** LIKELY\n", True),
@@ -236,6 +234,20 @@ def selftest():
          "    - **Gains:**\n      - atomic by construction, the way the autoscaler works\n"
          "    - **Losses:**\n      - a rewrite of the step for a gap it cannot hit\n", True),
         ("a Better proposal with the same call", full + alternative("Better", "✅ Do it"), True),
+        # The case that taught both: a guard proposed with a Why Not its author had not
+        # checked, and the work that would settle it written as a "Better proposal".
+        ("a Why Not point that says it was not checked",
+         full.replace("  - b", "  - the split may give a cell one side only; I haven't checked "
+                               "whether it can"), True),
+        ("a Why Not point proved by what was checked",
+         full.replace("  - b", "  - none (checked: every caller of the split)"), False),
+        ("an alternative that is an addition to the proposal",
+         full + "- **1 Better proposal:**\n"
+         "  - **1. Also make the split never give a cell one side alone**\n"
+         "    - **Call:** 💪✅ Strongly do it\n"
+         "    - **Change:** **Evidence:** LIKELY · **Size:** medium · **Difficulty:** hard\n"
+         "    - **Gains:**\n      - removes the permanent wait\n"
+         "    - **Losses:**\n      - changes how replicas are placed\n", True),
         ("leaving it as is, the Better proposal under a Don't",
          full.replace("✅ Do it", "❌ Don't")
          + "- **1 Better proposal:**\n  - **1. Leave everything as is**\n"

@@ -375,7 +375,7 @@ action of that kind.**
 | When I ask for, or you are about to do | Invoke |
 |---|---|
 | the first reply of every session, whatever it is about - its hooks check every reply from then on | `tkay-replies` |
-| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary - and only when I ask for one in those words | `tkay-review` |
+| a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary or a CR Brief - and only when I ask for one in those words | `tkay-review` |
 | a plan review of a full plan - only when I ask for one in those words | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-mr` |
@@ -385,8 +385,8 @@ action of that kind.**
 | take screenshots of UI work - the first one of them | `tkay-mr` |
 | create or edit any `CLAUDE.md` - this global one included - a README, a design doc or a `SKILL.md`, including one you touch on the way through a code change | `tkay-writing-mds` |
 | a plan - brainstormed by default, a shape plan or a full plan only when I say SHAPE PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
-| a goal on a plan file - "give me a goal on <path>.md" | `tkay-writing-plans` |
-| a goal that builds something unattended and names no plan file - "give me a goal for <what to build>" | `tkay-tool-use` |
+| a goal on a plan file - "give me a goal on <path>.md", nightly only when I say "nightly goal" | `tkay-writing-plans` |
+| a goal that builds something and names no plan file - "give me a goal for <what to build>", nightly only when I say "nightly goal" | `tkay-tool-use` |
 | `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
 | take down / drain / remove everything I own in a namespace | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
 | create a cell, or move a node into or out of one | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |

@@ -7,13 +7,28 @@ named and visible, the new bug is neither.
 
 ## What gets fixed
 
-- **What the review says blocks the merge, and the cheap rest**, unless I
-  name a narrower set: every NICE TO HAVE finding whose fix the review
-  rates super easy, or small and easy; every bycatch row whose call is
-  🔧 Add fix; and every ⏸ Leave for now bycatch row whose fix is rated
-  super easy, or small and easy. Anything else optional is left
-  unfixed, listed, and fixed only when I ask for it: every extra fix is
-  one more chance at a new bug. A bycatch fix is a commit of its own.
+- **A review with a To do list is worked from it, top to bottom**, and
+  nothing beyond it, each row as its Who says: a 🔧 Fix row is fixed, as
+  the finding it points to writes the fix out, or written as the new
+  commit it names; a 🧪 Run row is run and its result reported; a 🙋 Your
+  call row - a decision, a large run, a run that needs what only I have -
+  is asked as a question, with the review's options and its
+  recommendation, and waits for my answer - never picked for me. The list
+  already holds the set the next bullet gives, with what is not built yet
+  and the runs.
+- **Any other review - an MR's threads, a bot's summary - is fixed for
+  what it says blocks the merge, and the cheap rest**, unless I name a
+  narrower set: every NICE TO HAVE finding whose fix is cheap; every
+  bycatch row whose call is 🔧 Add fix, fixed when its fix is at least
+  LIKELY, easy or super easy and medium or smaller, and otherwise asked as
+  "fix it now or leave it?" - a large or hard one is always mine; and
+  every ⏸ Leave for now bycatch row whose fix is cheap. **A fix is cheap
+  when the review rates it super easy, or small and easy, with Evidence at
+  least CONFIDENT**: a NICE TO HAVE or ⏸ Leave for now fix the review only
+  believes would work is not made untried, and not asked about either.
+  Anything else optional is left unfixed, listed, and fixed only when I
+  ask for it: every extra fix is one more chance at a new bug. A bycatch
+  fix is a commit of its own.
 - **Each finding is checked before it is fixed.** One the code shows is
   wrong, or whose fix would not close it, is left unfixed and named, with
   why.

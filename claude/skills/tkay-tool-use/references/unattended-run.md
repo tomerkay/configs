@@ -1,12 +1,43 @@
-# An unattended run
+# A goal run, nightly or regular
 
-**A goal that builds something with nobody there to answer has two parts:
-the work it does, and how it runs.** The goal for the work - a plan's
-sections, or a request - names the work, checks it while I am awake, and
-says what stops it. This file is how such a run usually goes, whatever the
-work - a recommendation, not a form: each goal is built for its work, a
-part that does not apply is dropped, and a risk the work carries gets a
-part of its own.
+**A goal that builds something has two parts: the work it does, and how
+it runs.** The goal for the work - a plan's sections, or a request - names
+the work, checks it while I am awake, and says what stops it. This file is
+how such a run usually goes, whatever the work - a recommendation, not a
+form: each goal is built for its work, a part that does not apply is
+dropped, and a risk the work carries gets a part of its own.
+
+## A nightly goal and a regular goal
+
+**A goal is nightly only when I ask for one in that word** - "a nightly
+goal on <plan>", "a nightly goal for <what>". Every other goal is a
+regular one, and I never have to say so.
+
+- **A nightly goal runs with nobody there to answer.** It is built to
+  never prompt and never stop: it takes every choice it can undo, and
+  waits only on what it cannot take or cannot undo, as "What the run
+  does" says.
+- **A regular goal is live work that keeps going.** The work, the CR
+  cycles, the suites and the report are the same, but I am there: every
+  point where a nightly goal would decide for me is a question to me,
+  asked as any live work asks it, and the run waits for the answer - a
+  🙋 Your call, a hole in the plan, a gap a request leaves, a large test
+  run, a command that needs a prompt.
+
+**The goal says which it is, in its first line, loud and plain**, at the
+top of its file above everything else, and as the first line of the reply
+that hands it over:
+
+```
+**This is a nightly goal: it is built to run with no prompt, and it
+decides for itself whatever it can undo.**
+```
+
+```
+**This is a regular goal: it asks me whenever it needs me.**
+```
+
+The same line opens the goal's own text, so the run reads it first.
 
 ## Before the goal is handed over
 
@@ -24,9 +55,9 @@ part of its own.
    step that runs its tests read, or the suite started and its first
    lines checked. A claim about where a script runs its tests is never
    written into the goal unchecked.
-2. **Every step that would stop for a permission prompt** - a command a
-   permission rule or a hook asks about, a write the sandbox denies, a step
-   only I can take. Each is reshaped so it does not ask, or, when it is the
+2. **For a nightly goal, every step that would stop for a permission
+   prompt** - a command a permission rule or a hook asks about, a write
+   the sandbox denies, a step only I can take. Each is reshaped so it does not ask, or, when it is the
    last step, the goal ends with "or stop when only <the step> is left".
    A command the work is likely to improvise that `unwatched-goal.md`
    gives no route for gets its own route written into the goal.
@@ -48,7 +79,7 @@ part of its own.
    it must act on, and the stop condition against what each phase is
    for. What it finds is fixed in the goal, or put to me.
 
-**The goal is written only once nothing is left that would stop it
+**A nightly goal is written only once nothing is left that would stop it
 reaching its end without me.** Before writing it, look for every such
 stop - a step only I can take, a command that would prompt, a hole in the
 plan or the request that would stop the run or send it the wrong way -
@@ -105,8 +136,8 @@ is one it cannot judge. The line stays under the harness's cap on a
   file the work deletes goes through `git rm`, never a plain `rm`; a fix to
   an earlier commit is an amend of HEAD or a new commit on top. Never push
   and never open an MR.
-- **No command stops on a prompt**: the goal writes out
-  `unwatched-goal.md`, with any route step 2 added.
+- **In a nightly goal, no command stops on a prompt**: the goal writes
+  out `unwatched-goal.md`, with any route step 2 added.
 - **Every decision made without asking goes in one list**, with the commit
   that carries it. The work's goal file says where the list lives.
 - **Every CR is a fresh subagent spawned for that CR alone.** It invokes the
@@ -121,15 +152,28 @@ is one it cannot judge. The line stays under the harness's cap on a
   CR in the cycle is also handed the cycle's previous CR file and told to
   start from it as the review skill's repeat CR says, and when HEAD is
   still the tip that file judged and nothing handed to it changed, no
-  subagent is spawned. The session fixes what the code skill's rules for
-  fixing a review say to fix - the blockers and the cheap rest - each in
-  a dedicated commit, and writes in the report any fix those rules say
-  to show and wait on. After each batch of fixes, a new subagent
+  subagent is spawned. The session works the CR's To do as the code
+  skill's rules for fixing a review say, each fix in a dedicated commit,
+  but for a 🙋 Your call row, which it takes as the next rule says. After
+  each batch of fixes, a new subagent
   reviews the branch at HEAD, until a CR leaves nothing to fix: each
   blocking finding fixed or waiting on me.
-- **A fix stops only for what needs me**: what the work's goal file stops
-  for, or a fix the code skill's rules say to show and wait on. It goes in
-  the report at once, with its scenario, options and recommendation. A
+- **A nightly goal never stops; it gets as close to the goal as it can.**
+  A regular goal asks me each of these and waits. In a nightly one, a
+  🙋 Your call - from a CR, a hole in the plan, a gap the request leaves,
+  a fix the code skill's rules say to show and wait on - that one revert
+  can undo is taken: the run first builds every piece of work that does
+  not depend on it, then the recommended option, in commits of its own,
+  and the work that rests on it, so the choice and everything resting on
+  it sit at the top of the branch as one range of commits. It goes in the
+  report's "Decided while running" with the other options and that range.
+  A choice no revert can undo - a data migration, a message sent, a
+  resource deleted, an API published to callers outside the repo - is
+  never taken: it waits on me, and the run builds everything that does not
+  depend on it.
+- **What the run cannot take waits on me, and the run carries on**: a
+  choice no revert undoes, a step only I can take. It goes in the report
+  at once, with its scenario, options and recommendation. A
   failure in code the branch's commits never touched is reported, never
   fixed: it goes in the report as likely there before the branch, waiting on
   me, with no attempt spent on it. A failure the run cannot trace to the
@@ -175,88 +219,62 @@ is one it cannot judge. The line stays under the harness's cap on a
   none exists waits on me, with the exact command for me to run, and the
   run moves on.
 - **A report in that scratch directory stays current, written for the
-  morning.** Top down, it answers whether the branch can merge, what
-  needs me, how the work went and what the run decided alone; the record
-  comes last, below a line. Above the line it is plain words a teammate
-  follows - no SHA, path, log line or clock time, a commit named by what
-  it does - two or three sentences an item at most, so it reads on one
-  screen. Nothing is dropped: every detail is in the record.
+  morning.** Its top is what only the run knows, in plain words a teammate
+  follows - no SHA or log line, two or three sentences an item at most;
+  then the paths of every file it made; then the final CR, in full, which
+  opens with the branch's overview and ends with its To do:
 
   ```
   # Goal run: <the plan file, or the request in a few words>
 
-  <the last CR's branch call> - <how far the work got, in one sentence>
+  <the final CR's branch call> - <how far the work got, in one sentence>
   <the branch> · <N> commits · ran <how long> · <how the run stopped>
 
   ## Needs you
-  N1. <what happened and why it needs me, in two sentences> (blocks G2)
+  N1. <what happened and why it needs me, in two sentences> (TD3)
       a) <an option> - <what it costs>
       b) <another option> - <what it costs>
       I'd pick <a or b>: <why>. Reply "N1 a" or "N1 b".
 
-  ## Goals
-  | #  | Goal                     | Status                                |
-  |----|--------------------------|---------------------------------------|
-  | G1 | <the goal, plain words>  | <its verdict> - <how it was shown>    |
-
   ## Decided while running - check these
-  D1. <the decision, and what it changes for a user or a caller>
+  D1. <the choice, the options it passed over, and the commits that rest on it>
 
-  ## What the branch does
-  - <one bullet per thing someone who never opens the diff gets>
+  ## Suites
+  - <each suite: passed on the branch, failed, or waiting - its log in Files>
 
-  ## Health
-  <blocking findings left> · <the final CR's call - in full under The final CR> · <the suites> · <runs a finding asks for> · <suites that passed only on a rerun>
+  ## Files
+  - <what it is>: <full path>
 
   ---
 
-  # Record
-  ## Work in detail
-  ## Decisions
-  ## CRs
-  ## Runs
-  ## Tidy
-  ## Timeline
-  ## The final CR
+  <the final CR, in full>
   ```
 
-  - **The two lines under the title answer "can I merge?"**: the last
+  - **The two lines under the title answer "can I merge?"**: the final
     CR's branch call, how far the work got, and whether the run stopped
     on its own or after its third cycle.
   - **Needs you** holds every item waiting on me, in the order to act,
     each numbered N<n> with its scenario, options and recommendation, and
-    ending with the reply that settles it; the fix attempts that did not
-    close it are in the record's Work in detail. When Tidy folds anything,
-    the last item is an optional one pointing at it. With nothing waiting,
-    it says so in one line.
-  - **Goals** - on a plan, one row per goal of the last CR's goals table:
-    its verdict and a few words on how it was shown. On a request, the
-    section is "The work": one row per piece, numbered W<n>, ✅ Done or
-    ⏳ Stopped with its reason.
-  - **Decided while running** holds every decision made without asking,
-    numbered D<n> so one can be undone by its number, each with what it
-    changes; on a plan, they are the plan's "Decided while executing",
-    in plain words.
-  - **What the branch does** is the last CR's overview summary.
-  - **The record** is where the SHAs, paths and times live:
-    1. **Work in detail**: each piece done or stopped with its reason,
-       its commits, and the tests it ran with their results, every fix
-       attempt included.
-    2. **Decisions**: each D<n> with the commit that carries it, or the
-       place the work's goal file keeps them.
-    3. **CRs**, one line each: its cycle, the CR file's path, its call,
-       and the blocking findings it found, fixed and left waiting on me.
-    4. **Runs**, one line each - every suite run and every run a finding
-       asks for: the commit it ran at, its result, how long it took and
-       its log's path.
-    5. **Tidy**: the one command that folds the failed attempts of each
-       closed item into the fix that closed it, naming the commits it
-       folds, for me to run - or a line saying there are none.
-    6. **Timeline**: when each cycle, phase and round started and ended.
-    7. **The final CR**, in full, as its file holds it: the run's last
-       CR comes after its last fix, so the copy is made once, when the
-       run stops, and the report answers why the branch is or is not
-       ready without a second file.
+    ending with the reply that settles it; one that is a row of the final
+    CR's To do names it. Last, when failed fix attempts can be folded
+    into the fixes that closed them, an optional item gives the one
+    command that folds them, naming the commits. With nothing waiting, it
+    says so in one line.
+  - **Decided while running** holds every choice the run made alone,
+    numbered D<n>: a 🙋 it took, with the options it passed over and the
+    range of commits that rests on it, and every gap decided as the code
+    around it would decide it, each with its commit. On a plan, they are
+    the plan's "Decided while executing", in plain words.
+  - **Suites** gives each suite's result on the branch: passed, failed, or
+    waiting on me, and a suite that passed only on a rerun says so.
+  - **Files** lists every file the run made or was given, each with what
+    it is and its full path: the goal file, the plan or the request, every
+    CR file by cycle and round, every suite's log by suite and cycle. Only
+    files that exist are listed.
+  - **The final CR**, in full, as its file holds it, below the line: the
+    run's last CR comes after its last fix, so it is copied once, when the
+    run stops, and the report answers why the branch is or is not ready
+    without a second file.
 - **It stops** when a cycle's suites phase made no commits, or when the
   third cycle and its final CR are done. Either way the report shows
   every piece of work done or stopped for a recorded reason, the last CR

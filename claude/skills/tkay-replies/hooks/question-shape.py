@@ -16,6 +16,10 @@ import json
 import re
 import sys
 
+# The shared module sits beside this script; no bytecode cache is left in the skill.
+sys.dont_write_bytecode = True
+import frame_checks as frame  # noqa: E402
+
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 # The number is bold by the rules, but a plain one must still be checked: matching only one
 # spelling leaves every ❓ in the other unchecked.
@@ -60,8 +64,8 @@ def main():
         return
     reason = ("The reply breaks the tkay-replies question shape, references/questions.md: "
               + "; ".join(found)
-              + ". Resend only what is wrong, with nothing on the ❓ line but the decision and "
-                "the question.")
+              + ". " + frame.CORRECTION + " A corrected ❓ line holds nothing but the "
+                "decision and the question.")
     print(json.dumps({"decision": "block", "reason": reason}))
 
 
