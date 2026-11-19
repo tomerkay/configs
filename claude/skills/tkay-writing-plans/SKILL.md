@@ -162,7 +162,7 @@ answer when the reader will ask why. The plan must describe the branch as it sta
 so the reviewer never meets a plan the code already contradicts.
 
 **When I ask for a goal on a plan file** - "give me a goal on <plan>.md", in
-whatever words - read `references/plan-goal.md` and `references/unattended-run.md`
+whatever words - read `references/plan-goal.md` and `references/goal-run.md`
 first and follow them.
 
 ## Committing a plan to a repo

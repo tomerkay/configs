@@ -1,4 +1,4 @@
-# A goal run, nightly or regular
+# A goal run, nightly or live
 
 **A goal that builds something has two parts: the work it does, and how
 it runs.** The goal for the work - a plan's sections, or a request - names
@@ -7,17 +7,17 @@ how such a run usually goes, whatever the work - a recommendation, not a
 form: each goal is built for its work, a part that does not apply is
 dropped, and a risk the work carries gets a part of its own.
 
-## A nightly goal and a regular goal
+## A nightly goal and a live goal
 
 **A goal is nightly only when I ask for one in that word** - "a nightly
 goal on <plan>", "a nightly goal for <what>". Every other goal is a
-regular one, and I never have to say so.
+live one, and I never have to say so.
 
 - **A nightly goal runs with nobody there to answer.** It is built to
   never prompt and never stop: it takes every choice it can undo, and
   waits only on what it cannot take or cannot undo, as "What the run
   does" says.
-- **A regular goal is live work that keeps going.** The work, the CR
+- **A live goal runs with me there.** The work, the CR
   cycles, the suites and the report are the same, but I am there: every
   point where a nightly goal would decide for me is a question to me,
   asked as any live work asks it, and the run waits for the answer - a
@@ -34,7 +34,7 @@ decides for itself whatever it can undo.**
 ```
 
 ```
-**This is a regular goal: it asks me whenever it needs me.**
+**This is a live goal: it asks me whenever it needs me.**
 ```
 
 The same line opens the goal's own text, so the run reads it first.
@@ -159,7 +159,7 @@ is one it cannot judge. The line stays under the harness's cap on a
   reviews the branch at HEAD, until a CR leaves nothing to fix: each
   blocking finding fixed or waiting on me.
 - **A nightly goal never stops; it gets as close to the goal as it can.**
-  A regular goal asks me each of these and waits. In a nightly one, a
+  A live goal asks me each of these and waits. In a nightly one, a
   🙋 Your call - from a CR, a hole in the plan, a gap the request leaves,
   a fix the code skill's rules say to show and wait on - that one revert
   can undo is taken: the run first builds every piece of work that does
@@ -173,16 +173,31 @@ is one it cannot judge. The line stays under the harness's cap on a
   depend on it.
 - **What the run cannot take waits on me, and the run carries on**: a
   choice no revert undoes, a step only I can take. It goes in the report
-  at once, with its scenario, options and recommendation. A
-  failure in code the branch's commits never touched is reported, never
-  fixed: it goes in the report as likely there before the branch, waiting on
-  me, with no attempt spent on it. A failure the run cannot trace to the
+  at once, with its scenario, options and recommendation. A failure in
+  code the branch's commits never touched is reported, never fixed: it
+  goes in the report as likely there before the branch, waiting on me,
+  with no attempt spent on it. A failure the run cannot trace to the
   code gets no fix commit: it is rerun once at the same commit with
   nothing changed, and goes in the report as "passed on rerun, no change"
   or as waiting on me. Anything else gets up to three fix attempts per
   finding or failing suite - an attempt amends the one before it while
   that one is HEAD - and after the third goes in the report as waiting on
   me. Either way the run carries on with the work that does not need it.
+- **A suite's failures are read against a baseline: the same suite on the
+  default branch.** A test that fails the same way there was failing
+  before the branch, whatever the branch touched: it is reported with the
+  baseline's failure beside the branch's, and gets no fix attempt. One
+  that passes there, or fails another way, is the branch's, and gets the
+  attempts above. The baseline comes from what already exists, in this
+  order: the CI's result for the commit the branch forks from, or the
+  nearest earlier commit of the default branch that has one; then a log
+  on disk of that suite on the default branch. The report names the
+  commit it is from. A baseline from the CI is from the CI's machine: a
+  test it passes there that fails on the branch is checked against a
+  local baseline, when one exists, before it is called the branch's.
+  **With no baseline at hand, a nightly goal runs the suite once at the
+  fork point** before it judges a failure. A live goal never runs
+  one: a failure it cannot place is asked about.
 - **An item waiting on me is checked again, and retried only on new
   code**: each cycle's CR and suites show whether it is still there, and
   one that no longer shows is marked resolved. It gets one more attempt
@@ -218,6 +233,17 @@ is one it cannot judge. The line stays under the harness's cap on a
   gets a route that starts it on the branch with no prompt, and only when
   none exists waits on me, with the exact command for me to run, and the
   run moves on.
+- **Nothing the run starts is left running without my knowing.** The
+  run notes every resource it starts that outlives a command - a local
+  cluster, a container, a background process, a port-forward - with the
+  command that removes it. When a suite or a process is stopped early, by
+  the run or by me, it checks at once what that left up: a teardown that
+  runs at the end of a suite never ran. When the run ends, it checks which
+  of them are still up and lists them in the report, each with its
+  removal command. It lists only what it started, never what was there
+  before it. It deletes nothing by itself: a live goal asks me, as a
+  proposal with its assessment, and a nightly goal leaves them as the
+  last "Needs you" item, with the one command that removes them all.
 - **A report in that scratch directory stays current, written for the
   morning.** Its top is what only the run knows, in plain words a teammate
   follows - no SHA or log line, two or three sentences an item at most;
@@ -240,7 +266,11 @@ is one it cannot judge. The line stays under the harness's cap on a
   D1. <the choice, the options it passed over, and the commits that rest on it>
 
   ## Suites
-  - <each suite: passed on the branch, failed, or waiting - its log in Files>
+  - <each suite: passed on the branch, failed, or waiting - its log in Files;
+    for a failed one, which failures are the branch's and which the baseline has>
+
+  ## Left running
+  - <what it is, and what started it>: <the command that removes it>
 
   ## Files
   - <what it is>: <full path>
@@ -266,7 +296,12 @@ is one it cannot judge. The line stays under the harness's cap on a
     around it would decide it, each with its commit. On a plan, they are
     the plan's "Decided while executing", in plain words.
   - **Suites** gives each suite's result on the branch: passed, failed, or
-    waiting on me, and a suite that passed only on a rerun says so.
+    waiting on me, and a suite that passed only on a rerun says so. A
+    failed suite says which failures are the branch's and which its
+    baseline already has, and names the baseline's commit.
+  - **Left running** lists every resource the run started that is still
+    up, each with the command that removes it; with none, it says so in
+    one line.
   - **Files** lists every file the run made or was given, each with what
     it is and its full path: the goal file, the plan or the request, every
     CR file by cycle and round, every suite's log by suite and cycle. Only

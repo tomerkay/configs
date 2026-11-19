@@ -18,9 +18,10 @@ Structure:
 4. One section per problem, with the evidence for it
 5. **The contract: the API, the constraints and invariants, the black-box tests** -
    the most important section of the plan, see below
-6. The fix, opening with the known architecture it follows, and saying what an
-   auditor would find in it, how it survives a failure, and how it is watched,
-   rolled out and turned off - see below
+6. The fix, opening with the known architecture it follows, naming the owner of
+   each new responsibility, and saying what an auditor would find in it, how it
+   survives a failure, and how it is watched, rolled out and turned off - see
+   below
 7. **Known incidents** - see below
 8. The commits
 9. **Questions and answers** - see below
@@ -117,6 +118,12 @@ Once it is chosen, the plan carries it:
 - **Every decision names the design it resembles and the approach it rejected**:
   "Z resembles X's design; over W it gives <advantage>, and it costs
   <disadvantage>." In a decision table, that sentence is the reason column.
+- **Every new responsibility names its one owner**: the module, type or service
+  that will hold it, and why there - "the decision to retry lives in the router,
+  not in each handler: the router already owns pod choice". One line each, under
+  the fix, naming a place the reader knows. A job split across two owners, or
+  given to an owner that already has an unrelated one, is settled in the plan,
+  never left for whoever writes the code to pick.
 - **A departure from the reference is stated where it happens**, with why: a state
   the reference keeps reversible that this design makes final, a check it runs that
   this one skips.
@@ -262,16 +269,14 @@ in its bucket.
 
 ## Divide it into commits
 
-**Read the code each commit will touch before cutting the list.** A refactor
-that code needs first is a `refactor:` commit of its own, ahead of the
-behaviour it makes easy, so it is found while planning, not while executing.
+**Read the code each commit will touch before cutting the list**, so a
+refactor it needs is found while planning, not while executing.
 
 Not a pile of edits. **Read `references/commits.md` before the first commit
 section**, and write one section per commit, cut and ordered as its section
 "Two Suits: a Fix Stands Alone, a Feature Is a Series" says. For each one: the subject
 line, the files, the tests, and **what the commit body has to say**. Each black-box
-test of the contract lands in the commit that delivers the behaviour it pins, so no
-prefix of the list claims a promise nothing tests.
+test of the contract is listed under the commit section that delivers what it pins.
 
 Call out whatever a commit touches that is easy to miss: a doc whose wording it
 invalidates, a rule it deliberately reverses, a config list it has to join.
