@@ -11,11 +11,14 @@ things worth saying. Whatever does not fit on the item's one line is left out.
 The shape, with its outline numbers and states:
 
 ```
+- **3.** Board panel 🙅 left as it is
+
+---
+
 - **1.** Release branch ⏳
   - **a.** rebase onto main 👉
   - **b.** MR description ⏳
 - **2.** Detector change 🤝 kept as one commit (just now)
-- **3.** Board panel 🙅 left as it is
 ```
 
 **When issues pile up in a session, a reply that moves to
@@ -76,13 +79,17 @@ The case that taught the first step:
   staged, planned, or waiting on a step; ✅ done, carried out - committed,
   installed, posted, or settled with nothing to carry out, such as a
   question answered; 🙅 declined, a change I turned down, such as "left as
-  it is". Nest only where the sub-items are separate decisions, never to
-  list how a decided item was done.
+  it is"; 🔁 superseded by the item that replaced it, named by its outline
+  number - `🔁 by **19.a**` - which alone carries the work from then on.
+  An item only partly replaced is split first, so only the replaced part
+  is marked. Nest only where the sub-items are separate decisions, never
+  to list how a decided item was done.
 - **Only what my latest answer sealed ends with `(just now)`**, after its
-  state - decided, declined or done - so I see what we just sealed: one
-  item, or each item that one answer sealed together. An item an earlier
-  answer sealed never carries it, and the next tree drops it. The case
-  that taught it, a tree where the first item was sealed answers earlier:
+  state - decided, declined, superseded or done - so I see what we just
+  sealed: one item, or each item that one answer sealed together. An item
+  an earlier answer sealed never carries it, and the next tree drops it.
+  The case that taught it, a tree where the first item was sealed answers
+  earlier:
 
   ```
   ❌ - **g.** The retry budget 🤝 (just now)
@@ -95,9 +102,33 @@ The case that taught the first step:
   that - so "**1.b.ii**" names one item. An outline number never changes for the rest of the
   session: a settled or collapsed item keeps its outline number, and a new
   item takes the next free one. The words after it are free to change.
-- **A branch whose items are all done or declined collapses** into one line - 🙅
-  when every item was declined, ✅ otherwise - and the tree stops appearing
-  once nothing in it is open.
+- **A branch whose items are all done, declined or superseded collapses**
+  into one line - 🙅 when every item was declined, 🔁 when every item was
+  superseded, ✅ otherwise - and the tree stops appearing once nothing in
+  it is open.
+- **Closed items come first, above a divider; open ones below it.** A
+  top-level item that is done, declined or superseded goes above a `---`
+  line, and the rest below it, 🤝 decided but not carried out included,
+  each group in outline-number order, so what is left reads as one
+  block. A blank line
+  goes above the `---`, or markdown turns the item above it into a
+  heading. A branch with any part still open stays below whole, and a tree
+  with nothing closed has no divider. The case that taught it, a tree
+  whose closed items were scattered among the open ones:
+
+  ```
+  ❌ - **4.** A goals table ✅
+     - **5.** A contract table ⏳
+     - **11.** A readable report ✅
+     - **12.** Plain-words goals ⏳
+  ✅ - **4.** A goals table ✅
+     - **11.** A readable report ✅
+
+     ---
+
+     - **5.** A contract table ⏳
+     - **12.** Plain-words goals ⏳
+  ```
 - **It is navigation, not a recap.** No reasoning, no repeated findings, no
   question text: the proposals and questions still end the reply as ❓ lines.
   A code review in the same reply keeps its own shape below the tree.

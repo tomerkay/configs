@@ -7,9 +7,16 @@ named and visible, the new bug is neither.
 
 ## What gets fixed
 
-- **What the review says blocks the merge, and nothing else.** What it calls
-  optional, nice to have or a nit stays my call, and every extra fix is one
-  more chance at a new bug.
+- **What the review says blocks the merge, and the cheap rest**, unless I
+  name a narrower set: every NICE TO HAVE finding whose fix the review
+  rates super easy, or small and easy; every bycatch row whose call is
+  🔧 Add fix; and every ⏸ Leave for now bycatch row whose fix is rated
+  super easy, or small and easy. Anything else optional is left
+  unfixed, listed, and fixed only when I ask for it: every extra fix is
+  one more chance at a new bug. A bycatch fix is a commit of its own.
+- **Each finding is checked before it is fixed.** One the code shows is
+  wrong, or whose fix would not close it, is left unfixed and named, with
+  why.
 - **A review that does not say which findings block is asked about, never
   guessed.**
 - **A design choice where both sides are valid, and anything that may be

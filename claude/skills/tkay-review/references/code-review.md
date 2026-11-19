@@ -46,46 +46,47 @@ commit judged against the one before it, and nobody judging what lands.
 ## One CR per repo
 
 **A CR over more than one repo is one CR per repo, one after the other,
-never interleaved.** Each repo gets its own four sections under a heading
+never interleaved.** Each repo gets its own sections under a heading
 that names the repo, its own branch line, and its own numbering, so
 "<repo> row 2" names one row and no row carries a repo tag. One line
 above the first repo says whether the branches merge independently or in
 which order. A CR Summary over several repos is split the same way.
 
-## The CR is four sections
+## The CR is four sections, five with a plan
 
 **Every CR is laid out as four sections, in this order, each under its own
-top-level heading:**
+top-level heading - five when the CR is given a plan:**
 
 1. `# Findings` - every commit's review, in branch order, in the shape
    "Mandatory output shape per commit" gives.
 2. `# Repo <repo> branch <branch> Overview` - what the branch does as a
    whole at HEAD; see "The branch overview".
-3. `# Commits` - each commit's call and Profiles, two rows per commit;
+3. `# Plan <file> Goals` - only in a CR given a plan: whether the branch
+   delivers each of the plan's goals; see "The plan's goals table".
+4. `# Commits` - each commit's call and Profiles, two rows per commit;
    see "The commits table".
-4. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
+5. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
    table".
 
-The last three are built from the findings: the overview and the commits
-table judge what the findings found, and the bycatch is what they set
-aside. A CR in the session that wrote the code opens with the ⚠️ line
-this skill's `SKILL.md` gives, above everything else, and every CR ends
-with the line naming its file that `SKILL.md` gives, under the bycatch
-table.
+Every section after the findings is built from them: the overview, the
+goals table and the commits table judge what the findings found, and the
+bycatch is what they set aside. A CR in the session that wrote the code
+opens with the ⚠️ line this skill's `SKILL.md` gives, above everything
+else, and every CR ends with the line naming its file that `SKILL.md`
+gives, under the bycatch table.
 
 ### The CR Summary
 
-**When I ask for the "CR Summary", the reply is the last three sections,
-with no `# Findings`** - and only when the CR it summarises is already
-done in this session.
+**When I ask for the "CR Summary", the reply is every section but
+`# Findings`** - and only when the CR it summarises is already done in
+this session.
 
-- **This session already reviewed the branch**: the three sections are
-  rebuilt from that review under "A repeat CR in the same session". A
-  commit whose review is carried stays off the screen; a commit that needs
-  a fresh review brings its section back under `# Findings`, because its
-  findings are new to me.
+- **This session already reviewed the branch**: those sections are
+  rebuilt from that review under "A repeat CR". A commit whose review is
+  carried stays off the screen; a commit that needs a fresh review brings
+  its section back under `# Findings`, because its findings are new to me.
 - **No CR of the branch in this session**: the summary is a full CR. Every
-  commit is reviewed, and the reply is all four sections.
+  commit is reviewed, and the reply is every section.
 
 ```
 "CR Summary", after this session's CR of the branch, nothing changed since:
@@ -199,18 +200,22 @@ fix.
 - **🗑 Drop** - the branch is better without it.
 
 **A branch** under review, on the one line that opens its overview. It
-follows from the entries, the worst one deciding, in the order ❌, ✂️, ⚖️,
-🔧, 🧪, ✅:
+follows from the entries, and in a CR given a plan from its goals too, the
+worst one deciding, in the order ❌, ✂️, ⚖️, ⏳, 🔧, 🧪, ✅:
 
-- **✅ Merge it** - every entry is ✅ Keep it.
-- **🧪 Merge after tests** - an entry is 🧪 Needs test, and every other is
-  ✅ Keep it.
+- **✅ Merge it** - every entry is ✅ Keep it, and every goal ✅ Met.
+- **🧪 Merge after tests** - an entry is 🧪 Needs test or a goal 🧪 Met
+  untested, and every other is ✅ Keep it or ✅ Met.
 - **🔧 Merge after fixes** - an entry is 🔧 Needs fixes, and none is ✂️ or ❌.
+- **⏳ Finish the plan first (<the goals>)** - a goal of the plan is
+  ⏳ Not reached: the branch may be correct, and it still delivers only
+  part of the plan. The bracket names those goals, and any fix an entry
+  needs too.
 - **✂️ Split first** - an entry is ✂️ Carve out; the rest merges once it is
   moved.
 - **⚖️ Close call** - an entry is ⚖️ Close call and it decides the branch.
-- **❌ Don't merge** - an entry is ❌ Drop it, or the branch's purpose is
-  wrong.
+- **❌ Don't merge** - an entry is ❌ Drop it, the branch's purpose is
+  wrong, or a goal is ❌ Missed and no fix inside the plan delivers it.
 
 **A branch overview entry** - one thing a branch under review does, as it
 lands:
@@ -228,6 +233,20 @@ lands:
   it moves to a branch of its own.
 - **❌ Drop it** - the change itself is wrong or out of scope, whatever its
   commits are called, and the work goes away.
+
+**A plan's goal**, in a CR given a plan - one outcome the plan promises,
+judged at HEAD:
+
+- **✅ Met** - the branch delivers it, checked the way the goal says a
+  reader checks it.
+- **🔧 Met after fixes (<the commit>)** - the branch delivers it, and a
+  commit it lives in has a 🔴 or 🟠.
+- **🧪 Met untested (<the run>)** - the code delivers it as far as the
+  review traced, and only a run the review could not make proves it.
+- **⏳ Not reached (<the sections>)** - the plan sections, or the parts
+  of a spec, that deliver it are not on the branch yet.
+- **❌ Missed (<why>)** - the sections that deliver it are on the branch,
+  and it does not hold.
 
 **🎣 Bycatch** - something found on the way that is not part of what is being
 judged:
@@ -320,17 +339,20 @@ Then two sections, in this order, with the divider, each under a `###` heading i
 
 ### The branch overview — the second section, every CR
 
-After the last commit's review, say in plain words what the branch does as a
-whole at HEAD - what someone who never opens the diff gets when it merges.
-No file, function, flag or SHA: sentences a teammate reading release notes
-would follow. Under its own heading, which names the repo by its directory
-and the branch by its full name, so a CR read on its own says what it
-judged:
+After the last commit's review, say what the branch does as a whole at
+HEAD, then judge each thing it does. The summary and each entry's sentence
+are plain words a teammate reading release notes would follow - no file,
+function, flag or SHA. Under its own heading, which names the repo by its
+directory and the branch by its full name, so a CR read on its own says
+what it judged:
 
 # Repo <repo> branch <branch> Overview
 
 ```
 ✂️ Split first (carve out 2)
+
+- **1.** <what someone who never opens the diff gets when it merges>
+- **2.** <the next thing they get>
 
 • **1** <one thing the branch does, in plain words>
 ✅ Keep it
@@ -345,9 +367,15 @@ judged:
 
 - **One line for the whole branch comes first**: the branch's call, one of the
   branch calls of "The calls and Profiles of a CR", answering whether the branch
-  merges. It follows from the entries below it and is never a judgement of
-  its own: the worst entry decides it, in the order ❌, ✂️, ⚖️, 🔧, 🧪, ✅, and
-  its bracket names the entries that decided it.
+  merges. It follows from the entries below it, and in a CR given a plan
+  from the goals table too, and is never a judgement of its own: the worst
+  entry or goal decides it, in the order ❌, ✂️, ⚖️, ⏳, 🔧, 🧪, ✅, and its
+  bracket names the entries and goals that decided it.
+- **Under it, what the branch does, in bullets**: the summary, read before
+  any entry, of what someone who never opens the diff gets when it merges.
+  Each bullet opens with its bold number, as any list does; a branch that
+  does one thing gets one bullet, which keeps its dash. The summary judges
+  nothing: the calls are the entries'.
 - **One entry per distinct thing the branch does.** A branch that does one
   thing gets one entry; several changes get one each, never folded into one
   entry where a weak part hides behind a strong one.
@@ -395,9 +423,52 @@ judged:
   `🗑 Drop`: find it on the commits the entry names and put it on the one
   that should carry it.
 
-### The commits table — the third section, every CR
+### The plan's goals table — after the overview, in a CR given a plan
 
-After the branch overview comes one table: two rows per commit, in branch
+A CR is given a plan when the request names one - a plan goal's CR
+subagent gets it with the repo. **Any spec of the work counts as a plan
+here**: a ticket, or a request or hand-off file, that the request names
+as what the branch implements. The plan promises outcomes, and a branch
+whose every commit ships can still leave one undelivered, so the goals
+are judged on their own. One row per goal of the plan's "Goals and
+non-goals" section, as `plan-shape.md` gives it; for a spec with no such
+section, one row per outcome it asks for, worded as it words them, or
+per step, judged done or not, when it lists steps; a non-goal it states
+gets no row. Under its own heading, naming the file or the ticket:
+
+# Plan <file> Goals
+
+| # | Goal | Checked by | Commits | Verdict |
+|---|---|---|---|---|
+| **G1** | <the goal, as the plan words it> | <the test, run or read that showed it> | `<sha>`, `<sha>` | ✅ Met |
+| **G2** | <the next goal> | - | - | ⏳ Not reached (Section 3) |
+
+- **#** — **G1**, **G2**, **G3** in plan order, in bold, so I answer a
+  row by its number; the letter keeps it apart from the commits table's
+  rows.
+- **Checked by** — what showed the verdict: a test the review ran, a run,
+  a read of the code at HEAD. A dash when nothing on the branch could be
+  checked.
+- **Commits** — every commit the goal lives in, in branch order; a dash
+  when none does.
+- **Verdict** — one of the goal verdicts of "The calls and Profiles of a
+  CR".
+- **A non-goal gets no row.** A branch that does one is an overview entry
+  that does not belong: ✂️ Carve out or ❌ Drop it.
+- **❌ Missed is also a finding**: a 🔴 or 🟠 on the commit that should
+  carry the fix, so its call blocks. A ❌ Missed under a commits table of
+  nothing but `✅ Ship it` means the commits are missing that finding.
+- **A goal not met blocks the merge.** ⏳ Not reached makes the branch's
+  call ⏳ Finish the plan first; ❌ Missed blocks through its finding, as
+  🔧 Merge after fixes, or ❌ Don't merge when no fix inside the plan
+  delivers it; 🧪 Met untested makes it wait for the run, as 🧪 Merge
+  after tests. A plan merged in stages moves the goals a stage does not
+  deliver to its TBD first.
+
+### The commits table — after the overview, every CR
+
+After the branch overview, or the goals table in a CR given a plan, comes
+one table: two rows per commit, in branch
 order, four columns, under its own heading so it never reads as part of the
 last commit's review.
 
@@ -489,7 +560,7 @@ The same two rows per item as the commits table, under its own heading:
   form: `🟠 1`.
 - **Call** — what you think I should do, as a recommendation I can
   overrule: the bycatch calls of "The calls and Profiles of a CR" on the head row.
-  🔧 Add fix is a new commit on this branch, once I ask for it by name; ⏸ Leave for now carries the reason in a few words - out of the
+  🔧 Add fix is a new commit on this branch, once I ask for it - by name, or by handing the CR over to be fixed; ⏸ Leave for now carries the reason in a few words - out of the
   branch's scope, another owner's file, not worth the review cost today.
 - **The second row**: the Bycatch Profile is the problem as it sits in the
   code - the Evidence that it is real as described, how much it touches,
@@ -648,35 +719,55 @@ locally and its findings come back in chat:
   review tool's commenting mode. Each of those runs only when my message
   asks for that one in plain words.
 
-### A repeat CR in the same session
+### A repeat CR
 
-**A commit this session already reviewed keeps that review while its code is
-unchanged - even when I ask for the CR "from scratch".** Its code is
-unchanged when its tree and its parent's tree are the ones the earlier review
-saw: together they pin its diff and everything below it, so a fresh read has
-nothing new to find. Carry its section over as it was written, with one line
-naming the review it comes from, and spend the effort on what changed.
-Compare `git rev-parse <sha>^{tree} <sha>~1^{tree}` for each commit with the
-same for the commit in its place in the earlier commits table.
+**An earlier review of a commit is knowledge the CR starts from, never work
+it repeats - even when I ask for the CR "from scratch".** The earlier
+review is one still in this session's context, or a CR file the request
+hands to the CR. While the commit's code is unchanged, what that review
+found on it stands: its code is unchanged when its tree and its parent's
+tree are the ones the earlier review saw, and together they pin its diff
+and everything below it, so a fresh read has nothing new to find. Carry
+its findings over, with one line naming the review they come from, and
+spend the effort on what changed: the CR does only the work the earlier
+reviews do not already answer, so the more they share with the branch,
+the less it reads. Compare `git rev-parse <sha>^{tree} <sha>~1^{tree}`
+for each commit with the same for the commit in its place in the earlier
+commits table.
 
-- **The same SHA is carried as it is.**
+**What is carried is the findings; the call is decided again.** A commit
+judged on its own does not change, but the branch around it does: a later
+commit that fixes its 🔴 or 🟠 turns its call to 👌 Fixed later (by
+`<sha>`), and a later commit that breaks it gives it a new finding. Its
+section is rewritten only where the call moved.
+
+- **The same tip is that review.** When HEAD is the commit an earlier
+  review's commits table ends on, and nothing else the CR is judged
+  against - the plan it was given, a list of decisions - changed since,
+  nothing is reviewed: the CR is that review, given again with one line
+  on top naming it and why it stands, and its file is a copy of that
+  review's file under the same line.
+- **The same SHA keeps its findings.**
 - **A new SHA over the same trees changed only commit messages** - a reword
   of it or of a commit below it, a rebase that moved nothing else. Its code
-  review is carried; a message that changed is reviewed again, and its
+  findings are carried; a message that changed is reviewed again, and its
   findings and call follow the new message.
 - **A new tree is a new commit**: an amend that changed content, a fixup
   folded into it or below it, a rebase onto a moved base. It gets a full
   review, tests included, even when its own diff reads the same as before.
 - **"Is it fixed?" after a CR is a repeat CR, never a tick-off of the old
   findings.** Every line changed since that CR is read as new code: a fix
-  can carry a bug of its own, and a finding the fix closed is dropped while
-  one it opened is reported.
-- **Only a review still in the context is carried.** One that was
-  summarised away, or that came from another session, has lost the findings
-  it would carry; review that commit again.
-- **The outcome is judged afresh every time.** Each new or rewritten commit
-  is read against the carried ones, and a carried commit that a later change
-  breaks gets the finding. The branch overview, the commits table and the
+  can carry a bug of its own. A finding a fix amended into its commit
+  closed is dropped, and one a fix opened is reported.
+- **Only a review still in the context, or a CR file handed over, is
+  carried.** One summarised away, or from another session, with no file
+  handed over, has lost the findings it would carry; review that commit
+  again. A file carries only the commits its commits table names by SHA
+  and its `# Findings` reviews, since the tree test needs the commit the
+  review saw; a CR Summary's file holds no findings and carries none.
+- **The outcome is judged afresh whenever the tip moved.** Each new or
+  rewritten commit is read against the carried ones, and a carried commit
+  that a later change breaks gets the finding. The branch overview, the commits table and the
   bycatch table are rebuilt for the branch as it now stands.
 
 The case that taught it: a second CR of a five-commit branch, after a
@@ -708,7 +799,7 @@ second commit's message:
 - **When reviewing a commit, check HEAD state to verify later commits didn't break it**
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand new code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of new code" in the checklist above)
-- **Lay the CR out in the four sections of "The CR is four sections"**, the findings first and the bycatch table last, and one CR per repo
+- **Lay the CR out in the sections of "The CR is four sections, five with a plan"**, the findings first and the bycatch table last, and one CR per repo
 - **Open with the FINDINGS line and the Full Assessment, colour every finding (🔴/🟠/🟡/⚪) or mark it 🧪 UNTESTED, and split MUST HAVE from NICE TO HAVE with the divider** (see the colour section above)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a section is empty** - I need to hear it, not deduce it (exact wording in "Mandatory output shape per commit" above)

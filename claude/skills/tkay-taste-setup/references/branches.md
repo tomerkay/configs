@@ -17,9 +17,13 @@ commits go on top of the ones already there. When I ask, pick the name, create
 the branch and tell me the name - no proposal, no question.
 
 **When you think the work does not belong on the current branch**, say why in
-one sentence and propose a switch: the current branch's uncommitted work is
-committed or stashed first, and restored after, and a run still going from
-that checkout is named in the proposal. The work waits for the answer.
+one sentence and propose the switch as a ❓ of its own, never folded into the
+proposal of the change it would carry. The current branch's uncommitted work
+is committed or stashed first, and restored after, and a run still going from
+that checkout is named in the switch's proposal. The work waits for the
+answer. Under a goal nobody is watching, the switch is asked only before
+the goal is written; once it runs, the run never proposes one, and says
+in its report why it thinks the work belongs elsewhere.
 
 **A worktree is never proposed, and `git worktree add` runs only when I ask
 for a worktree in so many words.** A worktree checks out another branch
@@ -46,6 +50,20 @@ subject. A code review may recommend folding it in, but a rewrite is never
 suggested: it starts only when I ask for one in words. Until then the
 history records the fix as a commit of its own, and that is the intended
 state.
+
+**Never offered, either.** No ❓ proposes a rebase, a squash, a fold or a
+reword below HEAD, and no proposal lists one among its alternatives -
+even when a review's call on a commit is 🔀 Squash into or 📝 Reword, and
+even when the branch was never pushed. The one line before the commit
+says which commit the change would belong in; the change lands on top.
+The case that taught it, a review's nice-to-haves fixed on a branch that
+was never pushed:
+
+```
+❌ ❓ Fold the refusal fix into commit 2 and trim its Change section by
+   one rebase: run it, with squash and reword allowed for commit 2 only?
+✅ The refusal fix belongs in commit 2; it lands on top as its own commit.
+```
 
 **On a branch of my own, already pushed changes nothing**: I force-push my
 branches, as "About Me and My Work" says, so a commit already on the remote

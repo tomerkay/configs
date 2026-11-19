@@ -1,4 +1,4 @@
-# Waiting under a `/goal`
+# Under a `/goal`
 
 **The harness says a goal's Stop hook blocks stopping until the goal
 holds. That is a reason to answer the hook, never to keep a tool call

@@ -31,3 +31,23 @@ prose swells into a title and the marker itself disappears from my screen.
 showing me, a summary you are about to post yourself, an illustrative snippet of
 my own code. Bracketing those buries the real ones. Two blocks I am meant to copy
 get two bracketed blocks, never one bracket around both.
+
+## What I am to run comes last
+
+**Everything I am to run or paste goes at the end of the reply**, after
+every explanation and right above the ❓ block, which stays last: a
+command, a `! <command>`, a `/goal` line, a value for a UI. It is one
+numbered list in the order to run, and every step another depends on is
+listed before it, in the same reply - never a turn later. I read the
+reasoning first, then act from top to bottom without scrolling back.
+
+The case that taught it: a reply handed over a goal's `/goal` line, and
+the `! cp` that had to run before it came a turn later, once I asked.
+
+```
+❌ reply 1: <the goal> ... paste: /goal <...>
+   reply 2: yes, first run: ! cp <...>
+✅ reply 1: <the goal and its reasoning>
+   1. ! cp <...>
+   2. /goal <...>
+```

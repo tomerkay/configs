@@ -1,6 +1,6 @@
 ---
 name: tkay-review
-description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, or a CR Summary - never while writing code, which the tkay-code skill owns. In a session that wrote the code under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
+description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the branch overview, the commits and bycatch tables, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Summary, or a plan review of a full plan - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
 hooks:
   Stop:
     - hooks:
@@ -15,9 +15,12 @@ the whole standard: what a finding is, how bad each one is, what blocks the
 merge, the shape of a commit's review, the branch overview, the commits table,
 the bycatch table, and what a CR on an MR link may and may not do.
 
+**A plan review reads `references/plan-review.md` as well**, before its first
+finding: it says what changes when the thing judged is a plan, not a branch.
+
 ## Shared references
 
-Four references are shared with other skills of mine and kept in this
+Five references are shared with other skills of mine and kept in this
 skill's own `references/` so it works installed alone:
 
 | Read | For |
@@ -26,8 +29,10 @@ skill's own `references/` so it works installed alone:
 | `references/security.md` | the security questions every change is asked |
 | `references/assessment.md` | the frame every assessment in a CR is written in |
 | `references/commits.md` | the commit standard a CR judges messages and boundaries by |
+| `references/plan-shape.md` | the shape a plan review holds a plan to |
 
-Read all four before the first finding. **Never answer from memory of a
+Read the first four before the first finding of a CR, and all five before
+the first finding of a plan review. **Never answer from memory of a
 reference you have not read this session.**
 
 The hook in this skill's frontmatter checks the shape of every assessment
@@ -51,6 +56,10 @@ nothing after it:**
   ```
   ⚠️ This session <wrote the branch | has tkay-code loaded | wrote the branch and has tkay-code loaded>, so a CR here would not be independent of the code it judges. Are you sure you want it here and not in a fresh session?
   ```
+
+  A plan review asked for in a session that wrote the plan asks the same
+  question, with "wrote the plan" for what holds and "a plan review" and
+  "the plan" for "a CR" and "the code".
 
 - **Code asked for in a session that wrote a CR** - a fix of what it
   found, or any other code:
@@ -96,7 +105,7 @@ staged changes in place and fixes them, with no question and no ⚠️ line.
 **A CR changes no file, and never offers to.** Every fix is written out
 under its finding and left for me - no "want me to fix it?", no fix as a
 next step. A fix I ask for anyway is code after a CR, and the question
-above comes first.
+above comes first. A plan review edits no plan, on the same terms.
 
 ## Every CR is also a file
 
@@ -111,6 +120,9 @@ line that names its file by its full path:
 ```
 **CR file:** <full path>
 ```
+
+A plan review is a file the same way, named `plan-review-<n>.md`, and its
+line reads `**Plan review file:**`.
 
 ## The repo's conventions win
 

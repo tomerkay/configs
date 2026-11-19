@@ -14,31 +14,48 @@ a file of the `~/repos/configs` repo the sync runs from. The sections below
 name what each kind adds; the procedure itself is this one:
 
 1. **Stage it.** Copy the file into this session's handoff directory and make
-   every edit to the copy.
+   every edit to the copy. Keep a second, untouched copy beside it: the base
+   the edits were made on.
 2. **Review the staged diff with the `tkay-review` standard**, in the
    full shape that standard gives a one-commit branch: the FINDINGS line and
    the commit's Full Assessment, both buckets, the branch overview, the
    commits table and the bycatch table. The diff stands in for the
    commit; a Full Assessment on its own is not a review.
-   **Then fix, in one round, on the staged copy**: every MUST HAVE finding,
-   every bycatch row whose call is 🔧 Add fix, and the NICE TO HAVE findings
-   when the commit's Fix 🟡⚪ line rates their fix super easy. A bycatch fix
-   is staged as a commit of its own, installed on the same yes. The
-   standard's question before code after a CR is not asked here: a
-   session in this repo or in `~/repos/configs` is one it exempts. **Then review the fixed copy once more, in the same
-   shape** - a fix lands in code the rest of the change depends on, and can
-   bring a problem of its own. When that review still finds a MUST HAVE,
-   fix nothing more: ask me about it as a ❓ of its own, and the install
-   question waits for my answer. Anything else it finds stays as it is.
+   **Then fix and review again, up to three rounds**, each on the staged
+   copy: fix every MUST HAVE finding, every bycatch row whose call is
+   🔧 Add fix, and every NICE TO HAVE finding and ⏸ Leave for now bycatch
+   row in a file this procedure covers whose fix is rated super easy, or
+   small and easy - on the commit's Fix 🟡⚪ line or the row's own Fix
+   Profile - then review the fixed copy in the same shape, since a fix
+   lands in code the rest of the change depends on and can bring a problem
+   of its own. A bycatch fix is staged as a commit of its own, installed
+   on the same yes. The standard's question before code after a CR is not
+   asked here: a session in this repo or in `~/repos/configs` is one it
+   exempts. **The rounds end at the first review that finds nothing a
+   round fixes, or with the review after the third round**, which is the
+   final one. When the final review still finds a MUST HAVE, fix nothing more
+   and do not ask the install question: explain the problem, propose a
+   different fix as a ❓ of its own, and stop. The fix I pick is staged
+   and reviewed in this same shape before the install question comes.
+   Anything else the final review finds stays as it is.
 3. **Ask once**: show the diff, the last review and the commit message,
    written by the `tkay-code` commit standard, then end the reply with
-   "❓ Q<n> Install it into `<file>` and commit?". The last review judges
-   the copy that installs; when a round of fixes ran, one line above it
-   says what the first review found and what the fixes changed.
+   "❓ Q<n> Install it into `<file>` and commit?", with the change's Full
+   Assessment nested under it, as every proposal carries one: the call on
+   installing it, the change's Profile, and its Why Yes and Why Not, which
+   may repeat the commit's from the review. The last review judges
+   the copy that installs; when rounds of fixes ran, a line per round
+   above it says what that round's review found and what its fixes
+   changed.
 4. **On my yes, install and commit it yourself**, as plain commands with the
    sandbox off - it denies these paths, and gpg cannot sign inside it. Never
    hand me the `cp` to paste while that route is open: the question is the
    safeguard, and a paste is the same install with a round trip added.
+   **Compare the live file with the base first.** When they differ - another
+   session changed it since - the `cp` would overwrite that change, and the
+   commit's diff would no longer be the reviewed one: install nothing, take
+   the live file as the new base, stage the edits again on it, and run steps
+   2 and 3 again.
 5. **If the install or the commit is refused**, confirm the staged copy still
    exists, print the exact command for me as a `! <command>` and stop. Never
    reach the same change by another route.

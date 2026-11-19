@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Stop hook: sends a reply back when a CR's assessment or one of its tables breaks its shape.
 
-It owns the assessment blocks a CR call opens - a commit's, a bycatch's - and checks them for
-the frame `frame_checks.py` holds: a known call in its emoji-and-word shape, no Evidence on
-the call, no retired label, field or badge, no emoji before Why Yes or Why Not. Every other
-block is the assessment hook of tkay-replies', so no block is checked twice.
+It owns the assessment blocks a CR call opens - a commit's, a bycatch's, a plan's
+call - and checks them for the frame `frame_checks.py` holds: a known call in its
+emoji-and-word shape, no Evidence on the call, no retired label, field or badge, no emoji
+before Why Yes or Why Not. Every other block is the assessment hook of tkay-replies', so no
+block is checked twice.
 
 It also checks the commits table and the bycatch table: each opens with the header row the
 standard gives, and a bycatch row is numbered B<n> or is the Profile row under one.
@@ -100,9 +101,18 @@ def selftest():
          True),
         ("an Evidence on the branch call that waits for tests",
          commit.replace("✅ Ship it", "🧪 Merge after tests (1) · **Evidence:** LIKELY"), True),
+        ("an Evidence on the branch call that waits for the plan",
+         commit.replace("✅ Ship it", "⏳ Finish the plan first (G3) · **Evidence:** LIKELY"),
+         True),
         ("bycatch calls",
          "- **Call:** 🗑 Drop\n- **Call:** 🗑️ Drop\n"
          "- **Call:** ⏸ Leave for now (out of scope)\n- **Call:** 🔧 Add fix\n", False),
+        ("plan calls",
+         "- **Call:** ✅ Build it\n- **Call:** 🔧 Build after fixes (Section 5)\n"
+         "- **Call:** 🧪 Build after a spike (the cache hit rate)\n"
+         "- **Call:** ❌ Back to design (the architecture)\n", False),
+        ("an Evidence on a plan's call",
+         commit.replace("✅ Ship it", "✅ Build it · **Evidence:** CONFIDENT"), True),
         ("a change's block is tkay-replies'", change, False),
         ("plain text", "no assessment here\n", False),
         ("the commits table in shape", f"# Commits\n\n{commits_table}", False),

@@ -113,6 +113,11 @@ Then show me the exact diff or the exact command you *would* have run, and wait.
 Do not soften it, do not negotiate, do not ask "shall I?", do not do "just the
 small part", do not do it and then tell me. **Print the line and stop.**
 
+**A change that goes through a staged procedure - review rounds on a copy
+before it installs - runs those rounds before this reply**, since they change
+nothing the gate guards, and the diff it shows is the one the last round left,
+never the first draft: an `LFG!` signs off what installs.
+
 ## What is blocked while the gate is closed
 
 A change to a git repo by any mechanism:
@@ -371,6 +376,7 @@ action of that kind.**
 |---|---|
 | the first reply of every session, whatever it is about - its hooks check every reply from then on | `tkay-replies` |
 | a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Summary - and only when I ask for one in those words | `tkay-review` |
+| a plan review of a full plan - only when I ask for one in those words | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-mr` |
 | write or amend any commit message, or commit at all | `tkay-code` |
@@ -485,6 +491,7 @@ blocks are the `tkay-tool-use` skill's, which owns them:
 @~/.claude/skills/tkay-tool-use/references/jq.md
 @~/.claude/skills/tkay-tool-use/references/working-directory.md
 @~/.claude/skills/tkay-tool-use/references/goals.md
+@~/.claude/skills/tkay-tool-use/references/unwatched-goal.md
 @~/.claude/skills/tkay-tool-use/references/git-in-sandbox.md
 
 What the gate adds: **a goal that needs the gate opened** gets a suggested

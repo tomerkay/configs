@@ -261,7 +261,10 @@ three its row already held:
 ## Why Yes and Why Not
 
 **They are the part I read most**, so they hold the real case and nothing
-else. Why Yes is the advantages of making the change; Why Not is its
+else. Every point is one I would weigh: it can move my answer, or how the
+change is made. A point that could not is filler - it costs me the read
+and the moment to see it says nothing - and an honest "none" tells me
+more. Why Yes is the advantages of making the change; Why Not is its
 drawbacks, costs and risks. Both are about the change, never about the call
 or the Profile: under a ❌ call, Why Yes holds the case you argue against.
 
@@ -291,7 +294,15 @@ or the Profile: under a ❌ call, Why Yes holds the case you argue against.
      effect.
   2. **Would it be true of any change this size or of this kind?** "One more
      section", "the file grows", "it is rewritten, not extended" are its
-     Size, which the Profile already gives.
+     Size, which the Profile already gives. So is a limit every check of
+     its kind has - that it cannot find everything. The case that taught
+     it, a gate that asks everything that would stop a goal before the
+     goal is written:
+
+     ```
+     ❌ - A need nobody foresaw still stops the run, since no check finds everything.
+     ✅ - none (checked: each kind of stop the gate looks for is asked before the goal)
+     ```
   3. **Could I fix it in the proposal instead?** A flaw in the draft - a
      weak example, a wrong word, a missing case - is fixed before the
      assessment, never listed under it.

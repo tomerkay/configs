@@ -25,7 +25,7 @@ reference; they refer to each other by file name.
 | shows where we stand, or answers whether we are done | `references/issue-tree.md` |
 | reports something found on the way, outside the change in hand | `references/bycatch.md` |
 | holds a list or a table | `references/numbered-lists.md` |
-| hands me something to copy and paste | `references/copy-blocks.md` |
+| hands me something to copy, paste or run | `references/copy-blocks.md` |
 | shows how a change will look | `references/before-and-after.md` |
 
 **Read the reference before the reply that needs it.** Never answer from

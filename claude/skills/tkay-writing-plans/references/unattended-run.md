@@ -12,10 +12,24 @@ part of its own.
 
 1. **The test commands**: the repo's own check commands and the tests the
    work names, with every package or file named one by one.
+   **The suites are the relevant ones, picked from an inventory**: every
+   test entrypoint the repo has - its test build tags, its runner's test
+   targets, its CI test jobs, scheduled and manual ones included - mapped
+   to the paths the branch changes, each in or out with its reason, and
+   shown to me before handover. CI's own job commands are preferred to a
+   hand-picked subset; one the goal's author is unsure of runs, and the
+   repo's quick unit command always does. Each runs in its checkout by
+   the tool's own directory flag, or `env -C <checkout>` for a script
+   that has none, and is shown to test the branch before handover - the
+   step that runs its tests read, or the suite started and its first
+   lines checked. A claim about where a script runs its tests is never
+   written into the goal unchecked.
 2. **Every step that would stop for a permission prompt** - a command a
    permission rule or a hook asks about, a write the sandbox denies, a step
    only I can take. Each is reshaped so it does not ask, or, when it is the
    last step, the goal ends with "or stop when only <the step> is left".
+   A command the work is likely to improvise that `unwatched-goal.md`
+   gives no route for gets its own route written into the goal.
    Nothing the run needs waits on a prompt in the middle of the night.
 3. **The skills the goal names come from this session's skill list**: the
    one for writing code and fixing a review, and the one for a code review.
@@ -28,40 +42,52 @@ part of its own.
    the run commits there, so uncommitted work would ride along under its
    builds and tests. The goal says the checkout is the run's until it
    ends.
+6. **A fresh subagent reads the written goal** before it is handed over,
+   with the repo and nothing of the session's reasoning: the suite list
+   against the inventory, each command against the checkout and branch
+   it must act on, and the stop condition against what each phase is
+   for. What it finds is fixed in the goal, or put to me.
 
-Ask me only for what none of this answers - the repo, and the files that
-must never be staged.
+**The goal is written only once nothing is left that would stop it
+reaching its end without me.** Before writing it, look for every such
+stop - a step only I can take, a command that would prompt, a hole in the
+plan or the request that would stop the run or send it the wrong way -
+and put each to me, all in one reply. My answers go into the goal, and a
+step only I can take is named in it as mine, to run before the run
+starts. Every other gap stays the run's to decide and record.
 
-**The reply prints two goals that run the same way, in full and in this
-order, and writes each into a markdown file of its own in a scratch
-directory that outlives the session:**
+Ask me only for that and for what none of this answers - the repo, the
+files that must never be staged, and, when step 4 cannot settle it, the
+branch - besides the suite list and what step 6 puts to me.
 
-1. **Short** - verified at a glance. It tells the run to follow the work's
-   goal file and this one, each by its skill and file name, and states only
-   what is this run's own: the repo, the plan or the request, the files
-   never to stage, the suites, the stop condition, and any departure from
-   these files.
-2. **Standalone** - points at no file of any skill and writes every rule
-   out, so it does exactly what the short goal does. Above it, one line
-   says so, and a numbered list names each rule it carries, a few words
-   each: the rules of these files this run needs, checked off against them
-   one by one before handover. A skill the run must invoke, such as the
-   review skill, is still named by its name, and a plan goal still names its
-   plan by its path: the plan is the work, not a pointer.
+**The goal is written into a markdown file in a scratch directory that
+outlives the session, and the reply never prints it** - I open the file
+and copy from it. The file opens with "Run these, in order": each step
+only I can take, then the `/goal` line, each in its own code block,
+numbered in the order to run; the goal's full text and the two lists
+below come after. The goal points at no file of
+any skill and writes every rule out, so the run does the same whatever
+skills it loads. A skill the run must invoke, such as the review skill, is
+still named by its name, and a plan goal still names its plan by its path:
+the plan is the work, not a pointer.
 
-**Under both come two short lists of one-line bullets:**
+**Under the goal in the file come two lists:**
 
-- **Covers:** two or three, on what the goal does, in plain words, one
-  naming any departure from these files.
-- **Drawbacks:** two or three on where it may stall, what it will not
-  catch and what it decides without me, then one for each option on what
-  it alone costs.
+- **What it does:** one numbered line per thing the run does, in plain
+  words and in the order it does them, one naming any departure from these
+  files - so the list alone tells me what the run will do. It is checked
+  off against the rules of these files one by one before handover, so a
+  rule the run needs and the goal left out shows as a missing line.
+- **Drawbacks:** two or three one-line bullets on where it may stall, what
+  it will not catch and what it decides without me.
 
-**The reply ends with each goal file's full path and, under it, the
-`/goal` line to paste.** The harness caps the length of a `/goal`
-condition, so the line names the file and states its stop condition in
-full - the goal's checker may judge that line alone - and stays far under
-the cap.
+**The reply says in one line what the goal builds and ends with the goal
+file's full path.** The `/goal` line names the plan or the request and
+the goal file for the run to read first, and states the stop condition in
+full, as things the conversation will show: the goal's checker reads only
+the conversation - it never opens a file - so a stop it cannot see there
+is one it cannot judge. The line stays under the harness's cap on a
+`/goal` condition.
 
 ## What the run does
 
@@ -69,40 +95,177 @@ the cap.
   the goal was handed over, in the repo's checkout, by the code skill's
   standards and the repo's conventions.
   After each commit, build and test the packages it touched.
+- **The branch never changes during the run.** The run proposes no
+  switch, makes none, and creates no branch, even when it comes to think
+  the work belongs elsewhere: it says why in the report's "Decided while
+  running", and the work stays where it is. Step 4 is the one place a
+  branch is asked about.
 - **Git runs outside the sandbox from the first call** when the harness
   sandboxes it. Stage explicit paths only; no rebase or reset; a tracked
   file the work deletes goes through `git rm`, never a plain `rm`; a fix to
   an earlier commit is an amend of HEAD or a new commit on top. Never push
   and never open an MR.
+- **No command stops on a prompt**: the goal writes out
+  `unwatched-goal.md`, with any route step 2 added.
 - **Every decision made without asking goes in one list**, with the commit
   that carries it. The work's goal file says where the list lives.
 - **Every CR is a fresh subagent spawned for that CR alone.** It invokes the
-  review skill first, gets the repo path, the range of the run's own
-  commits from the one it started on, and the list of decisions made
-  without asking, to check each against the code around it, and nothing
-  of the session's reasoning, and it returns the path of its CR file. The
-  session fixes each blocking finding in a dedicated commit by the code
-  skill's rules for fixing a review, and writes in the report any fix
-  those rules say to show and wait on. After each batch of fixes, a new
-  fresh subagent reviews the run's commits at HEAD.
-- **The fix loop stops itself** when a CR finds a blocking finding that a
-  fix commit brought in, or a finding a fix commit claimed to close.
+  review skill first, gets the repo path, the whole branch - from where
+  it forks off the default branch to HEAD, so its call judges what would
+  merge - the list of decisions made without asking, to check each
+  against the code around it, and nothing of the session's reasoning,
+  and is told it wrote none of that code and has not loaded the code
+  skill; it returns the path of its CR file. **The first CR of each cycle
+  is fresh**: it is handed no earlier CR file, so every cycle gets an
+  independent read. **The rounds within a cycle build on it**: each later
+  CR in the cycle is also handed the cycle's previous CR file and told to
+  start from it as the review skill's repeat CR says, and when HEAD is
+  still the tip that file judged and nothing handed to it changed, no
+  subagent is spawned. The session fixes what the code skill's rules for
+  fixing a review say to fix - the blockers and the cheap rest - each in
+  a dedicated commit, and writes in the report any fix those rules say
+  to show and wait on. After each batch of fixes, a new subagent
+  reviews the branch at HEAD, until a CR leaves nothing to fix: each
+  blocking finding fixed or waiting on me.
+- **A fix stops only for what needs me**: what the work's goal file stops
+  for, or a fix the code skill's rules say to show and wait on. It goes in
+  the report at once, with its scenario, options and recommendation. A
+  failure in code the branch's commits never touched is reported, never
+  fixed: it goes in the report as likely there before the branch, waiting on
+  me, with no attempt spent on it. A failure the run cannot trace to the
+  code gets no fix commit: it is rerun once at the same commit with
+  nothing changed, and goes in the report as "passed on rerun, no change"
+  or as waiting on me. Anything else gets up to three fix attempts per
+  finding or failing suite - an attempt amends the one before it while
+  that one is HEAD - and after the third goes in the report as waiting on
+  me. Either way the run carries on with the work that does not need it.
+- **An item waiting on me is checked again, and retried only on new
+  code**: each cycle's CR and suites show whether it is still there, and
+  one that no longer shows is marked resolved. It gets one more attempt
+  in a later cycle only when a commit since its last attempt changed the
+  code around it.
 - **A finding that asks for a run, not a code change, gets the run**: a
   claim the review traced and found sound but could not prove. When the
   run it names is one the goal already allows - one of its suites or test
   commands - it runs with the suites, and a failure is handled as theirs
   is; any other goes in the report as waiting on me.
-- **The full suites run last**, in the background, holding the machine awake
-  (`caffeinate -i` on a Mac), each with its log in a scratch directory that
-  outlives the session. Each failure gets a dedicated fix commit and a rerun
-  of that suite, at most twice per failure.
-- **A report in that scratch directory stays current**: each piece of work
-  done or stopped with its reason, every decision made without asking, the
-  path of every CR file with the last CR's commits table, each suite's
-  result, and each finding that asks for a run, with that run's result or
-  "waiting on me".
-- **It stops** when the report shows every piece of work done or stopped
-  for a recorded reason, the last CR blocking nothing, every suite
-  passing, and every run a finding asks for passing or waiting on me - or
-  when the fix loop's stop or a failure cap ends it, with the reason in
-  the report.
+- **The suites run after the CR phase**, in the background, holding
+  the machine awake (`caffeinate -i` on a Mac), each with its log in a
+  scratch directory that outlives the session. Each failure gets a
+  dedicated fix commit and a rerun of that suite, under the three-attempt
+  rule above.
+- **A suite proves it tested the branch.** Within its first minutes its
+  log, or the working directory of its processes, shows which checkout
+  and commit it tests; one testing anything else is stopped and started
+  again on the branch. Its result counts only when the log shows the
+  branch's code ran - a test only the branch has, or paths in the
+  branch's checkout. A suite that never tested the branch has not run:
+  it is never waiting on me, and no stop counts it.
+- **A later cycle reruns a suite only when its code changed**: a commit
+  since its last pass touched the dependency tree of what it builds and
+  runs (`go list -deps` in Go) or a file it reads at run time. When that
+  tree cannot be worked out, it runs again.
+- **The CR phase and the suites phase make a cycle, up to three.** A new
+  cycle starts only when the suites phase made commits, so a fresh CR
+  reviews them. When the third cycle's suites phase made commits, a final
+  CR reviews HEAD and fixes nothing: what it finds goes in the report as
+  waiting on me. A CR or a suite that cannot run - no CR file, a suite
+  that will not start - is retried once with nothing changed; a suite then
+  gets a route that starts it on the branch with no prompt, and only when
+  none exists waits on me, with the exact command for me to run, and the
+  run moves on.
+- **A report in that scratch directory stays current, written for the
+  morning.** Top down, it answers whether the branch can merge, what
+  needs me, how the work went and what the run decided alone; the record
+  comes last, below a line. Above the line it is plain words a teammate
+  follows - no SHA, path, log line or clock time, a commit named by what
+  it does - two or three sentences an item at most, so it reads on one
+  screen. Nothing is dropped: every detail is in the record.
+
+  ```
+  # Goal run: <the plan file, or the request in a few words>
+
+  <the last CR's branch call> - <how far the work got, in one sentence>
+  <the branch> · <N> commits · ran <how long> · <how the run stopped>
+
+  ## Needs you
+  N1. <what happened and why it needs me, in two sentences> (blocks G2)
+      a) <an option> - <what it costs>
+      b) <another option> - <what it costs>
+      I'd pick <a or b>: <why>. Reply "N1 a" or "N1 b".
+
+  ## Goals
+  | #  | Goal                     | Status                                |
+  |----|--------------------------|---------------------------------------|
+  | G1 | <the goal, plain words>  | <its verdict> - <how it was shown>    |
+
+  ## Decided while running - check these
+  D1. <the decision, and what it changes for a user or a caller>
+
+  ## What the branch does
+  - <one bullet per thing someone who never opens the diff gets>
+
+  ## Health
+  <blocking findings left> · <the final CR's call - in full under The final CR> · <the suites> · <runs a finding asks for> · <suites that passed only on a rerun>
+
+  ---
+
+  # Record
+  ## Work in detail
+  ## Decisions
+  ## CRs
+  ## Runs
+  ## Tidy
+  ## Timeline
+  ## The final CR
+  ```
+
+  - **The two lines under the title answer "can I merge?"**: the last
+    CR's branch call, how far the work got, and whether the run stopped
+    on its own or after its third cycle.
+  - **Needs you** holds every item waiting on me, in the order to act,
+    each numbered N<n> with its scenario, options and recommendation, and
+    ending with the reply that settles it; the fix attempts that did not
+    close it are in the record's Work in detail. When Tidy folds anything,
+    the last item is an optional one pointing at it. With nothing waiting,
+    it says so in one line.
+  - **Goals** - on a plan, one row per goal of the last CR's goals table:
+    its verdict and a few words on how it was shown. On a request, the
+    section is "The work": one row per piece, numbered W<n>, ✅ Done or
+    ⏳ Stopped with its reason.
+  - **Decided while running** holds every decision made without asking,
+    numbered D<n> so one can be undone by its number, each with what it
+    changes; on a plan, they are the plan's "Decided while executing",
+    in plain words.
+  - **What the branch does** is the last CR's overview summary.
+  - **The record** is where the SHAs, paths and times live:
+    1. **Work in detail**: each piece done or stopped with its reason,
+       its commits, and the tests it ran with their results, every fix
+       attempt included.
+    2. **Decisions**: each D<n> with the commit that carries it, or the
+       place the work's goal file keeps them.
+    3. **CRs**, one line each: its cycle, the CR file's path, its call,
+       and the blocking findings it found, fixed and left waiting on me.
+    4. **Runs**, one line each - every suite run and every run a finding
+       asks for: the commit it ran at, its result, how long it took and
+       its log's path.
+    5. **Tidy**: the one command that folds the failed attempts of each
+       closed item into the fix that closed it, naming the commits it
+       folds, for me to run - or a line saying there are none.
+    6. **Timeline**: when each cycle, phase and round started and ended.
+    7. **The final CR**, in full, as its file holds it: the run's last
+       CR comes after its last fix, so the copy is made once, when the
+       run stops, and the report answers why the branch is or is not
+       ready without a second file.
+- **It stops** when a cycle's suites phase made no commits, or when the
+  third cycle and its final CR are done. Either way the report shows
+  every piece of work done or stopped for a recorded reason, the last CR
+  blocking nothing but what waits on me, and every suite and every run a
+  finding asks for passing on the branch - at HEAD, or at a commit since
+  which nothing touched its code - or waiting on me. **The run's last
+  reply is the two lines under the report's title, then one line per
+  rule of the stop condition with what shows it holds - each suite, the
+  commit it passed at and the log line that shows it ran on the branch;
+  the last CR's call; the cycle count - then the report's full path.**
+  It is written only once the stop holds, and the checker judges the
+  `/goal` line against it.

@@ -17,10 +17,14 @@ day.
 ## What the run adds
 
 - **Implement the commit sections in order**, each with the tests it lists.
+  A section may land as more than one commit - a refactor ahead of it, or
+  its work split in two - each a new commit on top, never a rebase, squash
+  or reorder of what is already committed; each is recorded in the plan's
+  commit sections and in "Decided while executing".
 - **Follow "Executing a plan": the first hole ends the section work.** Write
   it into the plan with its scenario, options and recommendation, and
   implement no section after it, so the branch stays a prefix of the plan in
-  which every commit is correct on its own. The CR loop and the suites still
+  which every commit is correct on its own. The CR-and-suites cycles still
   run on what landed.
 - **The list of decisions made without asking is the plan's "Decided while
   executing"**, and every CR subagent also gets the plan, to check each

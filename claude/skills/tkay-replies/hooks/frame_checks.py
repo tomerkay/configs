@@ -18,7 +18,8 @@ CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Stro
 CR_CALL = (r"(✅ Ship it|👌 Fixed later|🔧 Needs change|🪓 Split|📝 Reword|🔀 Squash into"
            r"|🗑️? Drop|✅ Merge it|🔧 Merge after fixes|✂️? Split first|⚖️? Close call|❌ Don't merge"
            r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|⏸️? Leave for now"
-           r"|🧪 Needs test|🧪 Merge after tests)")
+           r"|🧪 Needs test|🧪 Merge after tests|⏳ Finish the plan first"
+           r"|✅ Build it|🔧 Build after fixes|🧪 Build after a spike|❌ Back to design)")
 # The retired Verdict label opens a block too, so whoever owns its call sends the label back.
 CALL_LINE_RE = re.compile(r"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* ")
 CHANGE_CALL_RE = re.compile(rf"^\s*(Q\d+\. )?- \*\*(Call|Verdict):\*\* {CHANGE_CALL}")
