@@ -811,7 +811,10 @@ as a contradiction.
 
 - **Before it merges** holds every row that holds the merge: a 🔴 or 🟠, a
   row not built, a run, a decision. With none, it is one line: "Nothing
-  blocks the merge."
+  blocks the merge." A bycatch row never holds the merge, whatever its
+  colour, since the branch call leaves bycatch out: it goes under
+  Optional, a 🙋 Your call row included, and Optional is worked through
+  like the rest, as "What it holds" below says.
 - **Optional** holds the rest. With none, it is one line: "Nothing
   optional."
 

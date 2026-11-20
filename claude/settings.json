@@ -39,7 +39,7 @@
       "/Users/tkay/misc/values"
     ]
   },
-  "model": "fable",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -137,6 +137,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "jq -r '.workspace.project_dir | split(\"/\") | last'"
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
