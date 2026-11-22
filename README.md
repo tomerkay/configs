@@ -18,7 +18,8 @@ Restore by copying a file back to the matching path.
 `bin/sync-configs.sh` copies this host's files in, strips the private blocks,
 has Claude review the staged diff, commits and pushes. It holds the list of home
 files it syncs. The Claude files are whatever the `~/.claude` git repo tracks,
-so that repo's `.gitignore` allowlist decides them. Pass `--no-push` to leave
+so that repo's `.gitignore` allowlist decides them, all but the directory the
+script names as `UNPUBLISHED_DIR`, which is never copied. Pass `--no-push` to leave
 the commit local.
 
 A dotfile change is committed only by a run that gives its reason:
@@ -40,7 +41,8 @@ cron runs outside the login session and cannot reach the keychain that holds the
 `claude` CLI's login, so the review call fails there.
 
 `claude/` is rebuilt on every run from the files the `~/.claude` repo tracks,
-except its `.gitignore`, which would ignore everything under `claude/` here. A
+except its `.gitignore`, which would ignore everything under `claude/` here,
+and `UNPUBLISHED_DIR`. A
 file changed at home is copied as it is, committed there or not. A new file is
 copied once it is tracked there. A tracked file deleted at home stops the sync
 until the deletion is committed there.

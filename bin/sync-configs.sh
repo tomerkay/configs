@@ -38,13 +38,18 @@ PRIVATE_FILES=(
     .zshrc
 )
 
+# A directory of ~/.claude that is tracked there and never copied here: it
+# holds facts about the owner. Three guards name it: the copy skips it, a
+# copy that holds it stops the run, and the review calls its lines unsafe.
+UNPUBLISHED_DIR='personal'
+
 PRIVATE_OPEN='# >>> PRIVATE >>>'
 PRIVATE_CLOSE='# <<< PRIVATE <<<'
 
 SECRET_PATTERN='gh[oprsu]_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_.-]{20,}|hf_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|AUTH for claude|INFLECTION_APIKEY=.|://[^/@[:space:]]+:[^/@[:space:]]+@'
 
 REVIEW_MODEL='haiku'
-REVIEW_SYSTEM_PROMPT='Unattended pre-commit review of a diff for a public dotfiles repo. An added line is UNSAFE if it holds a credential (key, token, password, private key, webhook URL), a non-public hostname or IP, a cluster, context, node or namespace name, or a personal e-mail address. The owner handle, work e-mail, employer name (Atero, in any form or role: `atero` as a word, a namespace, a label prefix or a repo name is public), GPG fingerprint, home-directory paths, test fixtures and placeholders such as <ctx>, $NS or C0OTHER are fine; flag only values that are evidently real. Reply with one line per finding (file, the added line, why), then a final line that is exactly CLEAN or UNSAFE. Nothing after the verdict.'
+REVIEW_SYSTEM_PROMPT='Unattended pre-commit review of a diff for a public dotfiles repo. An added line is UNSAFE if it holds a credential (key, token, password, private key, webhook URL), a non-public hostname or IP, a cluster, context, node or namespace name, or a personal e-mail address. The owner handle, work e-mail, employer name (Atero, in any form or role: `atero` as a word, a namespace, a label prefix or a repo name is public), GPG fingerprint, home-directory paths, test fixtures and placeholders such as <ctx>, $NS or C0OTHER are fine; flag only values that are evidently real. Any added line in a file under claude/'"$UNPUBLISHED_DIR"'/ is UNSAFE, whatever it holds. Reply with one line per finding (file, the added line, why), then a final line that is exactly CLEAN or UNSAFE. Nothing after the verdict.'
 
 push=true
 message=""
@@ -158,16 +163,21 @@ for f in "${HOME_FILES[@]}"; do
 done
 
 # ~/.claude is a git repo whose .gitignore allows back only the hand-written
-# files, so what it tracks is what gets published. Rebuilt from scratch so a
-# file deleted there disappears here too. Its .gitignore stays home: copied
-# here, it would ignore everything under claude/.
+# files, so what it tracks is what gets published, UNPUBLISHED_DIR aside.
+# Rebuilt from scratch so a file deleted there disappears here too. Its
+# .gitignore stays home: copied here, it would ignore everything under
+# claude/.
 claude_files="$(git -C "$HOME/.claude" ls-files)" \
     || die "cannot list the files tracked in ~/.claude"
 rm -rf "$REPO/claude"
 while IFS= read -r f; do
     [ "$f" = .gitignore ] && continue
+    case "$f" in "$UNPUBLISHED_DIR"/*) continue ;; esac
     install_file "$HOME/.claude/$f" "claude/$f"
 done <<<"$claude_files"
+
+[ ! -e "$REPO/claude/$UNPUBLISHED_DIR" ] \
+    || die "claude/$UNPUBLISHED_DIR reached the copy, nothing committed"
 
 # This file is excluded because SECRET_PATTERN would match its own source.
 found="$(grep -rInE "$SECRET_PATTERN" "$REPO" \
