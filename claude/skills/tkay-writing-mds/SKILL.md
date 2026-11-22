@@ -179,6 +179,13 @@ link's target copied in as a plain file; a plugin rooted at the whole repo
 copies the target with everything else and keeps the link. Never paste a copy
 into each skill instead: the copies drift.
 
+**Links between skills run one way.** A skill that links a file from
+another and lends it one back - directly, or around a ring of three -
+leaves the shared rules with no owner: each skill depends on the other, so
+neither installs or changes alone, and a change to one side lands in the
+other unseen. A cycle is the sign the shared files belong together in one
+of the skills; move them there before adding the link.
+
 **A skill names its files so the path holds wherever it is installed.** It
 runs from whatever repo the session opened and may sit in a plugin cache, so
 it never names a file as `.claude/skills/...` or `~/.claude/skills/...`. Its

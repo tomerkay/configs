@@ -1,6 +1,6 @@
 ---
 name: tkay-tool-use
-description: How tool calls run - shell commands, file reads and MCP tools alike: every read runs without asking, a refused command is re-tested once, a long run in the background with its log and the Mac held awake, a background watcher that fails on a poll it cannot read, JSON piped into jq straight from what produced it, a path preferred to a cd, what to do while a /goal runs or waits, and a goal that builds something, nightly or live. Use before the first tool call of a session, when handed something to investigate, and whenever a command may run longer than a few minutes, a loop polls for a state, JSON goes into jq, a command would cd into another directory, a /goal is set, or I ask for a goal that builds something and name no plan file.
+description: How tool calls run - shell commands, file reads and MCP tools alike: every read runs without asking, a refused command is re-tested once, a long run in the background with its log and the Mac held awake, nothing the session starts left running without my knowing, a background watcher that fails on a poll it cannot read, JSON piped into jq straight from what produced it, a path preferred to a cd, what to do while a /goal runs or waits, and a goal that builds something, nightly or live. Use before the first tool call of a session, when handed something to investigate, and whenever a command may run longer than a few minutes, a command or a script starts something that outlives it, a loop polls for a state, JSON goes into jq, a command would cd into another directory, a /goal is set, or I ask for a goal that builds something and name no plan file.
 ---
 
 # Tool use
@@ -11,6 +11,7 @@ description: How tool calls run - shell commands, file reads and MCP tools alike
 | writing a file for your own work - scratch, a script, a staged copy | `references/scratch-files.md` |
 | something to investigate, a question about whether to read, or a refused command | `references/reads.md` |
 | a command may run longer than a few minutes, or I ask whether a run is stuck | `references/long-runs.md` |
+| a command or a script starts something that outlives it - a cluster, a VM, a container, a background process | `references/left-running.md` |
 | a loop or a background script polls until a state arrives | `references/watchers.md` |
 | JSON goes into jq | `references/jq.md` |
 | a Go CLI fails TLS with `OSStatus -26276` inside the sandbox | `references/go-tls-in-sandbox.md` |

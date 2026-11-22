@@ -29,7 +29,7 @@ The case that taught the second, a draft reply to a colleague's thread:
 ❌ ❓ **Q3** **Post the draft into the thread**: post it as a reply to its root?
      - **Call:** ✅ Do it
      - **Why Not?**
-       - it goes out under my name, so the wording should read like me
+       - **1.** it goes out under my name, so the wording should read like me
 ✅ ❓ **Q3** **Post the draft into the thread**: post it as a reply to its root?
 ```
 
@@ -57,9 +57,9 @@ taught it, a commit rule drafted for my sign-off:
    - **Call:** ✅ Do it
    - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
    - **Why Yes?**
-     - a shipped fix reverts and backports alone
+     - **1.** a shipped fix reverts and backports alone
    - **Why Not?**
-     - a squash-on-merge repo erases the separate commit anyway
+     - **1.** a squash-on-merge repo erases the separate commit anyway
 ```
 
 ## The check comes before the assessment
@@ -93,18 +93,18 @@ cheap and the change is not, the call says so and no design is polished.
 - **Call:** ✅ Do it
 - **Change:** **Evidence:** CONFIDENT · **Size:** medium · **Difficulty:** hard
 - **Why Yes?**
-  - <an advantage of making the change>
+  - **1.** <an advantage of making the change>
 - **Why Not?**
-  - <a drawback, a cost or a risk of making it>
+  - **1.** <a drawback, a cost or a risk of making it>
 ```
 
 Every line is a list item, so a terminal keeps each on its own line wherever
 the assessment stands - under a ❓ line, above a proposal, in a review.
-Two or more points under Why Yes or Why Not are numbered, as
-`numbered-lists.md` says, so one is answered as "Why Not 2"; a single point
-keeps its dash. A proposal's Full Assessment ends with its alternatives
-when it has any, also siblings of the Call line; "Alternatives" below gives
-their shape.
+Every point under Why Yes or Why Not is numbered, a single one included,
+as `numbered-lists.md` says, so one is answered as "Why Not 2"; only
+"none" keeps its dash. A proposal's Full Assessment ends with its
+alternatives when it has any, also siblings of the Call line;
+"Alternatives" below gives their shape.
 
 
 **The Call and the Profile are two lines, because they answer two
@@ -410,15 +410,15 @@ The shape, with every field present:
 
 ```
 - **Why Not?**
-  - <a drawback of the proposal>
+  - **1.** <a drawback of the proposal>
 - **2 Better proposals:**
   - **1. <another way>**
     - **Call:** ✅ Do it
     - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
     - **Gains:**
-      - <what it has over the proposal>
+      - **1.** <what it has over the proposal>
     - **Losses:**
-      - <what it gives up against the proposal>
+      - **1.** <what it gives up against the proposal>
   - **2. <another way>**
     - <its own Call, Profile, Gains and Losses>
 - **1 Equivalent proposal is possible**
@@ -433,7 +433,7 @@ left the comparison with the proposal to the reader:
 ❌ - **Equivalent Alternatives:**
      - **`asyncio.wait_for` around the call**
        - **Why Yes?**
-         - <an advantage of making it>
+         - **1.** <an advantage of making it>
    - **Lesser Alternatives:**
      - **1.** a circuit breaker per decode pod
      - **2.** a shorter readiness probe period
@@ -442,9 +442,9 @@ left the comparison with the proposal to the reader:
      - **1. `asyncio.wait_for` around the call**
        - <its own Call and Profile>
        - **Gains:**
-         - covers the connect step too, not only the read
+         - **1.** covers the connect step too, not only the read
        - **Losses:**
-         - a cancelled read can leave the connection out of the pool
+         - **1.** a cancelled read can leave the connection out of the pool
    - **2 Lesser proposals**
 ```
 

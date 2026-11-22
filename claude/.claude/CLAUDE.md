@@ -9,8 +9,9 @@ edits one.
 ## A staged change, installed on one question
 
 **A file that is live the moment it is saved is never edited in place** - the
-root `CLAUDE.md`, a `tkay-*` skill, a hook, a home file the sync publishes,
-a file of the `~/repos/configs` repo the sync runs from. The sections below
+root `CLAUDE.md`, a file under `personal/`, a `tkay-*` skill, a hook, a
+home file the sync publishes, a file of the `~/repos/configs` repo the sync
+runs from. The sections below
 name what each kind adds; the procedure itself is this one:
 
 1. **Stage it.** Copy the file into this session's handoff directory and make
@@ -64,10 +65,10 @@ name what each kind adds; the procedure itself is this one:
 **My dotfiles, the root `CLAUDE.md`, my Claude settings, my hooks and my
 `tkay-*` skills are copied into a public GitHub repo on a schedule** by
 `~/repos/configs/bin/sync-configs.sh`. It holds the list of home files it
-copies; the Claude files it copies are whatever the `~/.claude` repo tracks
-(see below). It copies the working tree, not the last commit, and that is on
-purpose - do not raise it as a bug. Treat every one of those files as public
-the moment you write to it.
+copies; the Claude files it copies are whatever the `~/.claude` repo tracks,
+`personal/` aside (see below). It copies the working tree, not the last
+commit, and that is on purpose - do not raise it as a bug. Treat every one
+of those files as public the moment you write to it.
 
 **For this purpose an internal identifier IS a credential, and so is an
 account identity.** A Slack channel ID, a Tailscale or internal hostname, a
@@ -143,6 +144,29 @@ installed skills - stays untracked.
 **It has no remote: the commit is the last step, and publishing is the
 sync's job.**
 
+**I change it often, in other sessions too, so it moves under you.**
+Before each step of work on it - staging a copy, each review round, the
+install question, the install - list the commits since the tip you last
+saw and the changes not yet committed:
+
+```
+git -C ~/.claude log --oneline --stat <that tip>..HEAD
+git -C ~/.claude status --short
+```
+
+The first look of a session records the tip it starts from. When either
+shows something new - the `model` line below aside - say so in one line
+and judge each new commit or uncommitted change against the proposal:
+
+- **It touches a file the proposal changes, or a rule the proposal rests
+  on or restates**: read it, stage the proposal again on top of it and
+  review it again before the step goes on.
+- **It does not**: name it as unrelated in that same line, and go on.
+
+The install's comparison of the live file with the base, in "A staged
+change, installed on one question", still runs: it catches a change to
+the file itself, and this check catches the rest, and earlier.
+
 **No change to a tracked file is ever left uncommitted.** Every edit,
 deletion, rename and move is reviewed and committed in the same turn as the
 change, whatever task it came up in. A deletion is the dangerous one: git
@@ -150,8 +174,9 @@ lists a file until a commit records that it is gone, and the sync stops on a
 tracked file that is missing at home and publishes nothing, dotfiles
 included.
 
-- **A change to the root `CLAUDE.md` or to a `tkay-*` skill goes through "A
-  staged change, installed on one question"**, and its commit follows the
+- **A change to the root `CLAUDE.md`, a file under `personal/` or a
+  `tkay-*` skill goes through "A staged change, installed on one
+  question"**, and its commit follows the
   `tkay-code` commit standard, signed, deciding squash or new commit like
   anywhere else. A hook adds its own steps below.
 - **A turn that changed anything in `~/.claude` ends with
@@ -167,7 +192,8 @@ included.
   bycatch.
 
 **A new file joins the allowlist only after I agree.** Tracking a file
-publishes it: the sync copies whatever this repo tracks into the public repo.
+publishes it: the sync copies whatever this repo tracks into the public repo,
+all but `personal/`.
 
 ## A hook is live the moment it is saved
 
@@ -178,12 +204,13 @@ command it touches, in every session, including the commands that would undo
 the edit. A permission layer can refuse one edit of a change and allow the
 next, which is exactly how that state arises.
 
-It goes through "A staged change, installed on one question", with three
-steps of its own:
+It goes through "A staged change, installed on one question", with steps
+of its own:
 
 - **Test the staged copy before the question.** Run its `--selftest` where it
   has one, and put every case the change is about through the copy before
-  the live file is touched.
+  the live file is touched. Time it there too, as "A hook is small and
+  fast" says.
 - **Install it in one `cp`**, passed by the `cp` allow rule in
   `settings.json`, then run the same tests against the live file before the
   commit.
@@ -195,11 +222,33 @@ steps of its own:
 what it now denies, and gives the `! git -C ~/.claude restore <file>` that
 undoes it.
 
+## A hook is small and fast
+
+**Every call a hook sits on waits for it, so a hook costs about what
+starting its interpreter costs, and adds nothing to the context on the
+normal path** - a hook in `settings.json` and one in a skill's frontmatter
+alike.
+
+- **It decides from its payload and a small state file of its own.** It
+  never reads the transcript, walks a directory tree, or calls the network
+  or a model. A subprocess runs only where the answer needs one - `git` for
+  a repo's state - with a timeout.
+- **It prints only when it denies, asks or reports.** What a hook adds to
+  the context is paid for in tokens on every turn it fires, and a Stop hook
+  that sends a reply back costs a whole turn, so its check is one that
+  rarely fires.
+- **It is timed on the largest real input it will meet**, and the time is
+  given with the diff. One that cannot stay that cheap is not built: say
+  so, and propose another route.
+
+The case that taught it: a hook designed to find the session's title in the
+transcript on every prompt, which took seconds on the largest transcript.
+
 ## My `tkay-*` skills are standalone and generic
 
-I hand my `tkay-*` skills to other people as-is - all but `tkay-taste-setup`,
-below - so each one must work in a session that has never seen a CLAUDE.md
-of mine or any other skill. When you write or edit one:
+I hand my `tkay-*` skills to other people as-is, so each one must work in a
+session that has never seen a CLAUDE.md of mine or any other skill. When
+you write or edit one:
 
 - **It points at nothing outside itself** - no CLAUDE.md, no other skill, no
   path on my machine. Its own `references/` and `hooks/` are fine.
@@ -216,11 +265,12 @@ of mine or any other skill. When you write or edit one:
   in it carries `--context`/`--kube-context` and `-n`, a safety rule it
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine
   is the price of standalone; keep it to what that skill actually needs.
-- **Atero-specific knowledge stays in `tkay-cluster-ops` and the root
-  `CLAUDE.md`** - my workplace's clusters, cells, backoffice, charts and
-  repos: what an operation on a cluster or a cell needs goes in
-  `tkay-cluster-ops`, everything else in the root `CLAUDE.md`. Every other
-  `tkay-*` skill works for an engineer anywhere, `tkay-taste-setup`
+- **Atero-specific knowledge stays in `tkay-cluster-ops`, the root
+  `CLAUDE.md` and `personal/`** - my workplace's clusters, cells,
+  backoffice, charts and repos: what an operation on a cluster or a cell
+  needs goes in `tkay-cluster-ops`, everything else in the root
+  `CLAUDE.md` or `personal/`. Every other
+  `tkay-*` skill works for an engineer anywhere, `tkay-house-rules`
   included; an example taken from my work that names no Atero system is
   fine.
 - **It names nobody and nowhere**: not me, no cluster, node,
@@ -243,25 +293,43 @@ repos.
 
 My skills are edited under `skills/`.
 
-## `tkay-taste-setup` holds my way of working
+## `tkay-house-rules` holds my taste
 
-**A rule goes in `tkay-taste-setup` when every other skill still does its
-whole job without it**: it is my way of working, one another engineer may
-not want enforced on them - it names my machine, my repos or my accounts,
-or it is a choice another engineer could reasonably make the other way. A
-rule that is part of what a skill is for - a commit body for the commit
-standard - stays in that skill. Every rule lands on one side, so
-`tkay-taste-setup` and the other skills never hold the same rule.
+**A rule goes in `tkay-house-rules` when every other skill still does its
+whole job without it, and another engineer could install it as it is**: a
+choice one could reasonably make the other way - where work lands, what is
+never offered. A rule that is part of what a skill is for - a commit body
+for the commit standard - stays in that skill. Every rule lands on one
+side, so `tkay-house-rules` and the other skills never hold the same rule.
 
-- **It is published, for reference, not for others to install.** So it
-  may name my paths and point at other skills, and the rest of "My
-  `tkay-*` skills are standalone and generic" does not bind it, save
-  where Atero knowledge goes - but like every published file it holds no
-  internal identifier and no secret.
+- **It is standalone and generic like every `tkay-*` skill**: all of "My
+  `tkay-*` skills are standalone and generic" binds it. A fact about me or
+  my setup is no taste, and goes in `personal/`, below.
 - **The root `CLAUDE.md` `@`-imports its `SKILL.md`, which `@`-imports
-  every reference**, so every session loads them before the first change.
-  A new reference joins by its own import line in `SKILL.md`.
+  every reference of its own**, so every session loads them before the
+  first change. A new reference joins by its own import line in
+  `SKILL.md`; one linked from another skill is named there, not imported.
 - **The gate and the commands that need my words stay in the root
   `CLAUDE.md`**, beside the hook that enforces them, whatever this test
   says of each row - and so does every line that names the gate, which
-  lives in that file alone.
+  lives in that file alone. The skill states the habit - what is never
+  offered, how a rewrite I asked for runs - and never which command needs
+  my words.
+
+## `personal/` holds what is mine alone, and is never published
+
+**A fact about me or my setup goes in a file under `~/.claude/personal/`**:
+my name and handle, my machine, a path, a repo, an account, what my
+sandbox or my org's policy blocks. No skill carries one.
+
+- **The root `CLAUDE.md` `@`-imports `personal/index.md`, which `@`-imports
+  every file beside it**, so every session loads them. A new file joins by
+  its own import line there.
+- **It is tracked here and never published.** The sync skips the
+  directory, refuses to commit when its copy holds one, and tells its
+  review that any line under it is unsafe; `sync-configs.sh` names the
+  directory once. So a file there may hold what a published file may not -
+  an internal hostname, a channel ID - and still no token or password,
+  which stay in a file under `~/.config`.
+- **It may point anywhere** - at the root `CLAUDE.md`, at a skill - since
+  nobody installs it.

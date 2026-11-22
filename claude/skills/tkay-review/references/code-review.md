@@ -1,14 +1,15 @@
 # Code Review Standards
 
-`clean-code.md`, `security.md`, `commits.md` and `assessment.md` sit beside
-this file in `references/`; this skill's SKILL.md says what each is for.
+`clean-code.md`, `security.md`, `commits.md`, `assessment.md`,
+`severity.md` and `bycatch.md` sit beside this file in `references/`; this
+skill's SKILL.md says what each is for.
 `assessment.md` gives the frame every assessment in a CR is written in - the
 Call, the Profile, Evidence, Size and Difficulty, Why Yes and Why Not; "The
 calls and Profiles of a CR" below adds what only a review judges.
 
-**Read `clean-code.md` and `security.md` before the first finding.** They
-define clean code; this file says how to report a departure from one of
-them and how bad each one is.
+**Read `clean-code.md`, `security.md` and `severity.md` before the first
+finding.** The first two define clean code, and `severity.md` how bad a
+departure is; this file says how to report one.
 
 ## How I Want Code Reviews Done
 
@@ -174,12 +175,8 @@ A wall of findings where I can't tell the colours apart is a useless review, how
 
 ### The severity tags (use the exact emoji + word)
 
-| Tag | Meaning | Bar to qualify |
-|-----|---------|----------------|
-| 🔴 **BUG** | Code is wrong. It will misbehave, crash, corrupt data, hang, or produce the wrong result. | You can state a concrete failure: *"input/state X → wrong output or crash at `file:line`"* |
-| 🟠 **RISK** | Not provably broken today, but a real hazard: race window, unbounded growth, missing error path, perf regression on the hot path, silent failure, broken observability. Two that look like quality and are hazards: a bug fix with no test that reproduces it when a unit test could, and a label value (enum, metric label, status word) that is false for some case producing it and has not shipped yet - after it ships, renaming it breaks every dashboard and alert that reads it. | You can name the condition that triggers it (concurrency, scale, empty input, upstream error) |
-| 🟡 **QUALITY** | Behaves correctly. Structure, naming, DRY, missing log, stale docs, a weak or false commit message, a broken rule of the repo's `CLAUDE.md`. | Code is right, but whoever maintains it pays a price |
-| ⚪ **NIT** | Cosmetic. Whitespace, comment wording, ordering, style preference. | If I ignore it forever, nothing bad happens |
+The four colours, the bar each one sets and how one is picked are
+`severity.md`'s, beside this file.
 
 **🧪 UNTESTED is a finding with no colour: the code is not in doubt, only unproven.** It marks a claim the commit rests on that you traced and found sound, but that only a run you cannot make yourself proves - "Rules that keep the tags honest" says which runs. It is neither MUST HAVE nor NICE TO HAVE: it asks for a run, never a code change, so it gets a section of its own and a call of its own, `🧪 Needs test`. A doubt you can name - a condition under which the code might fail, which you could not check - is never 🧪: it is a 🟠 RISK (UNVERIFIED), because the doubt is about the code.
 
@@ -194,7 +191,7 @@ The case that taught it, a fix for a failing nightly suite, traced end to end, t
 ✅ FINDINGS: 🧪 1 · Call: 🧪 Needs test (the nightly suite)
 ```
 
-**The colour is picked on the hazard, never on the kind of thing.** Docs that now lie are 🟡 - the same as a false commit message - until the lie makes someone do harm: a wrong runbook step, an API contract a caller acts on, and then they are a 🟠 on their own merits, as a silent failure. A broken repo rule is 🟡; when breaking it created a hazard - a secret in a log, a missing pin - that hazard is the 🟠. A departure from `clean-code.md` keeps the colour the checklist below gives it.
+A departure from `clean-code.md` keeps the colour the checklist below gives it.
 
 **Who introduced it does not change the colour, and only sometimes where it goes:**
 
@@ -202,25 +199,20 @@ The case that taught it, a fix for a failing nightly suite, traced end to end, t
 - **It is pre-existing and stops what the branch delivers from working well**: a finding on the commit that should carry the fix, headed `##### 🟠 RISK [pre-existing; <what of the branch it breaks>]: <claim>`, so nobody looks for it in that commit's diff. It blocks: whether the branch works does not depend on who wrote the bug.
 - **It is pre-existing and the branch does not depend on it**: 🎣 bycatch, see "The bycatch table".
 
-**Never pick 🟡 to dodge an argument.** If you're unsure whether it is a hazard, it's 🟠 and you say you're unsure. 🟡 is a claim that shipping without it is safe - own it.
-
 ### The calls and Profiles of a CR
 
 Every assessment in a CR is written in the frame of `assessment.md`, with these calls and Profiles added for what a review
 judges.
 
-**The Profiles.** Under the Call line of a commit or a bycatch:
+**The Profiles.** Under the Call line of a commit:
 
-- **Commit** or **Bycatch**, in a CR: the thing as it sits in the code.
-  Then one Profile per fix, each naming what to do in a few words, with the
-  Evidence, Size and Difficulty of doing it: the blocking fix is what
-  unblocks the merge, the clean-up fix what is left to my judgement, and
-  one with nothing to do is left out. Each fix's label names only the
-  colours its findings have: `Fix 🔴`, `Fix 🟠` or `Fix 🔴🟠` for the
-  blocking one, `Fix 🟡`, `Fix ⚪` or `Fix 🟡⚪` for the clean-up. A commit
-  with a 🧪 UNTESTED finding adds a `Test 🧪` Profile after them: the run
-  in a few words, with the Evidence the claim would have once the run
-  passes and the Size and Difficulty of making it.
+- **Commit**, in a CR: the thing as it sits in the code. Then one Fix
+  Profile per fix, as `severity.md` gives it: the blocking fix is what
+  unblocks the merge, the clean-up fix what is left to my judgement. A
+  bycatch row's Profiles are `bycatch.md`'s. A commit with a 🧪 UNTESTED
+  finding adds a `Test 🧪` Profile after them: the run in a few words, with
+  the Evidence the claim would have once the run passes and the Size and
+  Difficulty of making it.
 
 ```
 - **Call:** 🔧 Needs change (hangs on timeout)
@@ -233,11 +225,9 @@ judges.
 
 All of them are siblings of the Call line, never nested under it.
 
-On a Commit or Bycatch Profile, Evidence backs that the thing does what it
-claims; on a change's Change Profile, that the change works
-once all its commits are in; on a Fix Profile, that the fix would work.
-Size and Difficulty describe the thing as it is, and on a Fix Profile the
-fix.
+On a Commit Profile, Evidence backs that the thing does what it claims; on
+a change's Change Profile, that the change works once all its commits are
+in. Size and Difficulty describe the thing as it is.
 
 **The calls.** Each opens with its emoji, wherever it is written:
 
@@ -351,12 +341,7 @@ options, with the one you recommend:
 A session handed the CR asks me each one; it never picks for me.
 
 **🎣 Bycatch** - something found on the way that is not part of what is being
-judged:
-
-- **🔧 Add fix** - you recommend fixing it as part of this work. It stays a
-  recommendation: the fix is made only when I say so in words that name it,
-  never folded into another change or its approval.
-- **⏸ Leave for now** - not in this work, with the reason in a few words.
+judged: its calls are `bycatch.md`'s.
 
 **(🍰 No brainer)** may follow every commit, entry and bycatch call, on the
 same judgement `assessment.md` gives for a change. A branch's call carries it
@@ -464,7 +449,7 @@ says what it judged:
 
 - **What the branch does comes first**, in bullets: everything someone
   who never opens the diff gets when it merges, the most important first.
-  A branch that does one thing gets one bullet, which keeps its dash. The
+  A branch that does one thing gets one bullet, still numbered. The
   bullets judge nothing: the calls are the sections'.
 - **The branch call** is one of the branch calls of "The calls and
   Profiles of a CR", answering whether the branch merges. It is never a
@@ -611,13 +596,26 @@ breaks, and which it never touches:
 | **CQ3** | one source of truth | ... | ... | ... |
 ```
 
-The rules, numbered **CQ1** to **CQ15**: comments say only what the code
-cannot; nothing built that nobody asked for (YAGNI); one source of truth;
-a name means one thing, literally; every bad path is counted, then logged;
-one reason to change; solid, not fragile; the plain version wins; fail
-fast, parse at the boundary; one result, all or nothing; a check costs
-what its answer is worth; asyncio, and one lock at a time; every copy
-heals; tests check the contract, not the code; enums over strings.
+**The rules, in the order and with the numbers every CR gives them**, each
+with its usual colour and when a break of it blocks:
+
+| # | Rule | Usual | Blocks (🟠, or 🔴 when the failure can be shown) when |
+|---|---|---|---|
+| **CQ1** | comments say only what the code cannot | 🟡 / ⚪ | never |
+| **CQ2** | nothing built that nobody asked for (YAGNI) | 🟡 | never: the code works, it is only bigger than needed |
+| **CQ3** | one source of truth | 🟡 | the copies already disagree, or one will drift with nothing to catch it |
+| **CQ4** | a name means one thing, literally | 🟡 | a label or status value false for some case, not shipped yet |
+| **CQ5** | every bad path is counted, then logged | 🟠 | always: a failure nobody can see |
+| **CQ6** | one reason to change | 🟡 | a change you can name elsewhere would break this code |
+| **CQ7** | solid, not fragile | 🟡 | a small change you can name elsewhere breaks it far away, or leaves it silently wrong |
+| **CQ8** | the plain version wins | 🟡 | never |
+| **CQ9** | fail fast, parse at the boundary | 🟠 | always, once a bad state reaches deep code; 🟡 while nothing reaches it yet |
+| **CQ10** | one result, all or nothing | 🟠 | always: a half-done result is corrupt state |
+| **CQ11** | a check costs what its answer is worth | 🟡 | it sits on a hot path |
+| **CQ12** | asyncio, and one lock at a time | 🟠 | always: a deadlock or a blocked event loop |
+| **CQ13** | self healing | 🟠 | a copy a lost event or a crash leaves wrong, with nothing to bring it back |
+| **CQ14** | tests check the contract, not the code | 🟡 | a bug fix with no test that reproduces it, when a unit test could |
+| **CQ15** | enums over strings | 🟡 | a string value already misspelled somewhere |
 
 - **Call** - ✅ Holds, a colour and Broken with what is broken, or
   ➖ Irrelevant when the branch's code never touches the rule; "How we
@@ -632,7 +630,7 @@ heals; tests check the contract, not the code; enums over strings.
   the fix get more expensive once this merges? A yes to either is
   MUST HAVE - 🔴 when the failure can be shown, 🟠 when only its trigger
   can be named. Two no's is NICE TO HAVE - 🟡, or ⚪ when only the next
-  reader's eye pays. The checklist below gives each rule's usual answer.
+  reader's eye pays. The rules table above gives each rule's usual answer.
 
 ### The commits — In short, then In detail, every CR
 
@@ -709,35 +707,13 @@ Two tests decide it, and only what fails both is bycatch:
    introduced it: a 🔴 or 🟠 finding on the commit that should carry the
    fix, marked pre-existing, as "Who introduced it" says above.
 
-The same two rows per item as the In short table, under its own heading:
-
-# 🎣 Bycatch
-
-| # | What the bycatch is | Findings | Call |
-|---|---|---|---|
-| **B1** | <what it is, with `file`> | 🟠 1 | <call> |
-| | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | |
-
-- **#** — **B1**, **B2**, **B3** down the table, in bold, so I answer a row by its number
-  instead of describing it back to you. The letter keeps it apart from every
-  other number in the reply, and `B2` in my message names that row and
-  nothing else. A row takes the next free `B<n>` of the session: a session
-  that already numbered bycatch outside a review goes on from there, and a
-  repeat CR keeps a carried row's number and gives a new row the next free
-  one, so my earlier answers still point at the right rows.
-- **What the bycatch is** — one sentence with the file, so I can tell a
-  lying doc from a typo without re-reading the findings.
-- **Findings** — its colour and a count of one, in the In short table's
-  form: `🟠 1`.
-- **Call** — what you think I should do, as a recommendation I can
-  overrule: the bycatch calls of "The calls and Profiles of a CR" on the head row.
-  🔧 Add fix is a new commit on this branch, once I ask for it - by name, or by handing the CR over to be fixed, as "To do" says which; ⏸ Leave for now carries the reason in a few words - out of the
-  branch's scope, another owner's file, not worth the review cost today.
-- **The second row**: the Bycatch Profile is the problem as it sits in the
-  code - the Evidence that it is real as described, how much it touches,
-  how hard it is to understand; the Fix Profiles are the fix, as in the
-  In short table, and the one whose colours the finding is not in is left
-  out.
+The table, its columns, its calls and its Profiles are `bycatch.md`'s,
+beside this file, which also says which rows of the session's bycatch file
+the table carries as well; it sits under its own `# 🎣 Bycatch` heading. A
+repeat CR keeps a carried row's number and gives a new row the next free
+one, so my earlier answers still point at the right rows. 🔧 Add fix is a
+new commit on this branch, once I ask for it - by name, or by handing the
+CR over to be fixed, as "To do" says which.
 
 **A problem the branch already fixes is not bycatch.** Its fix is part of
 the commit that carries it - a commit of its own, or a `Bycatch:` line in
@@ -755,25 +731,6 @@ three rows:
 ❌ | **B1** | Panel 12 double-counted during a pod overlap. | 🟡 1 | Fixed by `<sha>`. |
    | **B3** | Standby passes stamp the last-pass timestamp. The board side is now covered by tile 30. The code half is still open. | 🟠 1 | ⏸ Leave for now (...) |
 ✅ | **B3** | Standby passes stamp the last-pass timestamp (`internal/looprun/metrics.go`). | 🟠 1 | ⏸ Leave for now (...) |
-```
-
-**Bycatch is a finding, so what has no colour gets no row.** Something with
-nothing to fix in the code - a folder a tool left behind, state the harness
-keeps for itself, a leftover the session made, a change going live, such as
-a running session still holding a hook it loaded before a commit removed
-it - is no defect at HEAD. It is named in a line of prose if at all, never
-as a row.
-
-The cases that taught it, a row with no colour and no call, in columns made
-up for it, and a row whose only fix was a new session:
-
-```
-❌ | **B1** | An empty `.claude/.cc-writes` folder the harness created. | skills/<skill>/hooks/.claude |
-✅ No bycatch.
-
-❌ | **B1** | A skill's hook entry, loaded before a commit deleted its script, blocks every Read in this session. | ⚪ 1 | ⏸ Leave for now |
-   | | ... | **Fix ⚪:** a new session loads the skill without it · ... | |
-✅ No bycatch.
 ```
 
 When nothing is open, the heading stays and the table is one line instead:
@@ -943,26 +900,8 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Consistent formatting across similar log messages?
    - Include all necessary context (pod_name, pod_ip, model_name)?
 
-6. **Code Quality** [the colour of each break follows the two questions of "The code quality table": a failure you can name, or a fix that costs more after the merge, is 🔴/🟠; neither is 🟡/⚪]
-   - **Ask every rule of `clean-code.md` of the change**, the fifteen the code quality table numbers **CQ1** to **CQ15**, and give each a call there. Each rule's usual answer, and when it blocks:
-
-     | # | Rule | Usual | Blocks (🟠, or 🔴 when the failure can be shown) when |
-     |---|---|---|---|
-     | **CQ1** | comments say only what the code cannot | 🟡 / ⚪ | never |
-     | **CQ2** | nothing built that nobody asked for (YAGNI) | 🟡 | never: the code works, it is only bigger than needed |
-     | **CQ3** | one source of truth | 🟡 | the copies already disagree, or one will drift with nothing to catch it |
-     | **CQ4** | a name means one thing, literally | 🟡 | a label or status value false for some case, not shipped yet |
-     | **CQ5** | every bad path is counted, then logged | 🟠 | always: a failure nobody can see |
-     | **CQ6** | one reason to change | 🟡 | a change you can name elsewhere would break this code |
-     | **CQ7** | solid, not fragile | 🟡 | a small change you can name elsewhere breaks it far away, or leaves it silently wrong |
-     | **CQ8** | the plain version wins | 🟡 | never |
-     | **CQ9** | fail fast, parse at the boundary | 🟠 | always, once a bad state reaches deep code; 🟡 while nothing reaches it yet |
-     | **CQ10** | one result, all or nothing | 🟠 | always: a half-done result is corrupt state |
-     | **CQ11** | a check costs what its answer is worth | 🟡 | it sits on a hot path |
-     | **CQ12** | asyncio, and one lock at a time | 🟠 | always: a deadlock or a blocked event loop |
-     | **CQ13** | every copy heals | 🟠 | a copy a lost event or a crash leaves wrong, with nothing to bring it back |
-     | **CQ14** | tests check the contract, not the code | 🟡 | a bug fix with no test that reproduces it, when a unit test could |
-     | **CQ15** | enums over strings | 🟡 | a string value already misspelled somewhere |
+6. **Code Quality** [default: the rule's usual colour in "The code quality table"]
+   - **Ask every rule of `clean-code.md` of the change**, and give each its call; "The code quality table" numbers the rules and gives each one's usual colour and when a break of it blocks.
    - Ordering issues? (should things be grouped differently?)
    - Naming clarity? Does each name mean one thing, literally, that a cold reader gets from the name alone? A name that only a comment explains is the wrong name: make it longer or split it. Any state that hides a compound condition, is named for its cause, or kept its name when a change shifted its meaning? When a diff changes what a field means, grep every reader of it.
    - Any TODOs or FIXMEs that shouldn't be there?
@@ -1170,7 +1109,7 @@ FINDINGS: 🔴 1 · 🟠 1 · 🟡 3 · ⚪ 1
 - **Fix 🔴🟠:** guard the empty list, call `record_failure()` on timeout · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Fix 🟡⚪:** reword the subject and body · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
-  - every lookup drops from O(n) to O(1)
+  - **1.** every lookup drops from O(n) to O(1)
 - **Why Not?**
   - none beyond the findings above (checked: hashY keeps the key format)
 
@@ -1227,7 +1166,7 @@ FINDINGS: ⚪ 2
 - **Commit:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** super easy
 - **Fix ⚪:** delete the comment, strip the whitespace · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
-  - a request with no auth header gets a 401 instead of a 500
+  - **1.** a request with no auth header gets a 401 instead of a 500
 - **Why Not?**
   - none (checked: grepped every caller, none relied on the exception)
 
@@ -1245,8 +1184,6 @@ helper remain in HEAD (grepped).
 `config/models.yaml:14`
 ```
 
-Then wait for me to say "next commit" or "its ok" before continuing.
-
 ### Writing out the fix
 
 **Every fix is written out under its finding and never applied**: the diff
@@ -1254,17 +1191,6 @@ you would apply, the new commit message, the split. Whether a finding is
 fixed now, ticketed or shipped knowingly is my call, and the fix itself is
 made outside the review, as `SKILL.md` says. A fix shown under a finding
 carries that finding's tags, never an assessment.
-
-### Tools to Use
-
-- `git show <hash>` to review commits
-- `git show <hash>~1:<file>` to see previous version
-- Read the actual files to verify claims
-- Check if metrics are actually called (grep for the function name)
-- Verify log levels haven't changed when commit claims they did
-- **When methods/metrics are removed: `git show HEAD:<file> | grep "method_name"` to verify no calls remain in HEAD**
-- **When reviewing a commit, check if later commits broke it: `git diff <commit> HEAD -- <file>`**
-- **For removed functions: grep the entire codebase in HEAD state to find any remaining calls**
 
 ### Bottom Line
 

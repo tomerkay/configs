@@ -42,8 +42,17 @@ opens with the tree, written in full whatever its size. An item I have
 answered - accepted, waved off, told you to leave - is closed, and so is a
 question a later one replaced.
 
-**When nothing is open, the closing comes in two steps:**
+**When nothing is open, the closing comes in three steps:**
 
+- **Bycatch left** - the session's bycatch file, which `bycatch.md`
+  describes, holds a row: the reply opens with "Yes - nothing open left,
+  only the bycatch to look at.", shows the bycatch file, and ends with two
+  ❓ lines: a proposal to work on them in this session, its assessment
+  under it, and the cleanup below, worded
+  as leaving the bycatch and deleting what the session left, bare as the
+  cleanup always is. The two are the two answers of one decision, so a yes
+  to either settles both. Bycatch is not open work, so the answer to "are
+  we done?" is yes.
 - **Something left to clean up** - scratch files, a working directory, test
   leftovers you made: the reply opens with "Yes - nothing open left, only
   <the cleanup> to delete.", says what it holds, and ends with deleting it as
@@ -56,7 +65,26 @@ question a later one replaced.
   what changed and where it landed - a recap for a person, not a report: no
   file dumps, no command output, no findings given again, one line each.
 
-The case that taught the first step:
+**The reply that answers whether we are done always shows the bycatch
+file**, whichever step it takes, right under its opening line: the
+`# 🎣 Bycatch` heading and both subheadings, each with its table or
+"None." when it is empty. A session with no bycatch file shows the same
+heading and subheadings, with "None." under both. The case that taught
+it:
+
+```
+❌ Yes - nothing open left, only the handoff directory to delete.
+   <what it holds>
+✅ Yes - nothing open left, only the handoff directory to delete.
+   # 🎣 Bycatch
+   ## ⏳ Still open
+   None.
+   ## 🙅 Set aside
+   None.
+   <what it holds>
+```
+
+The case that taught the cleanup step:
 
 ```
 ❌ Not quite. Everything is closed except the handoff directory:

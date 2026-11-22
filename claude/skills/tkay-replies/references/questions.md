@@ -79,9 +79,9 @@ the line itself:
   - **Call:** ✅ Do it
   - **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
   - **Why Yes?**
-    - <an advantage of making the change>
+    - **1.** <an advantage of making the change>
   - **Why Not?**
-    - <a drawback, a cost or a risk of making it>
+    - **1.** <a drawback, a cost or a risk of making it>
 ```
 
 **The nest has no copy above it.** What it cannot carry - the lean of a
@@ -106,11 +106,11 @@ it asked two. The case that taught it, two proposals in one block:
 ```
 ❌ ❓ **Q1** **Refuse a deleting tenant on update**: add it to this branch?
      - **Why Not?**
-       - it lands in an unrelated MR
+       - **1.** it lands in an unrelated MR
    ❓ **Q2** **Scope the tenant to its cluster**: fix it in a separate MR?
 ✅ ❓ **Q1** **Refuse a deleting tenant on update**: add it to this branch?
      - **Why Not?**
-       - it lands in an unrelated MR
+       - **1.** it lands in an unrelated MR
 
    ❓ **Q2** **Scope the tenant to its cluster**: fix it in a separate MR?
 ```
@@ -134,10 +134,11 @@ is a plain warning on a line with no ❓, and stops nothing.
 
 **Something found on the way is never part of another proposal.** A fix
 for a problem outside the change in hand - bycatch - goes in only when I
-say so, in words that name that fix. Until then it is reported, as
-`bycatch.md` says, or put to me as a ❓ proposal of its own, never as a
-line inside another proposal's diff, review or commit, where my yes to
-that proposal would carry it in.
+say so, in words that name that fix. Until then it waits in the bycatch
+file, as `bycatch.md` says, or, when it bears on the work in hand, is put
+to me as a ❓ proposal of its own - never as a line inside another
+proposal's diff, review or commit, where my yes to that proposal would
+carry it in.
 The case that taught it:
 
 ```
@@ -151,6 +152,8 @@ The case that taught it:
 **A reply ends with at most one ❓ block.** Its lines are independent
 decisions, ordered by what you would do first once answered. A decision
 whose answer changes the next one makes the block exactly one line, and
-every other decision waits for a later reply.
+every other decision waits for a later reply. The one block of two lines
+for one decision is the closing's bycatch step, which `issue-tree.md`
+gives: its lines are that decision's two answers.
 
 Not covered: the harness's permission prompts, which are not chat.

@@ -1,6 +1,6 @@
 ---
 name: tkay-replies
-description: The shape of a reply in chat - how an answer is held to the truth, the assessment a proposal or a judgement carries, proposals and questions that stop the reply as numbered ❓ lines, the reading list that opens a reply to a message about several things, the issue tree, the bycatch list, numbered lists and tables, bracketed copy-paste blocks, and before-and-after snippets. Use before the first reply of a session, and whenever a reply proposes a change or gives an assessment of a change, an option or an idea, stops for an answer, answers a message about several things, shows where we stand, reports something found on the way, hands over something to copy, or shows how a change will look.
+description: The shape of a reply in chat - how an answer is held to the truth, the assessment a proposal or a judgement carries, proposals and questions that stop the reply as numbered ❓ lines, the reading list that opens a reply to a message about several things, the issue tree, the bycatch list, numbered lists and tables, bracketed copy-paste blocks, before-and-after snippets, and the TL;DR that closes a long reply. Use before the first reply of a session, and whenever a reply proposes a change or gives an assessment of a change, an option or an idea, stops for an answer, answers a message about several things, shows where we stand, reports something found on the way, hands over something to copy, shows how a change will look, or runs long.
 hooks:
   Stop:
     - hooks:
@@ -24,9 +24,11 @@ reference; they refer to each other by file name.
 | answers a message of mine about several things | `references/reading-list.md` |
 | shows where we stand, or answers whether we are done | `references/issue-tree.md` |
 | reports something found on the way, outside the change in hand | `references/bycatch.md` |
+| colours a finding or a bycatch row | `references/severity.md` |
 | holds a list or a table | `references/numbered-lists.md` |
 | hands me something to copy, paste or run | `references/copy-blocks.md` |
 | shows how a change will look | `references/before-and-after.md` |
+| runs long enough that I would scroll to read it | `references/tldr.md` |
 
 **Read the reference before the reply that needs it.** Never answer from
 memory of a reference you have not read this session.
@@ -48,7 +50,7 @@ point a hook sent back:
    and the one corrected Why Not>
 ✅ Correction to **Q53**: its Why Not point was the change taking effect.
    - **Why Not?**
-     - a cheap fix made at night can bring a bug of its own
+     - **1.** a cheap fix made at night can bring a bug of its own
 ```
 
 These shapes are for replies in chat only - never a commit message, a chat

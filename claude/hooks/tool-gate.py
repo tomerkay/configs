@@ -1110,13 +1110,16 @@ def go_build_discards_output(args):
     packages compiles them and discards the result
     (https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies). Several means two
     distinct package arguments, or the whole module as ./... . -toolexec runs a program of
-    its own, so a build that names one is never a read.
+    its own, so a build that names one is never a read. Go writes nothing at -o /dev/null,
+    for one package or several (base.IsNull in cmd/go/internal/work/build.go).
     """
     # Go takes --flag for -flag.
     args = ["-" + a.lstrip("-") if a.startswith("--") and a != "--" else a for a in args]
-    if has_flag(args, "-o", "-toolexec"):
+    if has_flag(args, "-toolexec"):
         return False
-    rest, _ = split_globals(args, GO_BUILD_VALUE_FLAGS)
+    rest, seen = split_globals(args, GO_BUILD_VALUE_FLAGS)
+    if has_flag(args, "-o"):
+        return seen.get("-o") == os.devnull
     packages = set(positionals(rest)[1:])
     return len(packages) > 1 or "./..." in packages
 
@@ -1422,7 +1425,25 @@ def classify_op(args):
 
 def classify_defaults(args):
     pos = positionals(args)
-    return READ if pos and pos[0] in ("read", "read-type", "domains", "find", "export") else WRITE
+    # export writes the plist file it names; only `-` sends it to stdout.
+    if pos[:1] == ["export"]:
+        return READ if len(pos) == 2 and args[-1:] == ["-"] else WRITE
+    return READ if pos and pos[0] in ("read", "read-type", "domains", "find") else WRITE
+
+
+def defaults_writes_a_named_domain(args):
+    """True when a defaults verb that changes only its domain names that domain, which
+    cfprefsd keeps in the user's Library, in no repo.
+
+    A domain may also be a path to any plist, with or without the extension, so one with
+    a `/`, a `.plist` or a shell expansion is left to the rules for a path.
+    """
+    pos = positionals(split_globals(args, {"-host"})[0])
+    if len(pos) < 2 or pos[0] not in ("write", "delete", "rename", "import"):
+        return False
+    domain = pos[1]
+    return not ("/" in domain or domain.endswith(".plist")
+                or (SHELL_EXPANSION_CHARS | {"~"}) & set(domain))
 
 
 def classify_crontab(args):
@@ -1819,6 +1840,16 @@ def cp_paths(args):
     if not targets:
         return operands[-1:]
     return operands + [t for t in targets if t]
+
+
+def ln_paths(args):
+    """The paths an ln may write: the links it makes, which stand where cp's target does. With
+    one operand the link lands in the working directory under the target's name, so nothing
+    is returned and the gate holds it."""
+    end = args.index("--") if "--" in args else len(args)
+    if len(positionals(args[:end]) + args[end + 1:]) < 2:
+        return []
+    return cp_paths(args)
 
 
 def mode_paths(args):
@@ -2576,6 +2607,11 @@ def gate_blockers(command, cwd, run_time_dir=None):
                 if prog in MODE_WRITERS | {"rm"} and paths and all(
                         outside_repos(path_from(here, p)) for p in paths):
                     continue
+            # An ln only reads its targets, so a target inside a repo changes nothing there.
+            if prog == "ln":
+                paths = ln_paths(args)
+                if paths and all(inside_gate_scratch(path_from(here, p)) for p in paths):
+                    continue
             if prog == "tar" and tar_extracts_into_scratch(here, args):
                 continue
             if prog in ("sed", "gsed") and sed_edits_only_scratch(here, args):
@@ -2591,6 +2627,8 @@ def gate_blockers(command, cwd, run_time_dir=None):
             if prog == "helm" and not HELM_ENV_RE.search(command) \
                     and (helm_dependency_writes_into_scratch(here, args)
                          or helm_repo_writes_outside_repos(here, args)):
+                continue
+            if prog == "defaults" and defaults_writes_a_named_domain(args):
                 continue
             # go env -w and -u write Go's own user config file, which sits in no repo.
             if prog == "go" and positionals(args)[:1] == ["env"]:
@@ -2727,22 +2765,30 @@ SED_LINE_ADDRESS_RE = re.compile(r"^(?:\d+|\$)(?:,(?:\d+|\$))?")
 
 
 def sed_substitution(script):
-    """True when script is one s command, on every line or on a line number or range, whose
-    flags neither write (w) nor run (e) anything."""
-    script = SED_LINE_ADDRESS_RE.sub("", script, count=1)
-    if len(script) < 4 or script[0] != "s" or script[1] in "\\\n":
-        return False
-    delim, seen, i = script[1], 0, 2
-    while i < len(script):
-        if script[i] == "\\":
-            i += 2
-            continue
-        if script[i] == delim:
-            seen += 1
-            if seen == 2:
-                return set(script[i + 1:]) <= SED_SAFE_SUBSTITUTE_FLAGS
-        i += 1
-    return False
+    """True when script is one or more s commands, apart by `;` or a newline, each on every
+    line or on a line number or range, whose flags neither write (w) nor run (e) anything."""
+    rest = script
+    while True:
+        rest = SED_LINE_ADDRESS_RE.sub("", rest.lstrip(), count=1)
+        if len(rest) < 4 or rest[0] != "s" or rest[1] in "\\\n":
+            return False
+        delim, seen, i = rest[1], 0, 2
+        while i < len(rest) and seen < 2:
+            if rest[i] == "\\":
+                i += 2
+                continue
+            seen += rest[i] == delim
+            i += 1
+        if seen < 2:
+            return False
+        tail = rest[i:]
+        stop = re.search(r"[;\n]", tail)
+        flags = tail[:stop.start()] if stop else tail
+        if not set(flags.rstrip()) <= SED_SAFE_SUBSTITUTE_FLAGS:
+            return False
+        if not stop or not tail[stop.end():].strip():
+            return True
+        rest = tail[stop.end():]
 
 
 def sed_edits_only_scratch(here, args):
@@ -3941,9 +3987,24 @@ def selftest():
         (False, "Bash", "GOFLAGS=-mod=readonly go mod download example.com/m", DENY),
         # go env -w writes Go's user config file, outside every repo.
         (False, "Bash", "go env -w GOFLAGS=-mod=mod", None),
+        # A defaults write to a named domain lands in the user's Library; a domain given as
+        # a plist path may land in a repo.
+        (False, "Bash", "defaults write com.googlecode.iterm2 K -float 4102444800", None),
+        (False, "Bash", "defaults -currentHost delete com.apple.dock K", None),
+        (False, "Bash", "defaults -host h write com.apple.dock K -bool true", None),
+        (False, "Bash", "defaults write -g K -bool false", None),
+        (False, "Bash", f"defaults write {rx}/a.plist K -bool true", DENY),
+        (False, "Bash", "defaults write a.plist K -bool true", DENY),
+        (False, "Bash", "defaults write ~/x K -bool true", DENY),
+        (False, "Bash", "defaults write $D K -bool true", DENY),
+        (False, "Bash", "defaults write", DENY),
+        # defaults export writes the plist file it names.
+        (False, "Bash", f"defaults export com.apple.dock {rx}/a.plist", DENY),
+        (False, "Bash", "defaults export com.apple.dock -", None),
         # A build of several packages discards its output, so it changes no repo.
         (False, "Bash", "go build ./...", None),
         (False, "Bash", "go build ./cmd/a", DENY),
+        (False, "Bash", "go build -o /dev/null ./cmd/a", None),
         # A signal reaches a process, never a file.
         (False, "Bash", "kill 12345", None),
         (False, "Bash", "kill 12345 && echo x > /x/f", DENY),
@@ -4406,6 +4467,9 @@ def selftest():
         ("go env GOPATH", READ),
         ("go env -w GOFLAGS=-mod=mod", WRITE),
         ("go env -u GOFLAGS", WRITE),
+        # defaults export writes a file unless it sends the plist to stdout.
+        ("defaults export com.apple.dock -", READ),
+        ("defaults export com.apple.dock a.plist", WRITE),
         # go build keeps a binary only for one main package or at -o.
         ("go build ./...", READ),
         ("go build -tags scaling_test ./...", READ),
@@ -4416,6 +4480,12 @@ def selftest():
         ("go build", WRITE),
         ("go build -o /x/out ./...", WRITE),
         ("go build -toolexec /x/t ./...", WRITE),
+        # Go writes nothing at -o /dev/null, for one package or several.
+        ("go build -o /dev/null ./cmd/a", READ),
+        ("go build -o=/dev/null ./...", READ),
+        ("go -C /x build --o /dev/null ./cmd/a", READ),
+        ("go build -o /dev/null -o /x/out ./cmd/a", WRITE),
+        ("go build -o /dev/null -toolexec /x/t ./cmd/a", WRITE),
         # -mod=mod, as a flag or in GOFLAGS, lets a build command rewrite go.mod and go.sum.
         ("go vet ./...", READ),
         ("go vet -mod=mod ./...", WRITE),
@@ -4566,6 +4636,20 @@ def selftest():
             ("Bash", {"command": f"sed -Ei '' 's/a+/b/' {scratch_dir}/f.md"}, None),
             ("Bash", {"command": f"sed -i '' -e '3s/a/b/' -e '5,$s|c|d|g' {scratch_dir}/f.md"},
              None),
+            ("Bash", {"command": f"sed -i '' 's#x#y#; s#a b#c d#g' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' 's/a/b/;' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' 's/a/b/; w {on_main}/out' {scratch_dir}/f.md"},
+             DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/; s/c/d/w {on_main}/out' {scratch_dir}/f.md"},
+             DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/; 3d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/; s/c/d/e' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/; s/c/d/' {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"ln -s ../../x/a.md {scratch_dir}/a.md"}, None),
+            ("Bash", {"command": f"ln -sf {on_main}/README.md {scratch_dir}/r.md"}, None),
+            ("Bash", {"command": f"ln -s {scratch_dir}/a.md {on_main}/a.md"}, DENY),
+            ("Bash", {"command": f"ln -s {scratch_dir}/a.md"}, DENY),
+            ("Bash", {"command": f"ln -s ../x/a.md ../x/b.md {scratch_dir}/d"}, None),
             ("Bash", {"command": f"sed -i '' 3s/a/b/ {on_main}/README.md"}, DENY),
             ("Bash", {"command": f"sed -i '' '3s/a/b/w {on_main}/out' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i '' '3d' {scratch_dir}/f.md"}, DENY),

@@ -73,11 +73,18 @@ The same line opens the goal's own text, so the run reads it first.
    the run commits there, so uncommitted work would ride along under its
    builds and tests. The goal says the checkout is the run's until it
    ends.
-6. **A fresh subagent reads the written goal** before it is handed over,
+6. **Every connection the run needs is up**, read before handover: a VPN,
+   a login or token with time left for the whole run, a remote host the
+   work builds or tests against. One that is down is a step only I can take: it is put to me
+   before handover, and the goal names it as mine, to run before the run
+   starts.
+7. **A fresh subagent reads the written goal** before it is handed over,
    with the repo and nothing of the session's reasoning: the suite list
    against the inventory, each command against the checkout and branch
    it must act on, and the stop condition against what each phase is
-   for. What it finds is fixed in the goal, or put to me.
+   for. It also writes the last-reply line for every way the goal lets a
+   suite end, and an end with no line the checker would accept is a hole
+   in the goal. What it finds is fixed in the goal, or put to me.
 
 **A nightly goal is written only once nothing is left that would stop it
 reaching its end without me.** Before writing it, look for every such
@@ -89,7 +96,8 @@ starts. Every other gap stays the run's to decide and record.
 
 Ask me only for that and for what none of this answers - the repo, the
 files that must never be staged, and, when step 4 cannot settle it, the
-branch - besides the suite list and what step 6 puts to me.
+branch - besides the suite list, a connection step 6 finds down, and
+what step 7 puts to me.
 
 **The goal is written into a markdown file in a scratch directory that
 outlives the session, and the reply never prints it** - I open the file
@@ -101,6 +109,44 @@ any skill and writes every rule out, so the run does the same whatever
 skills it loads. A skill the run must invoke, such as the review skill, is
 still named by its name, and a plan goal still names its plan by its path:
 the plan is the work, not a pointer.
+
+**A step listed before the `/goal` line gets a ⚠️ line**, right under
+the nightly or live line at the top of the file, and again under it in
+the reply that hands the goal over: it names each such step and what
+fails without it. The `/goal` line is the one that looks like the whole
+job, so it is the one copied alone, and a step it skips fails in the
+night as though the branch were broken. A list that holds only the
+`/goal` line gets no ⚠️ line. The case that taught it, a goal whose first
+step raised a kernel limit the test database needs:
+
+```
+❌ **This is a nightly goal: ...**
+   Run these, in order
+   1. ! sudo sysctl -w kern.sysv.shmall=<value>
+   2. /goal ...
+✅ **This is a nightly goal: ...**
+   ⚠️ Run step 1 before the /goal line: it raises a kernel limit, and
+   without it every test that starts the database fails.
+   Run these, in order
+   1. ! sudo sysctl -w kern.sysv.shmall=<value>
+   2. /goal ...
+```
+
+**The goal says where it runs, and why, in one line** under its nightly
+or live line, below the ⚠️ line when there is one: in the session that
+hands it over, by default, so the session that writes the code is the
+one that fixes it. It runs in a new session only when I pick one - a
+stop found before handover, such as a skill's question before the run's
+first change, is put to me with that pick - and the line gives my answer
+as the reason. No goal makes up a reason of its own. The case that
+taught it, a goal that sent itself to a new session:
+
+```
+❌ Paste the /goal line into a new session: its code would not be
+   independent of the reviews this session wrote.
+✅ Runs in this session: it wrote the code the goal fixes.
+✅ Runs in a new session: you picked one when asked before handover.
+```
 
 **Under the goal in the file come two lists:**
 
@@ -115,13 +161,24 @@ the plan is the work, not a pointer.
 **The reply says in one line what the goal builds and ends with the goal
 file's full path.** The `/goal` line names the plan or the request and
 the goal file for the run to read first, and states the stop condition in
-full, as things the conversation will show: the goal's checker reads only
-the conversation - it never opens a file - so a stop it cannot see there
-is one it cannot judge. The line stays under the harness's cap on a
-`/goal` condition.
+full - each of the three states a suite may end in, the waiting one for
+any recorded reason - as things the conversation will show: the goal's
+checker reads only the conversation - it never opens a file - so a stop
+it cannot see there is one it cannot judge. The line stays under the
+harness's cap on a `/goal` condition.
 
 ## What the run does
 
+- **Before any work, the run reads back each step listed before the
+  `/goal` line**: the limit it raised, the tool it installed, the
+  connection it opened - `sysctl <name>` for a kernel limit, the VPN's
+  status command for a tunnel. The goal writes out the read for each
+  step, since the run cannot guess it, and each read is run once before
+  handover, to see it answer. In a nightly goal, a step that did
+  not take is the first item of the report's Needs you, with its command;
+  the run spends no fix attempt on a failure that step explains, and
+  carries on with the work that does not need it. A live goal asks me
+  and waits.
 - **One signed commit per piece of work**, on the branch settled before
   the goal was handed over, in the repo's checkout, by the code skill's
   standards and the repo's conventions.
@@ -140,8 +197,10 @@ is one it cannot judge. The line stays under the harness's cap on a
   out `unwatched-goal.md`, with any route step 2 added.
 - **Every decision made without asking goes in one list**, with the commit
   that carries it. The work's goal file says where the list lives.
-- **Every CR is a fresh subagent spawned for that CR alone.** It invokes the
-  review skill first, gets the repo path, the whole branch - from where
+- **Every CR is a fresh subagent spawned for that CR alone.** Where a CR
+  runs is never asked, in a live goal either: the goal has picked the
+  fresh subagent. It invokes the review skill first, gets the repo path,
+  the whole branch - from where
   it forks off the default branch to HEAD, so its call judges what would
   merge - the list of decisions made without asking, to check each
   against the code around it, and nothing of the session's reasoning,
@@ -233,17 +292,12 @@ is one it cannot judge. The line stays under the harness's cap on a
   gets a route that starts it on the branch with no prompt, and only when
   none exists waits on me, with the exact command for me to run, and the
   run moves on.
-- **Nothing the run starts is left running without my knowing.** The
-  run notes every resource it starts that outlives a command - a local
-  cluster, a container, a background process, a port-forward - with the
-  command that removes it. When a suite or a process is stopped early, by
-  the run or by me, it checks at once what that left up: a teardown that
-  runs at the end of a suite never ran. When the run ends, it checks which
-  of them are still up and lists them in the report, each with its
-  removal command. It lists only what it started, never what was there
-  before it. It deletes nothing by itself: a live goal asks me, as a
-  proposal with its assessment, and a nightly goal leaves them as the
-  last "Needs you" item, with the one command that removes them all.
+- **Nothing the run starts is left running without my knowing**, as
+  `left-running.md` says for every session. When the run ends, what is
+  still up goes in the report, each with its removal command: a live
+  goal asks me to remove them, as a proposal with its assessment, and a
+  nightly goal leaves them as the last "Needs you" item, with the one
+  command that removes them all.
 - **A report in that scratch directory stays current, written for the
   morning.** Its top is what only the run knows, in plain words a teammate
   follows - no SHA or log line, two or three sentences an item at most;
@@ -295,8 +349,9 @@ is one it cannot judge. The line stays under the harness's cap on a
     range of commits that rests on it, and every gap decided as the code
     around it would decide it, each with its commit. On a plan, they are
     the plan's "Decided while executing", in plain words.
-  - **Suites** gives each suite's result on the branch: passed, failed, or
-    waiting on me, and a suite that passed only on a rerun says so. A
+  - **Suites** gives each suite's result on the branch: passed, failing
+    only as its baseline does, failed, or waiting on me, and a suite that
+    passed only on a rerun says so. A
     failed suite says which failures are the branch's and which its
     baseline already has, and names the baseline's commit.
   - **Left running** lists every resource the run started that is still
@@ -314,11 +369,15 @@ is one it cannot judge. The line stays under the harness's cap on a
   third cycle and its final CR are done. Either way the report shows
   every piece of work done or stopped for a recorded reason, the last CR
   blocking nothing but what waits on me, and every suite and every run a
-  finding asks for passing on the branch - at HEAD, or at a commit since
-  which nothing touched its code - or waiting on me. **The run's last
-  reply is the two lines under the report's title, then one line per
-  rule of the stop condition with what shows it holds - each suite, the
-  commit it passed at and the log line that shows it ran on the branch;
-  the last CR's call; the cycle count - then the report's full path.**
+  finding asks for in one of three states: passing on the branch - at
+  HEAD, or at a commit since which nothing touched its code - failing
+  only where its baseline fails the same way, or waiting on me for a
+  recorded reason. **The run's last reply is the two lines under the
+  report's title, then one line per rule of the stop condition with what
+  shows it holds - each suite, the commit it passed at and the log line
+  that shows it ran on the branch, and for a suite failing as its
+  baseline does, each such test with the branch's failure line beside the
+  baseline's; the last CR's call; the cycle count - then the report's
+  full path.**
   It is written only once the stop holds, and the checker judges the
   `/goal` line against it.

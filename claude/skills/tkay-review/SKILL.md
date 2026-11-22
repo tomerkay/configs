@@ -21,7 +21,7 @@ finding: it says what changes when the thing judged is a plan, not a branch.
 
 ## Shared references
 
-Five references are shared with other skills of mine and kept in this
+The references below are shared with other skills of mine and kept in this
 skill's own `references/` so it works installed alone:
 
 | Read | For |
@@ -30,10 +30,14 @@ skill's own `references/` so it works installed alone:
 | `references/security.md` | the security questions every change is asked |
 | `references/assessment.md` | the frame every assessment in a CR is written in |
 | `references/commits.md` | the commit standard a CR judges messages and boundaries by |
+| `references/answers.md` | how an answer, a finding included, is held to the truth |
+| `references/numbered-lists.md` | how every list and table in a CR is numbered |
+| `references/severity.md` | the four colours a finding carries, and the Fix Profile |
+| `references/bycatch.md` | the bycatch table, its calls, and which session rows it carries |
 | `references/plan-shape.md` | the shape a plan review holds a plan to |
 
-Read the first four before the first finding of a CR, and all five before
-the first finding of a plan review. **Never answer from memory of a
+Read all but the last before the first finding of a CR, and all of them
+before the first finding of a plan review. **Never answer from memory of a
 reference you have not read this session.**
 
 The hook in this skill's frontmatter checks the shape of every assessment
@@ -51,14 +55,15 @@ reasons, and either alone is enough: a review by the code's author is not
 independent, and code written with this standard in context is written to
 the rubric rather than to the problem.
 
-**So each crossing stops for my yes, and the reply is its question and
+**So each crossing stops for my answer, and the reply is its question and
 nothing after it:**
 
 - **A CR asked for in a session that wrote the code under review, or has
-  the code skill loaded.** The question names what holds:
+  the code skill loaded.** The question names what holds and the
+  places the CR can run:
 
   ```
-  ⚠️ This session <wrote the branch | has tkay-code loaded | wrote the branch and has tkay-code loaded>, so a CR here would not be independent of the code it judges. Are you sure you want it here and not in a fresh session?
+  ⚠️ This session <wrote the branch | has tkay-code loaded | wrote the branch and has tkay-code loaded>, so a CR here would not be independent of the code it judges. Where do you want it: here anyway, in a fresh agent I start with none of this session's history, or in a fresh session you open?
   ```
 
   A plan review asked for in a session that wrote the plan asks the same
@@ -72,14 +77,31 @@ nothing after it:**
   ⚠️ Writing code here ties it to the CR this session wrote: the code would be written to the rubric, and the CR would no longer be independent of the code it judges. Are you sure you want it here and not in a fresh session that keeps the two apart?
   ```
 
-Each is a question in a shape of its own. A yes lets the work go on, and
-a no leaves every file as it is and writes no CR. **One yes covers the
-rest of the session**: once a session holds both, a second question
-protects nothing, so neither is asked again. After a no, the next such
-request asks again. The question is the one stop: one decision is one
-question, so no hook asks it a second time.
+Each is a question in a shape of its own. A yes to code lets the work go
+on, and a no leaves every file as it is. The CR's question is a pick:
 
-**A CR written after that yes still opens with one bold ⚠️ line**, above
+- **Here** lets the CR go on in this session.
+- **A fresh agent** is a subagent the session starts for that CR alone,
+  never one that inherits the session's context. It is told to invoke this skill first and never the code skill, and
+  that it wrote none of what it reviews. It gets the repo, what to review
+  and the spec the request names, and nothing of the session's history:
+  none of its reasoning, and no review the session wrote. A repeat CR
+  also gets the file of an earlier CR a fresh agent wrote. The agent
+  writes the CR and its file, and the session shows me that CR in chat,
+  whole and unchanged.
+  The session has written no CR, so the CR carries no ⚠️ line, and code
+  asked for after it asks nothing. A session that cannot start a subagent
+  leaves this pick out of the question.
+- **A fresh session** leaves every file as it is and writes no CR.
+
+**"Here", or a yes to code, covers the rest of the session**: once a
+session holds both, a second question protects nothing, so neither is
+asked again. **"A fresh agent" covers it too**: each later CR goes to a
+new one, with no question. After "a fresh session", or a no to code, the
+next such request asks again. The question is the one stop: one decision
+is one question, so no hook asks it a second time.
+
+**A CR written here still opens with one bold ⚠️ line**, above
 everything else in it, that names what holds and says the review is not
 independent, so a reader of the CR file sees it too. The case that
 taught both, a CR asked for in the session that wrote the branch:
@@ -89,12 +111,23 @@ taught both, a CR asked for in the session that wrote the branch:
    tkay-code loaded. Open a fresh session and ask it for this:
    CR branch <branch>
 ✅ ⚠️ This session wrote the branch and has tkay-code loaded, so a CR here
-   would not be independent of the code it judges. Are you sure you want
-   it here and not in a fresh session?
-   (on my yes)
+   would not be independent of the code it judges. Where do you want it:
+   here anyway, in a fresh agent I start with none of this session's
+   history, or in a fresh session you open?
+   (on "here")
    ⚠️ **Not an independent CR: this session wrote the branch and has
    tkay-code loaded.** For one, ask a fresh session for `CR branch <branch>`.
    <the CR>
+```
+
+The case that taught the fresh agent, a question that offered only a
+session I had to open myself:
+
+```
+❌ ...Are you sure you want it here and not in a fresh session?
+   me: can you do the CR in a fresh agent so it will start fresh?
+✅ ...Where do you want it: here anyway, in a fresh agent I start with
+   none of this session's history, or in a fresh session you open?
 ```
 
 The one exemption is a session working on these skills themselves, whose

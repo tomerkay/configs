@@ -5,9 +5,10 @@ first column numbers its rows under a `#` header**, so I answer "3" or
 "row 2" instead of describing the item back to you. The reading list's
 `R<n>`, the `Q<n>` of proposals and questions, a review's `B<n>` and the
 tree's outline numbers are this rule with a letter in front; every other
-list and table takes plain numbers. A list of one keeps its dash: the number
-tells items apart, and a single item is named by its heading, so numbers
-start at two.
+list and table takes plain numbers. A list of one is numbered too, so every
+list reads the same and a point is named the same way whether or not a
+second one joins it. The one dash left under a label is "none", which is
+no item, so it takes no number.
 
 - **Every list starts with numbers, wherever it sits.** Its first level is
   `1`, `2`, and only an item's own sub-items go `a`, `b`, then `i`, `ii`,
@@ -33,8 +34,16 @@ start at two.
        - **1.** <first>
   ```
 - **Label lines keep their dash**, since nobody answers a label by number -
-  "Call", "Why Yes?"; two or more points under one label are all numbered,
-  so "Why Not 2" names one.
+  "Call", "Why Yes?"; every point under a label is numbered, a single one
+  included, so "Why Not 1" names one. The case that taught it, a Why Yes
+  of one point beside a Gains of one:
+
+  ```
+  ❌ - **Why Yes?**
+       - <the one point>
+  ✅ - **Why Yes?**
+       - **1.** <the one point>
+  ```
 - **A row's number is its name in my answer**, and the number column comes
   first, whatever the table is about.
 - **It is for replies to me in chat** - never a commit message, a chat post

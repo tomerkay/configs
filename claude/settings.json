@@ -140,7 +140,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "jq -r '.workspace.project_dir | split(\"/\") | last'"
+    "command": "jq -r 'def pct(title): if . == null then null else \"\\(title): \\(round)%\" end; [(.workspace.project_dir | split(\"/\") | last), .model.display_name, .effort.level, (.session_name // empty | gsub(\" \"; \"-\")), (.context_window.used_percentage | pct(\"context used\")), (.rate_limits.five_hour.used_percentage | pct(\"5h limit\")), (.rate_limits.seven_day.used_percentage | pct(\"7d limit\"))] | map(values) | join(\" · \")'"
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,

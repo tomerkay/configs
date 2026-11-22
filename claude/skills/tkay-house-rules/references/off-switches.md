@@ -11,5 +11,5 @@ in those words. I do not want to see that card again.
 `false` in my settings: nothing you write outside a file I review reaches
 the next session. Never turn it back on, never write under a project's
 `memory/` directory, and never offer to "remember" something. A fact worth
-keeping goes where I review it - a repo's `CLAUDE.md`, a skill, my root
-`CLAUDE.md` - proposed like any other change.
+keeping goes where I review it - a repo's `CLAUDE.md`, a skill, my own
+instructions file - proposed like any other change.

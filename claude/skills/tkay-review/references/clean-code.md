@@ -7,13 +7,6 @@ mechanism, default or config key is acceptable.
 
 ---
 
-# Security: what would an auditor write about this?
-
-**The security rules are in `security.md`, beside this file, and are read in
-full with it.**
-
----
-
 # Comments in code
 
 **A comment that states the obvious, or repeats what the code or the log
@@ -877,7 +870,7 @@ caller.
   leaves the bug, and brings the nesting above with it. Make the state
   converge instead: an idempotent write, a reconcile loop that reads the
   truth and repairs the copy, a reader that takes a stale value as a retry.
-  The race then costs one repair and never a hang. "Every copy heals"
+  The race then costs one repair and never a hang. "Self healing"
   below says what counts as one.
 - **Row locks in a database fall outside this section: the database finds
   the deadlock.** It aborts one side with an error instead of hanging, so
@@ -906,7 +899,7 @@ async with self._lock:
 
 ---
 
-# Every copy heals
+# Self healing
 
 **Whatever the code keeps in step with something else - a cache, a status
 field, a count, a record in a second store - converges on the truth by
@@ -1071,35 +1064,6 @@ result = ValidationResult.SUCCESS
 
 # ❌ a typo is a new value nothing catches
 result = "success"
-```
-
-**Why enums are better:**
-- Catch typos at development time (IDE autocomplete, type checking)
-- Self-documenting (all possible values visible in one place)
-- Refactoring-safe (rename once in enum, not scattered string literals)
-- Type-safe (can't accidentally pass wrong value)
-
-**When to use enums:**
-- Status codes (SUCCESS, FAILED, PENDING)
-- Result types (validation results, error types, response codes)
-- Fixed categories (pod types, validation modes, alert levels)
-- Configuration options with limited choices
-
-**Implementation pattern:**
-```python
-from enum import Enum
-
-class MyEnum(Enum):
-    VALUE_ONE = "value_one"  # Use lowercase with underscores for enum values
-    VALUE_TWO = "value_two"
-
-# Usage
-my_value = MyEnum.VALUE_ONE
-if my_value == MyEnum.VALUE_ONE:
-    ...
-
-# Get string value when needed (e.g., for metrics/logs)
-my_value.value  # Returns "value_one"
 ```
 
 **A docstring that lists the enum's values is a copy of the enum**, and the

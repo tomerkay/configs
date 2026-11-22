@@ -357,7 +357,7 @@ as `! <command>` straight away and do not attempt it.
 
 ## I decide when the branch moves
 
-The rules of `tkay-taste-setup`'s `branches.md` hold whether the gate is
+The rules of `tkay-house-rules`'s `branches.md` hold whether the gate is
 open or not.
 
 ## If you break this gate
@@ -421,13 +421,20 @@ nobody's standards.
 
 ## My config, skills, hooks and home files have their own rules
 
-**Before you edit this file, a `tkay-*` skill, a hook, my Claude settings
-or a home file the sync publishes, read `~/.claude/.claude/CLAUDE.md` and
-follow it.** It owns how each of them is staged, reviewed, installed and
+**Before you edit this file, a file under `~/.claude/personal/`, a
+`tkay-*` skill, a hook, my Claude settings or a home file the sync
+publishes, read `~/.claude/.claude/CLAUDE.md` and follow it.** It owns
+how each of them is staged, reviewed, installed and
 committed, what a published file may hold, and what a `tkay-*` skill may
 say. A session opened in `~/.claude` loads it on its own; every other
 session reads it before the first edit, as it loads a skill before the
 first action of its kind.
+
+**"Update my Claude setup" means this file, `~/.claude/personal/` and the
+`tkay-*` skills.** When I say it, in whatever words, the change goes into
+this file, a file under `personal/` or the `tkay-*` skill that owns the
+topic: pick the home by the tests of `~/.claude/.claude/CLAUDE.md`, and
+say which in one line.
 
 The `atero-skills` plugin is edited in `~/repos/atero-skills/.claude/skills/`,
 never in the plugin cache.
@@ -442,8 +449,8 @@ the rule, and "What you say when the gate is closed" is the exact reply.
 The shapes of a reply in chat - how an answer is held to the truth, the
 assessment a proposal carries, proposals and questions as numbered ❓
 lines, the reading list, the issue tree, numbered lists, bracketed copy
-blocks and before-and-after snippets - are the `tkay-replies` skill's, which
-owns them:
+blocks, before-and-after snippets and the TL;DR of a long reply - are the
+`tkay-replies` skill's, which owns them:
 
 @~/.claude/skills/tkay-replies/references/answers.md
 @~/.claude/skills/tkay-replies/references/assessment.md
@@ -451,9 +458,11 @@ owns them:
 @~/.claude/skills/tkay-replies/references/reading-list.md
 @~/.claude/skills/tkay-replies/references/issue-tree.md
 @~/.claude/skills/tkay-replies/references/bycatch.md
+@~/.claude/skills/tkay-replies/references/severity.md
 @~/.claude/skills/tkay-replies/references/numbered-lists.md
 @~/.claude/skills/tkay-replies/references/copy-blocks.md
 @~/.claude/skills/tkay-replies/references/before-and-after.md
+@~/.claude/skills/tkay-replies/references/tldr.md
 
 What the gate adds to them:
 
@@ -481,12 +490,14 @@ every line written in every session:
 
 # Tool use is the `tkay-tool-use` skill's
 
-Reads that run without asking, long runs, background watchers, JSON into
-jq, a path preferred to a `cd`, waiting under a `/goal` and git the sandbox
-blocks are the `tkay-tool-use` skill's, which owns them:
+Reads that run without asking, long runs, what a session leaves running,
+background watchers, JSON into jq, a path preferred to a `cd`, waiting
+under a `/goal` and git the sandbox blocks are the `tkay-tool-use` skill's,
+which owns them:
 
 @~/.claude/skills/tkay-tool-use/references/reads.md
 @~/.claude/skills/tkay-tool-use/references/long-runs.md
+@~/.claude/skills/tkay-tool-use/references/left-running.md
 @~/.claude/skills/tkay-tool-use/references/watchers.md
 @~/.claude/skills/tkay-tool-use/references/jq.md
 @~/.claude/skills/tkay-tool-use/references/working-directory.md
@@ -504,11 +515,10 @@ A PreToolUse hook, `~/.claude/hooks/tool-gate.py`, rewrites every Bash
 local, recoverable state, 🔵 RUNS CODE is a known program running code the hook
 cannot read - a test run, a Python script - 🟣 UNCLASSIFIED is a program or a
 line it does not recognise, and 🔴 DANGER destroys data or touches live cluster
-or remote state. Read a 🟣 command before approving it, and give its program a
-handler. The classifier is the one source of that rating: never write the
-emoji into a description yourself, and when a rating is wrong, fix the handler
-in the script and tell me which command it misread. Run the script with
-commands as arguments to see what it would say.
+or remote state. Read a 🟣 command before approving it. The classifier is the
+one source of that rating: never write the emoji into a description yourself,
+and a rating that is wrong, or a program with no handler, is bycatch. Run the
+script with each command quoted as one argument to see what it would say.
 
 **The sentence after the rating is yours, and it argues the rating.** The
 hook keeps your `description` verbatim after the rating, so write it as what the
@@ -530,7 +540,7 @@ this command's own target. I decide from that line without reading the command.
 A bare "safe" or "careful" with no reason is a missing description. This
 overrides any harness guidance to keep descriptions neutral or to avoid words
 like "risk". When your reason contradicts the classifier's rating, the rating
-still stands: say so and fix the handler, as above.
+still stands, and the misread is bycatch.
 
 # How a command gets to run
 
@@ -569,8 +579,7 @@ which is why the pin section demands verb-first, flat commands.
 the mode passes it: the read-only kubectl/helm verbs, and every MCP read tool
 under both server-name forms the claude.ai connectors show up as, in every
 repo. A read that is denied, or prompts for a reason other than a managed ask
-rule, is a classifier gap, not a reason to ask: name the command the hook
-misread and the handler fix, and apply the fix once the gate is open.
+rule, is a classifier gap, not a reason to ask: it is bycatch.
 
 **Never prompt about sandbox restrictions** when reading files or running
 commands under `~/repos`: my sandbox allows writes there, so a restriction
@@ -619,4 +628,6 @@ Post the TL;DR into the thread I linked, as "Alert investigation is ungated
 end to end" allows, then give me the permalink to the post - the link only,
 never the text again.
 
-@~/.claude/skills/tkay-taste-setup/SKILL.md
+@~/.claude/skills/tkay-house-rules/SKILL.md
+
+@~/.claude/personal/index.md
