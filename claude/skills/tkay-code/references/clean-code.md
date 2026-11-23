@@ -465,7 +465,9 @@ So is a wall of analysis in chat when one sentence would do.
 
 ## When you genuinely believe something is needed
 
-Say it in one sentence with the concrete failure it prevents, and let me decide.
+Say it in one sentence with the concrete failure it prevents and, for a
+mechanism, the known one it would follow, with a link to where that one is
+documented, and let me decide.
 **Do not build it and then tell me.** I would rather ship the small version and
 add the mechanism the day it actually hurts.
 
@@ -1068,7 +1070,8 @@ core.replace_node(name, node)
 **A unit test earns its place by catching a real regression.** It pins
 something the component promises - its API, an invariant, the intent behind a
 rule - so it fails when that promise breaks and stays green through any
-refactor that keeps it.
+refactor that keeps it. A test fitted to how the code works today, not to
+what it promises, is overfit.
 
 - **Test through the public interface.** Call what the callers call, assert on
   what they observe: the return value, the error raised, the counter

@@ -253,7 +253,8 @@ three its row already held:
   ✅ - **Change:** **Evidence:** LIKELY · **Size:** medium · **Difficulty:** easy
   ```
 
-  Both describe the thing the Profile names.
+  Both describe the thing the Profile names. A risk the change carries is
+  a Why Not point, and never raises the Difficulty either.
 - **Never a time estimate** - no minutes, hours or days, for a change, a part
   or a plan step. You cannot know how long the work takes, and the guess
   reads as a fact. Size and difficulty are what I get instead.

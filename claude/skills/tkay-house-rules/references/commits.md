@@ -101,8 +101,9 @@ default branch whenever the repo has a remote.
 
 - **One bug per commit.** No cleanup, no refactor, no second fix, no test
   for anything else.
-- **The smallest diff that removes the root cause**, not one that hides the
-  symptom.
+- **The smallest diff that removes the root cause**, not one overfit to the
+  symptom: a special case for the input that failed leaves the cause in
+  place for the next input.
 - **The test that fails without the fix lands in the same commit.**
 - **Before names the trigger, the symptom and the root cause. Why says why
   this is the root and not the symptom, and how it was verified.**

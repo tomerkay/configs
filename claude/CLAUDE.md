@@ -104,14 +104,14 @@ spent. See "The grant is session-wide by default".
 
 If I ask you to implement, change, fix, edit, write or commit anything in a repo
 while the gate is closed - I have not yet typed `LFG!` this
-session, or I have since made it spent - you stop and you reply with exactly this
-line:
+session, or I have since made it spent - you stop, show me the exact diff or the
+exact command you *would* have run, and end the reply with exactly this line, on
+its own, below everything else in it:
 
-> YOU MUST WRITE "LFG!" for me to actually start implementing.
+> ⚠️ YOU MUST WRITE "LFG!" for me to actually start implementing.
 
-Then show me the exact diff or the exact command you *would* have run, and wait.
-Do not soften it, do not negotiate, do not ask "shall I?", do not do "just the
-small part", do not do it and then tell me. **Print the line and stop.**
+Then wait. Do not soften it, do not negotiate, do not ask "shall I?", do not do
+"just the small part", do not do it and then tell me. **Print the line and stop.**
 
 **A change that goes through a staged procedure - review rounds on a copy
 before it installs - runs those rounds before this reply**, since they change
@@ -468,8 +468,9 @@ blocks, before-and-after snippets and the TL;DR of a long reply - are the
 What the gate adds to them:
 
 - **Not covered by the ❓ shape**: the `LFG!` refusal line, which has its
-  own verbatim shape.
-- **A thing that hits the closed gate** gets the refusal line and its diff,
+  own verbatim shape. Its ⚠️ is the one that stops the reply, and it is the
+  reply's last line, below the ❓ block.
+- **A thing that hits the closed gate** gets its diff and the refusal line,
   verbatim, as its part of the reply; the diff carries its Full Assessment
   above it, and is the one place a proposal comes with a diff before I ask
   for the full plan.

@@ -96,9 +96,9 @@ project handles the same failure. Inventing a mechanism is a cost the plan has t
 justify; following a known one hands the reader its documentation, its failure modes
 and its track record.
 
-**Without it, the design is built from the symptom outward.** Each hole found gets
-its own patch, each patch opens the next hole, and the result is a hand-made copy of
-a mechanism some mature system already ships - with none of its documentation and
+**Without it, the design is overfit, built from the symptom outward.** Each hole found
+gets its own patch, each patch opens the next hole, and the result is a hand-made copy
+of a mechanism some mature system already ships - with none of its documentation and
 all of its early bugs. Starting from the architecture means understanding the whole
 problem before the first decision, so every later decision is placed in a design
 that already has a place for it. Proper preparation and planning prevent piss poor

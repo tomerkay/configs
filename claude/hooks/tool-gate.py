@@ -218,6 +218,8 @@ HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "
 HELM_RELEASE_MOVES = {"uninstall", "delete", "del", "rollback"}
 GIT_CONFIG_VALUE_FLAGS = {"-f", "--file", "--blob", "--default", "--type"}
 GIT_CONFIG_READ_SUBCOMMANDS = {"get", "list"}
+GIT_SYMBOLIC_REF_READ_FLAGS = {"-q", "--quiet", "--short", "--no-short", "--recurse",
+                               "--no-recurse"}
 SSH_VALUE_FLAGS = {"-B", "-b", "-c", "-D", "-E", "-e", "-F", "-I", "-i", "-J", "-L", "-l", "-m",
                    "-O", "-o", "-p", "-Q", "-R", "-S", "-W", "-w"}
 GIT_CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "edit", "rename-section", "remove-section"}
@@ -401,6 +403,14 @@ def classify_git(args):
         # GOTCHA: git runs unsandboxed under the managed policy, and `log`/`diff`/`show --output`
         # write a file anywhere, so a read verb with it is a write.
         return WRITE if has_flag(rest, "--output") else READ
+    if sub == "symbolic-ref":
+        # One name with only these flags reads the ref it points at. Anything else may write:
+        # a second name repoints it, and git takes a bundled -qd or an abbreviated --del as a
+        # delete.
+        flags = [a for a in rest if a.startswith("-")]
+        if len(pos) == 1 and all(f in GIT_SYMBOLIC_REF_READ_FLAGS for f in flags):
+            return READ
+        return WRITE
     if sub == "reflog":
         # Any positional that is not one of these subcommands is a ref to show, or the value of
         # a show option such as `-n 40`.
@@ -1098,8 +1108,10 @@ def classify_npm(args):
         return WRITE if sub == "config" and len(pos) > 1 and pos[1] != "get" else READ
     if sub == "audit":
         return WRITE if "fix" in pos else READ
+    # A check script passes like a test, but its name never makes it a read: a lint script
+    # can run eslint --fix.
     if sub in ("run", "run-script") and len(pos) > 1:
-        return READ if pos[1] in ("lint", "typecheck", "type-check", "check") else WRITE
+        return RUNS_CODE if pos[1] in ("lint", "typecheck", "type-check", "check") else WRITE
     if sub in ("publish", "unpublish", "deprecate"):
         return DANGER
     return WRITE
@@ -3667,6 +3679,13 @@ def selftest():
         (False, "Bash", f"git -C /x archive HEAD -o{scratch}d/x.tar", None),
         (False, "Bash", f"git -C /x archive HEAD --output={scratch}d/x.tar", None),
         (False, "Bash", f"git -C {rx} archive -o x.tar HEAD", DENY),
+        (False, "Bash", f"git -C {rx} symbolic-ref --short refs/remotes/origin/HEAD", None),
+        (False, "Bash", f"git -C {rx} symbolic-ref -q HEAD", None),
+        (False, "Bash", f"git -C {rx} symbolic-ref HEAD refs/heads/x", DENY),
+        (False, "Bash", f"git -C {rx} symbolic-ref -d refs/remotes/origin/HEAD", DENY),
+        (False, "Bash", f"git -C {rx} symbolic-ref -m why HEAD refs/heads/x", DENY),
+        (False, "Bash", f"git -C {rx} symbolic-ref -qd refs/remotes/origin/HEAD", DENY),
+        (False, "Bash", f"git -C {rx} symbolic-ref --del refs/remotes/origin/HEAD", DENY),
         (False, "Bash", f"git -C {rx} archive -o {scratch}x.tar -o {home}/x.tar HEAD", DENY),
         (False, "Bash", f"tar -xzf a.tgz --directory={scratch}d", None),
         (False, "Bash", f"tar -x --strip-components=1 -C {scratch}d -f a.tar", None),
@@ -3743,6 +3762,7 @@ def selftest():
         (True, "Bash", "cargo test -p mycrate", None),
         (True, "Bash", "make test", None),
         (False, "Bash", "npm test", None),
+        (False, "Bash", "npm run lint", None),
         (True, "Bash", "pytest tests/test_x.py", None),
         (True, "Bash", "pytest -k name", None),
         (True, "Bash", "pytest x.py::test_y", None),
@@ -4559,6 +4579,8 @@ def selftest():
         ("npm test", RUNS_CODE),
         ("pnpm run test", RUNS_CODE),
         ("yarn t", RUNS_CODE),
+        ("npm run lint", RUNS_CODE),
+        ("yarn run typecheck", RUNS_CODE),
         ("make -n build", READ),
         ("go test ./x && frobnicate", UNCLASSIFIED),
         ("cd /x/src && GOFLAGS=-mod=mod go vet ./... 2>&1 | tail -5; "
