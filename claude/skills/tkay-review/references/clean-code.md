@@ -5,58 +5,406 @@ me. Read this file before writing code, before the first finding of a code
 review, and again whenever you are unsure whether a specific comment,
 mechanism, default or config key is acceptable.
 
+The file runs from design down to single lines: Responsibilities first, then
+the rules a structure keeps, then the rules that hold at both levels, then
+the rules for lines.
+
 ---
 
-# Comments in code
+# Responsibilities
 
-**A comment that states the obvious, or repeats what the code or the log
-already says, is noise.** Every needless comment costs the reader time; the
-log message, the function name or the variable name carries the intent.
+**A change states four things for each new responsibility it adds, before
+any code rests on them** - the class, responsibilities and collaborators of
+a [CRC card](https://en.wikipedia.org/wiki/Class-responsibility-collaboration_card),
+with one writer for each piece of state and the rules the design breaks:
 
-Comments that go:
-- `# Validate config: gateway requires management URL` right before code that logs "GATEWAY_ENABLED=true but GATEWAY_MANAGEMENT_URL is empty"
-- `# Check if pod is ready` right before `if pod.status == "Ready":`
-- `# Loop through results` right before `for result in results:`
-- `# Return the value` right before `return value`
-- `# Set flag to false` right before `flag = False`
-- `# healthPath validation (exists when checkHealth is true after merge)` - states the obvious about code structure
-- `# Get configured text endpoint path (default: /v1/chat/completions)` right before `text_path = model_config["textPath"]`
-- `# textPrompts required when checkText is true` right before validating textPrompts
-- `# Validate each prompt item has required fields` right before a loop that validates prompt items
-- `# Cross-validation: checkHealth: false + healthCheckOnly: true is contradictory` right before error saying "checkHealth: false and healthCheckOnly: true is contradictory"
-- `# Failed - log error and fail immediately` right before logging error and returning False
-- `# Auto-correct short form` right before code that auto-corrects and logs "auto-corrected X to Y"
-- Any comment that duplicates what an error message, log line, or function name already says
-- Any comment that describes WHAT the next line does instead of WHY
-- Section header comments like `# Step 1:`, `# Step 2:` unless the steps are non-obvious and need context
+- **Owner** - which module, type or service holds it, and why there: a
+  place the reader knows. A job split across two owners, or given to one
+  that already has an unrelated job, is settled here, never left for
+  whoever writes the code.
+- **State** - where each new piece of state lives, and who alone writes
+  it.
+- **Interface** - what each piece asks of the others: what a caller must
+  know, and nothing more.
+- **Departures** - each rule below the design breaks, with the simpler
+  design it was weighed against and why that one loses; "none" when it
+  breaks none.
 
-**The comments that stay:**
-1. **WHY comments**: Explain non-obvious reasoning, design decisions, or business logic
-   - Example: `# Use cached state on FETCH_ERROR to avoid marking all pods as healthy during transient gateway issues`
-2. **GOTCHA comments**: Warn about subtle bugs or edge cases
-   - Example: `# IMPORTANT: must call record_metric BEFORE logging to ensure metrics are recorded even if logging fails`
-3. **TODO/FIXME with ticket reference**: `# TODO(JIRA-123): Optimize this query`
+**An obvious change gets one sentence, not four fields**: when the owner is
+already there, nothing new is kept and no rule is broken, it says exactly
+that and stops.
 
-**A doubt resolves toward deleting the comment.** If the code is unclear, improve the code (better naming, structure) rather than add a comment.
+**They are held against the rules below before anything rests on them**,
+since a design mistake found in the diff is paid for twice.
 
-## Conversation artifacts stay out of the code
+**Responsibilities sit under an architecture and never pick one.** How one
+worker stays the active one, how two services stay in step - a choice
+between known architectures is made first, and the responsibilities are
+assigned within the one chosen.
 
-**A comment must make sense to someone who reads the file cold, having never seen our discussion.** If a comment only exists because of something that happened in our conversation — a code review finding, a rejected alternative, a bug I introduced and fixed, a design I argued for — it does NOT belong in the code. Answer me in chat; leave the file clean.
+---
 
-**What goes — arguing a case, defending a choice, or narrating history:**
-- `# Named rather than a bare tuple because three of the five are int/float: transposing the epoch count with the idle seconds would type-check and quietly report...` — defending a design against an alternative that was never in the file
-- `# Fixed rather than configurable: nothing has asked to tune it` — justifying a decision to a reviewer
-- `# Gated here rather than relying on X, which happens to be true today but is a coincidence` — arguing against a rejected approach
-- `# so they cannot drift apart the way three parallel lists could` — referencing code that no longer exists
-- `# without this, a skipped write would still log as published` — describing the bug I just fixed
-- `# this is my addition` or `# this is the part you were referring to` — pointing at the request instead of writing code that stands on its own
-- Anything containing "rather than", "instead of", "we could have", "previously", "this used to", "deliberately not", or a justification for why the code isn't something else
+# One reason to change
 
-**The test:** delete every trace of our conversation from your memory, then read the comment. If it now reads as a defence of a decision, or refers to code/bugs/alternatives that aren't in the file, it goes.
+The mirror of "One source of truth": what changes together lives in one place,
+and what changes for different reasons lives apart.
 
-**Where that content does belong:** the commit message body (which is exactly where "previously X, now Y" is required), or my chat. Not the source.
+- **One reason to change per function, class or module.** Code that changes for
+  different reasons - the wire format and the retry policy, the parse and the
+  business rule - lives apart. A boolean parameter that switches what a
+  function does is two functions.
+- **Not "make it small".** Splitting a function that changes for one reason
+  into five that always change together adds indirection and nothing else.
+- **Related code is grouped together.** Whatever changes for the same reason
+  sits side by side, in the order a reader needs it.
+- **No spaghetti.** One request is followed from entry to exit without
+  doubling back, and every input to a step is visible where the step is
+  called. What hides the path is spaghetti: a flag set in one place and
+  read in another, a value carried through shared mutable state instead of
+  a parameter or a return, an exception thrown to escape a loop, a module
+  importing the module that imports it, branches nested so deep that the
+  condition that led here is off the screen. Untangle it - pass the value,
+  return early, put the two halves side by side - rather than explain the
+  route in a comment.
 
-**What survives:** a comment stating a fact about the code as it exists that a careful reader could not deduce — a non-obvious invariant, an ordering requirement, a gotcha that will bite them. `# MUST NOT await: the loop is single-threaded, so yielding here allows a torn read` is fine. `# MUST NOT await, because I originally wrote this with an await and it broke` is not. An approach that looks right and is not gets the same form: `# MUST NOT batch these: the API rejects more than one per call` names the hazard, not the attempt.
+---
+
+# A small interface, a lot behind it
+
+**A module is worth what it hides.** Its interface is everything a caller
+must know to use it right: the signatures, and also the order of the calls,
+the errors, the config it needs and what it leaves behind when it fails. The
+smaller that is against what the module does, the more each caller gets for
+what it learns, and the fewer callers a change inside it reaches - the deep
+module of John Ousterhout's
+[A Philosophy of Software Design](https://web.stanford.edu/~ouster/cgi-bin/aposd.php).
+
+- **A decision the module can make is made inside it, once.** Handed out as
+  a parameter, a flag or a required order of calls, it is made again by
+  every caller, and one of them gets it wrong.
+- **Nothing of the inside shows in the interface.** A return type of the
+  library underneath, a field callers reach through, an error only this
+  storage could raise: each ties every caller to a choice the module was
+  there to hide, and changing that choice then means changing them all.
+- **A pass-through is not a module.** A layer whose methods only forward to
+  the next one, or a wrapper that only renames, gives the caller an
+  interface to learn and nothing for it. The test is to delete it: when
+  neither the callers nor their tests get harder to write, it goes.
+- **Depth is shaped for the callers that exist.** It is how a module the
+  change already needs is cut, never a reason to add one: an interface with
+  one implementation, or a helper for a caller that might come, is still
+  "Over-engineering".
+
+```python
+# ❌ every caller knows the order, and what to undo when a step fails
+conn = pool.acquire()
+conn.begin()
+try:
+    conn.execute(query)
+    conn.commit()
+except Exception:
+    conn.rollback()
+    raise
+finally:
+    pool.release(conn)
+
+# ✅ one call; the order and the cleanup live behind it
+store.run_in_transaction(query)
+```
+
+---
+
+# SOLID vs fragile
+
+**Before writing a line, ask what one small change elsewhere does to it.**
+Fragility is one of the design smells Robert C. Martin named next to the
+SOLID principles: a change in one place breaks something in another, often
+somewhere nobody connected to it. It comes in two forms, and the second is
+the one that reaches production:
+
+- **Loud fragility: the change breaks something far from it.** A rename
+  that fails a test in another package, a new field that breaks a parser
+  three services away, one caller's timeout tweaked and another caller's
+  retry tripped. The break is visible, but it lands where nobody was
+  looking, and whoever made the change could not see it coming. The fix
+  cuts the coupling: the value read from one place, the behaviour behind
+  one interface, the dependency pointing one way. "One reason to change"
+  keeps the blast radius of a change to the one place that changes for
+  that reason.
+- **Silent fragility: the change leaves something standing and false.** A
+  copied value, a count, a path, a line number, a "currently", an example
+  that mirrors the real config, a values file for a chart another repo
+  owns. Nothing breaks and nothing tells the reader; the line goes on
+  reading as true. The fix names the owner or derives from it, and when
+  neither is possible, writes the trigger next to the line, so the reader
+  knows what to re-check and when.
+
+**A solid line answers the same question with nothing to fix:** the change
+cannot reach it, or the line follows it, or it breaks loudly at the point
+of the change - a `required` key, a lookup by name, a test that calls the
+real thing. Loud at the change is solid; loud far away is fragile.
+
+The test, for a value, a rule, a comment, a line of logic or a module
+boundary: name the change elsewhere that would affect it, then say what
+happens. Nothing, it follows, or it breaks where the change is made:
+solid. It breaks somewhere else, or it stays and lies: fragile, and it is
+rewritten before it is written.
+
+**A path is fragile to where it is run from.** A path relative to the
+current directory holds only for a script always run from its own repo;
+one run from anywhere builds its paths from its own location.
+
+**Worked example.** A consumer repo carried a values file for a chart it
+did not own. The chart renamed a key, Helm ignores a key the chart does
+not know, and the copy kept rendering while the setting it carried did
+nothing. The solid version is the chart repo's own example, rendered by
+its CI on every change, with the consumer pointing at a checkout of it:
+the rename then breaks at the commit that causes it.
+
+---
+
+# One result, all or nothing
+
+**A step that returns one result never leaves half of it done.** Two
+writes behind one result - two tables, a row and a cluster object, a row
+and a message - either commit together or are not one step. A caller that
+gets an error cannot tell which half landed, and every reader in between
+sees a state nobody meant to write.
+
+Ask of every pair of writes behind one result, in this order:
+
+- **Must they be true together?** When not, split them: each its own step,
+  its own error, its own counter, so one failing neither undoes nor blocks
+  the other.
+- **Same store?** Then one transaction, and nothing outside the store
+  inside it - no HTTP call, no cluster write, no message, no counter, no
+  log line. A rollback undoes the transaction's own writes, never a call
+  made from inside it.
+- **Different systems?** No transaction spans them, so one request never
+  writes both. Record the intent in one atomic write and let an idempotent
+  loop carry out the other side until it matches - the [reconcile
+  loop](https://kubernetes.io/docs/concepts/architecture/controller/)
+  Kubernetes is built on, or a [transactional
+  outbox](https://microservices.io/patterns/data/transactional-outbox.html)
+  for a message. A crash then leaves a pending record the loop picks up,
+  never an effect nobody recorded.
+- **A rollback is the last resort, not the plan.** Undoing the first write
+  when the second fails - by hand or as a
+  [saga](https://microservices.io/patterns/data/saga.html)'s compensation -
+  can itself fail, and the half state was visible until it ran. Design so
+  no step needs undoing; when one truly does, raise it with me.
+
+**Read before you write, and keep the read a step of its own where the step
+is retried.** A write that first reads whether its work is already done -
+the row settled, the object at the wanted spec - finds a repeat and skips
+it. The read alone is not the guard: two callers can both read "not done",
+so the write carries its own condition (`WHERE status = 'pending'`, a
+create that fails on an existing key) and the read only saves the attempt.
+Where something re-runs a failed step - a workflow engine, a queue that
+redelivers, a reconcile loop - the read and the write are separate steps,
+so a failed read retries alone and never re-runs a write. Temporal re-runs
+a whole Activity when any step in it fails, and suggests splitting it so
+only the failed step retries, at the cost of a longer event history
+([error handling](https://docs.temporal.io/develop/python/best-practices/error-handling),
+[Activities](https://docs.temporal.io/activities)).
+
+In a review, a function that makes two writes to two places and returns
+one error is a finding.
+
+**Worked example.** The verdict loop under "Every bad path is counted,
+then logged" settled verdicts and filed new requests in one transaction.
+A verdict is settled whether or not the next request files, and filing
+reads nothing the settle writes, so a request that failed to file rolled
+back verdicts with nothing wrong with them, and the next pass settled them
+again:
+
+```go
+// ❌ one result for two independent jobs
+err := dbh.Transaction(func(tx *gorm.DB) error {
+	if err := settleAll(tx, verdicts); err != nil {
+		return err
+	}
+	return fileRequests(tx, requests)
+})
+```
+
+```go
+// ✅ each job commits and fails on its own
+settleErr := dbh.Transaction(func(tx *gorm.DB) error { return settleAll(tx, verdicts) })
+fileErr := dbh.Transaction(func(tx *gorm.DB) error { return fileRequests(tx, requests) })
+return errors.Join(settleErr, fileErr)
+```
+
+---
+
+# Parse at the boundary
+
+Raw input - a request body, a config file, an API response, an environment
+variable - is turned into a typed struct or an enum once, where it enters.
+Everything past that point takes the typed value and never re-checks it.
+
+- **A validated value has a type that says so.** A function that checks a
+  string and passes the same string on leaves every caller to wonder whether it
+  was checked. A function that returns a parsed type answers that for good.
+- **This is where defensive code belongs** (see "Where defensive code belongs"
+  under YAGNI), and the reason the code inside needs none.
+
+---
+
+# Asyncio
+
+- **Every task has an owner.** The result of `asyncio.create_task` is kept and
+  awaited, or held by a `TaskGroup` or a set the owner drains. The event loop
+  keeps only a weak reference, so an unreferenced task can be garbage-collected
+  mid-execution, and an exception it raised surfaces only as a stray
+  "never retrieved" log line, if at all.
+- **Nothing blocks the event loop.** A blocking call - sync I/O, a sync HTTP
+  client, `time.sleep`, heavy CPU work - stalls every coroutine on the loop.
+  Use the async equivalent, or `asyncio.to_thread` for what has none.
+- **A value read before an `await` may be stale after it.** Every other task
+  on the loop ran in between, so a check and the write it guards sit in one
+  stretch with no `await` between them, or the check runs again after the
+  `await`. Data handed between tasks is a frozen snapshot - a frozen
+  dataclass or a tuple - never a dict another task can change.
+
+```python
+# ❌ two tasks pass the check during the await; both fetch, the last write wins
+if key not in self.cache:
+    value = await fetch(key)
+    self.cache[key] = value
+
+# ✅ one in-flight fetch per key, claimed before the await
+if key not in self.pending:
+    self.pending[key] = asyncio.ensure_future(fetch(key))
+value = await self.pending[key]
+```
+
+---
+
+# One lock at a time
+
+**A lock taken while another is held is a design smell, whatever the two
+guard.** Two locks held at once is the one ingredient a deadlock needs, and
+a deadlock is the worst failure a service can have: nothing crashes, nothing
+logs, no counter moves, the health check keeps passing, and the process sits
+until someone kills it. Nested locking is named in review before the order
+is argued safe, because an order is checked by nobody and broken by the next
+caller.
+
+- **Nesting says two things that change together got separate locks, or one
+  lock guards too much.** State that must change together is one lock
+  ("One reason to change"); state that changes apart is two regions, each
+  released before the next is taken.
+- **A call made under a lock is a nested lock you cannot see.** The callee
+  may take its own lock today or after its next change - a callback, a
+  logger, a client, another component's method. Under a lock run only the
+  reads and writes it guards; I/O, an `await`, a callback or a call into
+  another component under it is each a nested lock in waiting. The same rule
+  "One result, all or nothing" gives a transaction.
+- **A documented lock order is a workaround, not a design.** When two locks
+  truly must be held together the split was wrong: one lock, a queue drained
+  by the one owner of the state, or an actor that owns it.
+- **A reentrant lock hides the smell instead of fixing it.** It lets a
+  function take a lock it already holds, so the nesting leaves no trace,
+  and the same call from a second thread deadlocks.
+- **asyncio is not exempt.** An `asyncio.Lock` held across an `await` that
+  takes another deadlocks the loop the same way, with no thread dump to show
+  it.
+- **A race the design cannot remove is better healed than locked harder.** A
+  race between two processes, a process and the cluster, or a writer and a
+  reader is out of any lock's reach: another lock narrows the window and
+  leaves the bug, and brings the nesting above with it. Make the state
+  converge instead: an idempotent write, a reconcile loop that reads the
+  truth and repairs the copy, a reader that takes a stale value as a retry.
+  The race then costs one repair and never a hang. "Self healing"
+  below says what counts as one.
+- **Row locks in a database fall outside this section: the database finds
+  the deadlock.** It aborts one side with an error instead of hanging, so
+  the silent hang this section guards against never happens. One atomic
+  statement, or a write that checks a version column, comes before a
+  transaction that holds row locks across statements. Where a transaction
+  must, keep it short and retry it whole on a deadlock or serialization
+  error (SQLSTATE `40001`, and `40P01` in PostgreSQL), counted by reason:
+  the retry is the healing above, and locking rows in key order only makes
+  it rarer. An in-process lock held around the transaction brings the
+  section back, since no detector sees a deadlock that spans the two.
+
+```python
+# ❌ the cache lock is taken while the registry lock is held
+async with self._registry_lock:
+    pod = self._registry[name]
+    async with self._cache_lock:
+        self._cache[name] = pod.snapshot()
+
+# ✅ the registry and its cache change together, so one lock owns both,
+#    and nothing else runs under it
+async with self._lock:
+    pod = self._registry[name]
+    self._cache[name] = pod.snapshot()
+```
+
+---
+
+# Self healing
+
+**Whatever the code keeps in step with something else - a cache, a status
+field, a count, a record in a second store - converges on the truth by
+itself, whatever path it takes: any interleaving of the actors, any crash
+between two steps, any message lost or repeated.** That is a heal, whether
+or not anyone asked for one, and a change that only makes the bad path
+rarer is not one. Kubernetes controllers are the model: they are
+[level-triggered](https://kubernetes.io/docs/concepts/architecture/controller/),
+comparing the desired state with the actual one on every pass instead of
+acting on the event that announced a change, so a missed or reordered event
+costs one pass and nothing more.
+
+A heal names three things, and is not one until all three hold:
+
+- **The truth it reads**, fresh on every pass: the store, the cluster
+  object, the request's own record - never the event, a cached copy or what
+  the last pass remembers.
+- **The repair**: a step that moves the copy toward the truth and is safe
+  run twice, run late, or run by two actors at once - an idempotent write,
+  or one whose condition makes the stale actor's write a no-op.
+- **What brings the repair back**: a loop or a periodic resync that runs
+  until the state is right, and the setting that bounds how long a wrong
+  state can last.
+
+**Not a heal, however much it helps**: a sleep or a delay before acting, a
+retry that gives up, jitter, a lock or an ordering that narrows the window,
+a check before an unconditional write. Each makes the race rarer; the race
+still wins sometimes, and nothing comes back to fix what it left.
+
+**The test: pick any interleaving and any crash, then ask what the state is
+after the next pass of the repair.** Correct for every one is a heal. Wrong
+for any one, until someone notices, is not - and in a review, a change
+offered as a heal that only narrows the window is a finding.
+
+---
+
+# Every wait has a bound
+
+**Nothing waits on something outside its own process without a limit.** A
+backend that stops answering, a queue that only grows, a retry that never
+gives up: each holds a worker, a connection or memory with nothing to free
+it, and the process looks alive while it does - the health check passes and
+no error is raised. Timeouts come first among the stability patterns of
+Nygard's [Release It!](https://pragprog.com/titles/mnee2/release-it-second-edition/).
+
+- **A call across a process boundary has a timeout** - HTTP, gRPC, a
+  database, a lock another service holds, a subprocess. A client library's
+  default is read, never assumed: many wait forever.
+- **A deadline set at the edge is passed down.** A request with five
+  seconds left hands each call it makes what remains of them, never a fresh
+  timeout of its own, so no inner call outlives its caller - the deadline
+  propagation [gRPC builds in](https://grpc.io/docs/guides/deadlines/).
+- **A queue has a maximum size, and full has a decided answer**: refuse the
+  new item, drop the oldest, or make the sender wait - each counted, as
+  "Every bad path is counted, then logged" says.
+- **A retry has a cap** on its attempts and on its total time, inside the
+  caller's deadline.
+- **A bound is a knob with a range check and no off**, as "Most knobs have
+  no off" under "One source of truth" says.
 
 ---
 
@@ -347,147 +695,6 @@ file that owns it, and never restates the value.
 
 ---
 
-# One reason to change
-
-The mirror of "One source of truth": what changes together lives in one place,
-and what changes for different reasons lives apart.
-
-- **One reason to change per function, class or module.** Code that changes for
-  different reasons - the wire format and the retry policy, the parse and the
-  business rule - lives apart. A boolean parameter that switches what a
-  function does is two functions.
-- **Not "make it small".** Splitting a function that changes for one reason
-  into five that always change together adds indirection and nothing else.
-- **Related code is grouped together.** Whatever changes for the same reason
-  sits side by side, in the order a reader needs it.
-- **No spaghetti.** One request is followed from entry to exit without
-  doubling back, and every input to a step is visible where the step is
-  called. What hides the path is spaghetti: a flag set in one place and
-  read in another, a value carried through shared mutable state instead of
-  a parameter or a return, an exception thrown to escape a loop, a module
-  importing the module that imports it, branches nested so deep that the
-  condition that led here is off the screen. Untangle it - pass the value,
-  return early, put the two halves side by side - rather than explain the
-  route in a comment.
-
----
-
-# A small interface, a lot behind it
-
-**A module is worth what it hides.** Its interface is everything a caller
-must know to use it right: the signatures, and also the order of the calls,
-the errors, the config it needs and what it leaves behind when it fails. The
-smaller that is against what the module does, the more each caller gets for
-what it learns, and the fewer callers a change inside it reaches - the deep
-module of John Ousterhout's
-[A Philosophy of Software Design](https://web.stanford.edu/~ouster/cgi-bin/aposd.php).
-
-- **A decision the module can make is made inside it, once.** Handed out as
-  a parameter, a flag or a required order of calls, it is made again by
-  every caller, and one of them gets it wrong.
-- **Nothing of the inside shows in the interface.** A return type of the
-  library underneath, a field callers reach through, an error only this
-  storage could raise: each ties every caller to a choice the module was
-  there to hide, and changing that choice then means changing them all.
-- **A pass-through is not a module.** A layer whose methods only forward to
-  the next one, or a wrapper that only renames, gives the caller an
-  interface to learn and nothing for it. The test is to delete it: when
-  neither the callers nor their tests get harder to write, it goes.
-- **Depth is shaped for the callers that exist.** It is how a module the
-  change already needs is cut, never a reason to add one: an interface with
-  one implementation, or a helper for a caller that might come, is still
-  "Over-engineering".
-
-```python
-# ❌ every caller knows the order, and what to undo when a step fails
-conn = pool.acquire()
-conn.begin()
-try:
-    conn.execute(query)
-    conn.commit()
-except Exception:
-    conn.rollback()
-    raise
-finally:
-    pool.release(conn)
-
-# ✅ one call; the order and the cleanup live behind it
-store.run_in_transaction(query)
-```
-
----
-
-# SOLID vs fragile
-
-**Before writing a line, ask what one small change elsewhere does to it.**
-Fragility is one of the design smells Robert C. Martin named next to the
-SOLID principles: a change in one place breaks something in another, often
-somewhere nobody connected to it. It comes in two forms, and the second is
-the one that reaches production:
-
-- **Loud fragility: the change breaks something far from it.** A rename
-  that fails a test in another package, a new field that breaks a parser
-  three services away, one caller's timeout tweaked and another caller's
-  retry tripped. The break is visible, but it lands where nobody was
-  looking, and whoever made the change could not see it coming. The fix
-  cuts the coupling: the value read from one place, the behaviour behind
-  one interface, the dependency pointing one way. "One reason to change"
-  keeps the blast radius of a change to the one place that changes for
-  that reason.
-- **Silent fragility: the change leaves something standing and false.** A
-  copied value, a count, a path, a line number, a "currently", an example
-  that mirrors the real config, a values file for a chart another repo
-  owns. Nothing breaks and nothing tells the reader; the line goes on
-  reading as true. The fix names the owner or derives from it, and when
-  neither is possible, writes the trigger next to the line, so the reader
-  knows what to re-check and when.
-
-**A solid line answers the same question with nothing to fix:** the change
-cannot reach it, or the line follows it, or it breaks loudly at the point
-of the change - a `required` key, a lookup by name, a test that calls the
-real thing. Loud at the change is solid; loud far away is fragile.
-
-The test, for a value, a rule, a comment, a line of logic or a module
-boundary: name the change elsewhere that would affect it, then say what
-happens. Nothing, it follows, or it breaks where the change is made:
-solid. It breaks somewhere else, or it stays and lies: fragile, and it is
-rewritten before it is written.
-
-**A path is fragile to where it is run from.** A path relative to the
-current directory holds only for a script always run from its own repo;
-one run from anywhere builds its paths from its own location.
-
-**Worked example.** A consumer repo carried a values file for a chart it
-did not own. The chart renamed a key, Helm ignores a key the chart does
-not know, and the copy kept rendering while the setting it carried did
-nothing. The solid version is the chart repo's own example, rendered by
-its CI on every change, with the consumer pointing at a checkout of it:
-the rename then breaks at the commit that causes it.
-
----
-
-# The plain version wins
-
-**When two versions do the same job, write the one a reader follows on the
-first pass.** Clever code is paid for by every reader, every change and every
-bisect, and buys nothing when the plain version is as correct and fast enough.
-
-- **Plain is the obvious control flow and the idioms every reader knows, not
-  the fewest lines.** A two-level loop with a named variable at each level
-  beats a comprehension with two `for` clauses, a `reduce` over a lambda or a
-  chain of iterator adaptors a reader has to unpick.
-- **A known idiom is already plain**: a one-level comprehension, `any()` /
-  `all()`, `dict.get` with a default, `?` in Rust. Unrolling it into a
-  hand-written loop is not simpler.
-- **Past two levels, nesting is the spaghetti "One reason to change" names**:
-  the inner level becomes a named function, and early returns flatten the
-  branches.
-- **Performance buys complexity only with a measurement** on a path that
-  matters - per token or per request. The WHY comment names what it buys;
-  without the measurement, the plain version stays.
-
----
-
 # A name means one thing, literally
 
 **A reader who never saw the code before must know what a variable, field,
@@ -618,77 +825,80 @@ if neverSplit && deployInFlight(e) {
 use `_`, and a script's log takes its name: `daily-updates.sh` writes
 `daily-updates.log`.
 
-# One result, all or nothing
+---
 
-**A step that returns one result never leaves half of it done.** Two
-writes behind one result - two tables, a row and a cluster object, a row
-and a message - either commit together or are not one step. A caller that
-gets an error cannot tell which half landed, and every reader in between
-sees a state nobody meant to write.
+# Comments in code
 
-Ask of every pair of writes behind one result, in this order:
+**A comment that states the obvious, or repeats what the code or the log
+already says, is noise.** Every needless comment costs the reader time; the
+log message, the function name or the variable name carries the intent.
 
-- **Must they be true together?** When not, split them: each its own step,
-  its own error, its own counter, so one failing neither undoes nor blocks
-  the other.
-- **Same store?** Then one transaction, and nothing outside the store
-  inside it - no HTTP call, no cluster write, no message, no counter, no
-  log line. A rollback undoes the transaction's own writes, never a call
-  made from inside it.
-- **Different systems?** No transaction spans them, so one request never
-  writes both. Record the intent in one atomic write and let an idempotent
-  loop carry out the other side until it matches - the [reconcile
-  loop](https://kubernetes.io/docs/concepts/architecture/controller/)
-  Kubernetes is built on, or a [transactional
-  outbox](https://microservices.io/patterns/data/transactional-outbox.html)
-  for a message. A crash then leaves a pending record the loop picks up,
-  never an effect nobody recorded.
-- **A rollback is the last resort, not the plan.** Undoing the first write
-  when the second fails - by hand or as a
-  [saga](https://microservices.io/patterns/data/saga.html)'s compensation -
-  can itself fail, and the half state was visible until it ran. Design so
-  no step needs undoing; when one truly does, raise it with me.
+Comments that go:
+- `# Validate config: gateway requires management URL` right before code that logs "GATEWAY_ENABLED=true but GATEWAY_MANAGEMENT_URL is empty"
+- `# Check if pod is ready` right before `if pod.status == "Ready":`
+- `# Loop through results` right before `for result in results:`
+- `# Return the value` right before `return value`
+- `# Set flag to false` right before `flag = False`
+- `# healthPath validation (exists when checkHealth is true after merge)` - states the obvious about code structure
+- `# Get configured text endpoint path (default: /v1/chat/completions)` right before `text_path = model_config["textPath"]`
+- `# textPrompts required when checkText is true` right before validating textPrompts
+- `# Validate each prompt item has required fields` right before a loop that validates prompt items
+- `# Cross-validation: checkHealth: false + healthCheckOnly: true is contradictory` right before error saying "checkHealth: false and healthCheckOnly: true is contradictory"
+- `# Failed - log error and fail immediately` right before logging error and returning False
+- `# Auto-correct short form` right before code that auto-corrects and logs "auto-corrected X to Y"
+- Any comment that duplicates what an error message, log line, or function name already says
+- Any comment that describes WHAT the next line does instead of WHY
+- Section header comments like `# Step 1:`, `# Step 2:` unless the steps are non-obvious and need context
 
-**Read before you write, and keep the read a step of its own where the step
-is retried.** A write that first reads whether its work is already done -
-the row settled, the object at the wanted spec - finds a repeat and skips
-it. The read alone is not the guard: two callers can both read "not done",
-so the write carries its own condition (`WHERE status = 'pending'`, a
-create that fails on an existing key) and the read only saves the attempt.
-Where something re-runs a failed step - a workflow engine, a queue that
-redelivers, a reconcile loop - the read and the write are separate steps,
-so a failed read retries alone and never re-runs a write. Temporal re-runs
-a whole Activity when any step in it fails, and suggests splitting it so
-only the failed step retries, at the cost of a longer event history
-([error handling](https://docs.temporal.io/develop/python/best-practices/error-handling),
-[Activities](https://docs.temporal.io/activities)).
+**The comments that stay:**
+1. **WHY comments**: Explain non-obvious reasoning, design decisions, or business logic
+   - Example: `# Use cached state on FETCH_ERROR to avoid marking all pods as healthy during transient gateway issues`
+2. **GOTCHA comments**: Warn about subtle bugs or edge cases
+   - Example: `# IMPORTANT: must call record_metric BEFORE logging to ensure metrics are recorded even if logging fails`
+3. **TODO/FIXME with ticket reference**: `# TODO(JIRA-123): Optimize this query`
 
-In a review, a function that makes two writes to two places and returns
-one error is a finding.
+**A doubt resolves toward deleting the comment.** If the code is unclear, improve the code (better naming, structure) rather than add a comment.
 
-**Worked example.** The verdict loop under "Every bad path is counted,
-then logged" settled verdicts and filed new requests in one transaction.
-A verdict is settled whether or not the next request files, and filing
-reads nothing the settle writes, so a request that failed to file rolled
-back verdicts with nothing wrong with them, and the next pass settled them
-again:
+## Conversation artifacts stay out of the code
 
-```go
-// ❌ one result for two independent jobs
-err := dbh.Transaction(func(tx *gorm.DB) error {
-	if err := settleAll(tx, verdicts); err != nil {
-		return err
-	}
-	return fileRequests(tx, requests)
-})
-```
+**A comment must make sense to someone who reads the file cold, having never seen our discussion.** If a comment only exists because of something that happened in our conversation — a code review finding, a rejected alternative, a bug I introduced and fixed, a design I argued for — it does NOT belong in the code. Answer me in chat; leave the file clean.
 
-```go
-// ✅ each job commits and fails on its own
-settleErr := dbh.Transaction(func(tx *gorm.DB) error { return settleAll(tx, verdicts) })
-fileErr := dbh.Transaction(func(tx *gorm.DB) error { return fileRequests(tx, requests) })
-return errors.Join(settleErr, fileErr)
-```
+**What goes — arguing a case, defending a choice, or narrating history:**
+- `# Named rather than a bare tuple because three of the five are int/float: transposing the epoch count with the idle seconds would type-check and quietly report...` — defending a design against an alternative that was never in the file
+- `# Fixed rather than configurable: nothing has asked to tune it` — justifying a decision to a reviewer
+- `# Gated here rather than relying on X, which happens to be true today but is a coincidence` — arguing against a rejected approach
+- `# so they cannot drift apart the way three parallel lists could` — referencing code that no longer exists
+- `# without this, a skipped write would still log as published` — describing the bug I just fixed
+- `# this is my addition` or `# this is the part you were referring to` — pointing at the request instead of writing code that stands on its own
+- Anything containing "rather than", "instead of", "we could have", "previously", "this used to", "deliberately not", or a justification for why the code isn't something else
+
+**The test:** delete every trace of our conversation from your memory, then read the comment. If it now reads as a defence of a decision, or refers to code/bugs/alternatives that aren't in the file, it goes.
+
+**Where that content does belong:** the commit message body (which is exactly where "previously X, now Y" is required), or my chat. Not the source.
+
+**What survives:** a comment stating a fact about the code as it exists that a careful reader could not deduce — a non-obvious invariant, an ordering requirement, a gotcha that will bite them. `# MUST NOT await: the loop is single-threaded, so yielding here allows a torn read` is fine. `# MUST NOT await, because I originally wrote this with an await and it broke` is not. An approach that looks right and is not gets the same form: `# MUST NOT batch these: the API rejects more than one per call` names the hazard, not the attempt.
+
+---
+
+# The plain version wins
+
+**When two versions do the same job, write the one a reader follows on the
+first pass.** Clever code is paid for by every reader, every change and every
+bisect, and buys nothing when the plain version is as correct and fast enough.
+
+- **Plain is the obvious control flow and the idioms every reader knows, not
+  the fewest lines.** A two-level loop with a named variable at each level
+  beats a comprehension with two `for` clauses, a `reduce` over a lambda or a
+  chain of iterator adaptors a reader has to unpick.
+- **A known idiom is already plain**: a one-level comprehension, `any()` /
+  `all()`, `dict.get` with a default, `?` in Rust. Unrolling it into a
+  hand-written loop is not simpler.
+- **Past two levels, nesting is the spaghetti "One reason to change" names**:
+  the inner level becomes a named function, and early returns flatten the
+  branches.
+- **Performance buys complexity only with a measurement** on a path that
+  matters - per token or per request. The WHY comment names what it buys;
+  without the measurement, the plain version stays.
 
 ---
 
@@ -797,20 +1007,6 @@ one transaction is a bug of its own - see "One result, all or nothing".
 
 ---
 
-# Parse at the boundary
-
-Raw input - a request body, a config file, an API response, an environment
-variable - is turned into a typed struct or an enum once, where it enters.
-Everything past that point takes the typed value and never re-checks it.
-
-- **A validated value has a type that says so.** A function that checks a
-  string and passes the same string on leaves every caller to wonder whether it
-  was checked. A function that returns a parsed type answers that for good.
-- **This is where defensive code belongs** (see "Where defensive code belongs"
-  under YAGNI), and the reason the code inside needs none.
-
----
-
 # A check costs what its answer is worth
 
 **Before a check runs, ask who reads the answer and what a cheaper one
@@ -864,120 +1060,6 @@ node = core.read_node(name)
 node.spec.unschedulable = True
 core.replace_node(name, node)
 ```
-
----
-
-# Asyncio
-
-- **Every task has an owner.** The result of `asyncio.create_task` is kept and
-  awaited, or held by a `TaskGroup` or a set the owner drains. The event loop
-  keeps only a weak reference, so an unreferenced task can be garbage-collected
-  mid-execution, and an exception it raised surfaces only as a stray
-  "never retrieved" log line, if at all.
-- **Nothing blocks the event loop.** A blocking call - sync I/O, a sync HTTP
-  client, `time.sleep`, heavy CPU work - stalls every coroutine on the loop.
-  Use the async equivalent, or `asyncio.to_thread` for what has none.
-
----
-
-# One lock at a time
-
-**A lock taken while another is held is a design smell, whatever the two
-guard.** Two locks held at once is the one ingredient a deadlock needs, and
-a deadlock is the worst failure a service can have: nothing crashes, nothing
-logs, no counter moves, the health check keeps passing, and the process sits
-until someone kills it. Nested locking is named in review before the order
-is argued safe, because an order is checked by nobody and broken by the next
-caller.
-
-- **Nesting says two things that change together got separate locks, or one
-  lock guards too much.** State that must change together is one lock
-  ("One reason to change"); state that changes apart is two regions, each
-  released before the next is taken.
-- **A call made under a lock is a nested lock you cannot see.** The callee
-  may take its own lock today or after its next change - a callback, a
-  logger, a client, another component's method. Under a lock run only the
-  reads and writes it guards; I/O, an `await`, a callback or a call into
-  another component under it is each a nested lock in waiting. The same rule
-  "One result, all or nothing" gives a transaction.
-- **A documented lock order is a workaround, not a design.** When two locks
-  truly must be held together the split was wrong: one lock, a queue drained
-  by the one owner of the state, or an actor that owns it.
-- **A reentrant lock hides the smell instead of fixing it.** It lets a
-  function take a lock it already holds, so the nesting leaves no trace,
-  and the same call from a second thread deadlocks.
-- **asyncio is not exempt.** An `asyncio.Lock` held across an `await` that
-  takes another deadlocks the loop the same way, with no thread dump to show
-  it.
-- **A race the design cannot remove is better healed than locked harder.** A
-  race between two processes, a process and the cluster, or a writer and a
-  reader is out of any lock's reach: another lock narrows the window and
-  leaves the bug, and brings the nesting above with it. Make the state
-  converge instead: an idempotent write, a reconcile loop that reads the
-  truth and repairs the copy, a reader that takes a stale value as a retry.
-  The race then costs one repair and never a hang. "Self healing"
-  below says what counts as one.
-- **Row locks in a database fall outside this section: the database finds
-  the deadlock.** It aborts one side with an error instead of hanging, so
-  the silent hang this section guards against never happens. One atomic
-  statement, or a write that checks a version column, comes before a
-  transaction that holds row locks across statements. Where a transaction
-  must, keep it short and retry it whole on a deadlock or serialization
-  error (SQLSTATE `40001`, and `40P01` in PostgreSQL), counted by reason:
-  the retry is the healing above, and locking rows in key order only makes
-  it rarer. An in-process lock held around the transaction brings the
-  section back, since no detector sees a deadlock that spans the two.
-
-```python
-# ❌ the cache lock is taken while the registry lock is held
-async with self._registry_lock:
-    pod = self._registry[name]
-    async with self._cache_lock:
-        self._cache[name] = pod.snapshot()
-
-# ✅ the registry and its cache change together, so one lock owns both,
-#    and nothing else runs under it
-async with self._lock:
-    pod = self._registry[name]
-    self._cache[name] = pod.snapshot()
-```
-
----
-
-# Self healing
-
-**Whatever the code keeps in step with something else - a cache, a status
-field, a count, a record in a second store - converges on the truth by
-itself, whatever path it takes: any interleaving of the actors, any crash
-between two steps, any message lost or repeated.** That is a heal, whether
-or not anyone asked for one, and a change that only makes the bad path
-rarer is not one. Kubernetes controllers are the model: they are
-[level-triggered](https://kubernetes.io/docs/concepts/architecture/controller/),
-comparing the desired state with the actual one on every pass instead of
-acting on the event that announced a change, so a missed or reordered event
-costs one pass and nothing more.
-
-A heal names three things, and is not one until all three hold:
-
-- **The truth it reads**, fresh on every pass: the store, the cluster
-  object, the request's own record - never the event, a cached copy or what
-  the last pass remembers.
-- **The repair**: a step that moves the copy toward the truth and is safe
-  run twice, run late, or run by two actors at once - an idempotent write,
-  or one whose condition makes the stale actor's write a no-op.
-- **What brings the repair back**: a loop or a periodic resync that runs
-  until the state is right, and the setting that bounds how long a wrong
-  state can last.
-
-**Not a heal, however much it helps**: a sleep or a delay before acting, a
-retry that gives up, jitter, a lock or an ordering that narrows the window,
-a check before an unconditional write. Each makes the race rarer; the race
-still wins sometimes, and nothing comes back to fix what it left.
-
-**The test: pick any interleaving and any crash, then ask what the state is
-after the next pass of the repair.** Correct for every one is a heal. Wrong
-for any one, until someone notices, is not - and in a review, a change
-offered as a heal that only narrows the window is a finding.
 
 ---
 

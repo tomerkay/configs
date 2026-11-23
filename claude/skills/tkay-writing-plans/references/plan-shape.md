@@ -18,8 +18,8 @@ Structure:
 4. One section per problem, with the evidence for it
 5. **The contract: the API, the constraints and invariants, the black-box tests** -
    the most important section of the plan, see below
-6. The fix, opening with the known architecture it follows, giving the design
-   note of each new responsibility, and saying what an auditor would find in it, how it
+6. The fix, opening with the known architecture it follows, giving its
+   responsibilities, and saying what an auditor would find in it, how it
    survives a failure, and how it is watched, rolled out and turned off - see
    below
 7. **Known incidents** - see below
@@ -125,9 +125,9 @@ Once it is chosen, the plan carries it:
 - **Every decision names the design it resembles and the approach it rejected**:
   "Z resembles X's design; over W it gives <advantage>, and it costs
   <disadvantage>." In a decision table, that sentence is the reason column.
-- **Every new responsibility gets its design note**, in the shape
-  `design-note.md`, beside this file, gives - its owner, its state, its
-  interface and its departures - under the fix: "the decision to retry lives in
+- **Every new responsibility gets its owner, state, interface and
+  departures**, as "Responsibilities" in `clean-code.md`, beside this file,
+  gives them, under the fix: "the decision to retry lives in
   the router, not in each handler: the router already owns pod choice".
 - **A departure from the reference is stated where it happens**, with why: a state
   the reference keeps reversible that this design makes final, a check it runs that

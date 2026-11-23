@@ -49,8 +49,9 @@ rabbit holes - never a list where every idea stands unchallenged.
      `references/plan-shape.md` in full - search outward, bring the candidates with
      links and your recommendation - before any item rests on a design. The chosen
      one is an item of the brainstorm.
-  3. The design note of `references/design-note.md` for each new responsibility,
-     on the architecture chosen: its four fields are items of the brainstorm.
+  3. "Responsibilities" in `references/clean-code.md`, for each new
+     responsibility on the architecture chosen: its owner, state, interface and
+     departures are items of the brainstorm.
   4. What must always be true.
   5. The questions of "Check security", "Check high availability" and "Check
      operability" in `references/plan-shape.md`, asked of what we are
@@ -78,7 +79,7 @@ rabbit holes - never a list where every idea stands unchallenged.
      the problem.
   2. **The design it follows** - the known architecture picked, with its link, then
      one bullet per new responsibility: its owner, the state it keeps and any
-     departure, as `references/design-note.md` gives them.
+     departure, as "Responsibilities" in `references/clean-code.md` gives them.
   3. **What we are going to do, and what we are not** - the goals, each with the
      check that proves it, as "Goals and non-goals" in `references/plan-shape.md`
      asks, and the non-goals.

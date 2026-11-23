@@ -376,7 +376,7 @@ action of that kind.**
 |---|---|
 | the first reply of every session, whatever it is about - its hooks check every reply from then on | `tkay-replies` |
 | a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Digest, a CR Brief or a CR Summary - and only when I ask for one in those words | `tkay-review` |
-| a plan review of a full plan - only when I ask for one in those words | `tkay-review` |
+| a plan review of a shape plan or a full plan - only when I ask for one in those words | `tkay-review` |
 | a doc review of a change to markdown docs - only when I ask for one in those words | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-mr` |

@@ -1,6 +1,6 @@
 ---
 name: tkay-review
-description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the CR's sections from the overview to the To do list, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Digest, a CR Brief or a CR Summary, a plan review of a full plan, or a doc review of a change to markdown docs - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
+description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the CR's sections from the overview to the To do list, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Digest, a CR Brief or a CR Summary, a plan review of a shape plan or a full plan, or a doc review of a change to markdown docs - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
 hooks:
   Stop:
     - hooks:
@@ -39,7 +39,6 @@ skill's own `references/` so it works installed alone:
 | `references/severity.md` | the four colours a finding carries, and the Fix Profile |
 | `references/bycatch.md` | the bycatch table, its calls, and which session rows it carries |
 | `references/plan-shape.md` | a plan review only: the shape it holds a plan to |
-| `references/design-note.md` | a plan review only: the design note a plan gives each new responsibility |
 | `references/writing-mds.md` | a doc review only: where a fact goes and how a doc points |
 | `references/copied-stale-and-personal.md` | a doc review only: the rules it asks of every added line |
 | `references/questions.md` | when a reference above names it: how a proposal or a question that stops a reply is written |

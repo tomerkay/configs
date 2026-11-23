@@ -7,10 +7,11 @@ emoji-and-word shape, no Evidence on the call, no retired field or badge, no emo
 before Why Yes or Why Not. Every other block is the assessment hook of tkay-replies', so no
 block is checked twice.
 
-It also checks every table of a CR - Goals, Contract, Readiness, Incidents, Code quality,
-In short, Bycatch, the two of To do, Was it fixed and Summary: each opens with the header row the standard gives, and each row
-is numbered with its table's letters, or is the Profile row under one in the two tables that
-have one.
+It also checks every table of a CR - Goals, Contract, Readiness, Incidents, Design,
+Implementation, In short, Bycatch, the two of To do, Was it fixed and Summary - and of a plan
+review, which shares them but for its own In short and its Before it is built: each opens
+with the header row the standard gives, and each row is numbered with its table's letters, or
+is the Profile row under one in the tables that have one.
 
 A blocked reply is returned once: on the retry `stop_hook_active` is set and the hook stays
 quiet, so it can never hold the session in a loop. A failure exits 1, which Claude Code
@@ -39,16 +40,25 @@ TABLES = {
     "Readiness": ("| # | The claim | How we know | Work | Call | Blocker |", "SE|HA|OP", False),
     "Incidents": ("| # | Incident | The spec says | How we know | Work | Call | Blocker |", "IN",
                   False),
-    "Code quality": ("| # | Rule | How we know | Work | Call | Blocker |", "CQ", False),
+    "Design": ("| # | Rule | How we know | Work | Call | Blocker |", "DS", False),
+    "Implementation": ("| # | Rule | How we know | Work | Call | Blocker |", "IM", False),
     "In short": ("| # | What the commit does | Findings | Call | Blocker |", "C", True),
     "🎣 Bycatch": ("| # | What the bycatch is | Findings | Call |", "B", True),
     "Before it merges": ("| # | What to do | Where | Who | Fix Profile | Blocker |", "TD", False),
+    "Before it is built": ("| # | What to do | Where | Who | Fix Profile | Blocker |", "TD", False),
     "Optional": ("| # | What to do | Where | Who | Fix Profile |", "TD", False),
     "Was it fixed": ("| # | What was to do | Where | Now |", "TD", False),
     "Summary": ("| # | Section | Calls | Blocker |", "SC", False),
 }
-# A heading other replies use too: its table is held only when it opens the way a CR's does.
-CR_ONLY = {"Summary": "| # | Section | Calls |"}
+# Headings other replies use too: a table under one is held only when it opens the way a CR's
+# does.
+CR_ONLY = {"Summary": "| # | Section | Calls |", "Design": "| # | Rule |",
+           "Implementation": "| # | Rule |"}
+# A heading a plan review shares with a CR, holding a table of its own there: either shape
+# passes, and its own letters number its rows.
+PLAN_REVIEW_TABLES = {
+    "In short": ("| # | What the section says | Findings | Call | Blocker |", "S", True),
+}
 HEADING_RE = re.compile(r"^#{1,4} (.+?)\s*$")
 SEPARATOR_RE = re.compile(r"^\|[\s|:-]+\|$")
 
@@ -77,6 +87,9 @@ def table_problems(lines):
             rows.append(row)
         if not rows or not rows[0].startswith(CR_ONLY.get(name, "|")):
             continue
+        plan = PLAN_REVIEW_TABLES.get(name)
+        if plan and rows[0] == plan[0]:
+            want, letters, profile_rows = plan
         if rows[0] != want:
             found.append(f"the table under '{name}' opens with `{rows[0]}`, not `{want}`")
         numbered = row_re(letters, profile_rows)
@@ -165,10 +178,24 @@ def selftest():
          "# Incidents\n\n| # | Incident | The spec says | How we know | Work | Call | Blocker |\n"
          "|---|---|---|---|---|---|---|\n"
          "| **IN1** | a hung pool | Solved | the test | **C1** | ✅ Met | - |\n", False),
-        ("the code quality table in shape",
+        ("the design table in shape",
+         "# Design\n\n| # | Rule | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **DS1** | responsibilities | read | **C1** | 🟠 Broken (x) | ⛔ Hard: code |\n", False),
+        ("the implementation table in shape",
+         "# Implementation\n\n| # | Rule | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **IM4** | comments | read | **C1** | ✅ Holds | - |\n", False),
+        ("an implementation row numbered as a design row",
+         "# Implementation\n\n| # | Rule | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **DS4** | comments | read | **C1** | ✅ Holds | - |\n", True),
+        ("the old code quality heading is no longer a CR table",
          "# Code quality\n\n| # | Rule | How we know | Work | Call | Blocker |\n"
          "|---|---|---|---|---|---|\n"
-         "| **CQ1** | comments | read | **C1** | 🟠 Broken (x) | ⛔ Hard: code |\n", False),
+         "| **CQ1** | comments | read | **C1** | ✅ Holds | - |\n", False),
+        ("a Design table that is not a CR's is left alone",
+         "## Design\n\n| # | Option | Cost |\n|---|---|---|\n| 1 | a cache | low |\n", False),
         ("a goals row with another table's letter",
          "# Goals\n\n| # | Goal | How we know | Work | Call | Blocker |\n"
          "|---|---|---|---|---|---|\n"
@@ -203,6 +230,18 @@ def selftest():
         ("a Summary table with the old Holds the merge column",
          "# Summary\n\n| # | Section | Calls | Holds the merge |\n|---|---|---|---|\n"
          "| **SC1** | Commits | 🔧 Needs change 1 | hard |\n", True),
+        ("a plan review's In short table in shape",
+         "## In short\n\n| # | What the section says | Findings | Call | Blocker |\n"
+         "|---|---|---|---|---|\n"
+         "| **S6** | The fix | 🟠 1 | 🔧 Needs fix (x) | ⛔ Hard: design |\n"
+         "| | **Evidence:** LIKELY · **Size:** small · **Difficulty:** easy | | | |\n", False),
+        ("a plan review's In short row numbered as a commit",
+         "## In short\n\n| # | What the section says | Findings | Call | Blocker |\n"
+         "|---|---|---|---|---|\n| **C6** | The fix | none | ✅ Holds | - |\n", True),
+        ("a plan review's Before it is built table in shape",
+         "## Before it is built\n\n| # | What to do | Where | Who | Fix Profile | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **TD1** | one source | **S6**'s 🟠 | 🔧 Fix (plan) | x | ⛔ Hard: design |\n", False),
         ("a Summary table that is not a CR's is left alone",
          "## Summary\n\n| # | What changed | Where |\n|---|---|---|\n| 1 | a hook | x |\n", False),
         ("an empty section's line is no table", "# Incidents\n\nThe spec states no incidents.\n",

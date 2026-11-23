@@ -37,14 +37,14 @@ what exists - a condition, a value, a function body - is not. When unsure
 which it is, treat it as structural.
 
 **Before the first line of a structural change that follows no agreed plan,
-write its design note in chat**, in the shape `references/design-note.md`
-gives: a few lines I can correct while correcting them is still free. It
-is not a question: the work goes on under it, and I interrupt when the
-design is wrong.
+state its responsibilities in chat**, as "Responsibilities" in
+`references/clean-code.md` gives them: a few lines I can correct while
+correcting them is still free. It is not a question: the work goes on under
+them, and I interrupt when the design is wrong.
 
 **When the design rests on a choice between known architectures, the
-change needs a plan**: say so in place of the note, name the choice, and
-wait for my answer before any code.
+change needs a plan**: say so in place of the responsibilities, name the
+choice, and wait for my answer before any code.
 
 ## A code review is another skill, and another session
 

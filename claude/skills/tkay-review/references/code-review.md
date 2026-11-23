@@ -64,8 +64,9 @@ branch and whatever it was given:**
    see "The changes".
 3. `# Goals`, `# Contract`, `# Readiness`, `# Incidents` - whether the
    branch delivers what its spec asked for; see "The spec tables".
-4. `# Code quality` - every rule of `clean-code.md`, held against the
-   branch; see "The code quality table".
+4. `# Design` and `# Implementation` - every rule of `clean-code.md`, held
+   against the branch at the level its break lives; see "The Design and
+   Implementation tables".
 5. `# Commits` - `## In short`, each commit in one line, then `## In
    detail`, each commit's review; see "The commits".
 6. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
@@ -100,8 +101,8 @@ same with the spec closed.
 **Every number names what it numbers by its letter**, so a reply names a
 row and nothing else: **CH** a change, **G** a goal, **A** an API row,
 **IV** a constraint or invariant, **SE**, **HA** and **OP** a security,
-high-availability and operability claim, **IN** an incident, **CQ** a
-code-quality rule, **C** a commit, **B** a bycatch row, **TD** a To do row,
+high-availability and operability claim, **IN** an incident, **DS** a
+Design row, **IM** an Implementation row, **C** a commit, **B** a bycatch row, **TD** a To do row,
 **SC** a row of the section calls the CR ends with.
 Each is bold and counts from 1 in its section; **B** goes on from the
 session's count of bycatch.
@@ -303,7 +304,7 @@ does an existing caller keep working:
 
 With a spec, an A row gets both questions, and the worse answer is its call.
 
-**A rule of the code quality table**:
+**A row of the Design or Implementation table**:
 
 - **✅ Holds** - the branch's code keeps it.
 - **🔴, 🟠, 🟡 or ⚪ Broken (<what>)** - the branch breaks it; the colour is
@@ -381,6 +382,7 @@ The usual level, the kind, and when the level moves:
 | a 🔴, or a 🟠 other than a missing test, in anything else | ⛔ | what it is in: test code, doc or commit message | never |
 | a spec row not delivered | ⛔ | what delivers it: code, test code or doc | never |
 | 🗑 Drop, ❌ Drop it | ⛔ | drop | never |
+| a 🔴, or a 🟠 other than a missing test, in a plan's design, in a plan review | ⛔ | design | never |
 | a 🙋 decision | ⛔ | decision | 🚧 when either answer can still be taken after the merge, and neither leaves what merged wrong |
 | a bug fix with no test that reproduces it | 🚧 | no repro test | ⛔ when the bug coming back would do harm nothing undoes |
 | a 🧪 UNTESTED claim | 🚧 | untested | ⛔ when the claim is what the branch exists for, and its failing would do harm |
@@ -397,8 +399,8 @@ The usual level, the kind, and when the level moves:
 - **In a table, the blocker is a column of its own, `Blocker`, always the
   last**: `⛔ Hard: code`, or `-` on a row that holds nothing. The header
   names the blocker, so the cell leaves the word out. The Goals, Contract,
-  Readiness, Incidents, Code quality, In short, Before it merges and
-  Summary tables have it; the bycatch and Optional tables, whose rows never
+  Readiness, Incidents, Design, Implementation, In short, Before it merges
+  and Summary tables have it; the bycatch and Optional tables, whose rows never
   hold the merge, do not.
 - **Outside a table, the call carries it as a badge**, after the reason in
   brackets and before any other badge: `🔧 Needs change (crashes on an
@@ -621,44 +623,66 @@ says", holding the status the spec claims.
   "The spec states no <rows>." when it is silent there. The Contract table
   keeps its API rows above either line.
 
-### The code quality table — before the commits, every CR
+### The Design and Implementation tables — before the commits, every CR
 
-**Every rule of `clean-code.md` gets a row, in the same order in every CR**,
-so the table shows at a glance which rules the branch keeps, which it
-breaks, and which it never touches:
+**Every rule of `clean-code.md` gets a row at the level its break lives, in
+the same order in every CR**, so the two tables show at a glance which rules
+the branch keeps, which it breaks, and which it never touches. `# Design`
+judges the structure - who owns what, what state is kept and who writes it,
+how the parts call each other - and `# Implementation` judges the lines:
 
 ```
-# Code quality
+# Design
 
 | # | Rule | How we know | Work | Call | Blocker |
 |---|---|---|---|---|---|
-| **CQ1** | comments say only what the code cannot | read of every comment the branch adds | **C3**, its ⚪ | ⚪ Broken (a comment's word is off) | - |
-| **CQ2** | nothing built that nobody asked for (YAGNI) | read of each commit against what it was for | **C1**, **C2** | ✅ Holds | - |
-| **CQ3** | one source of truth | read of every value the branch adds | **C2**, its 🟠 | 🟠 Broken (two copies already disagree) | ⛔ Hard: code |
+| **DS1** | responsibilities | read of the client and the router against the plan's | **C1** | ✅ Holds | - |
+| **DS11** | one owner for each piece of state and config | read of where the timeout is set | **C2**, its 🟠 | 🟠 Broken (the config and the client both own it) | ⛔ Hard: code |
+
+# Implementation
+
+| # | Rule | How we know | Work | Call | Blocker |
+|---|---|---|---|---|---|
+| **IM3** | internal names mean one thing, literally | read of the new helpers' names | **C3**, its ⚪ | ⚪ Broken (`wait` also counts) | - |
+| **IM4** | comments say only what the code cannot | read of every comment the branch adds | **C3** | ✅ Holds | - |
 ```
 
-**The rules, in the order and with the numbers every CR gives them**, each
-with its usual colour and when a break of it blocks:
+**The rows, in the order and with the numbers every CR gives them**, each
+with the section of `clean-code.md` it judges, its usual colour and when a
+break of it blocks:
 
-| # | Rule | Usual | Blocks (🟠, or 🔴 when the failure can be shown) when |
-|---|---|---|---|
-| **CQ1** | comments say only what the code cannot | 🟡 / ⚪ | never |
-| **CQ2** | nothing built that nobody asked for (YAGNI) | 🟡 | never: the code works, it is only bigger than needed |
-| **CQ3** | one source of truth | 🟡 | the copies already disagree, or one will drift with nothing to catch it |
-| **CQ4** | a name means one thing, literally | 🟡 | a label or status value false for some case, not shipped yet |
-| **CQ5** | every bad path is counted, then logged | 🟠 | always: a failure nobody can see |
-| **CQ6** | one reason to change | 🟡 | a change you can name elsewhere would break this code |
-| **CQ7** | solid, not fragile | 🟡 | a small change you can name elsewhere breaks it far away, or leaves it silently wrong |
-| **CQ8** | the plain version wins | 🟡 | never |
-| **CQ9** | fail fast, parse at the boundary | 🟠 | always, once a bad state reaches deep code; 🟡 while nothing reaches it yet |
-| **CQ10** | one result, all or nothing | 🟠 | always: a half-done result is corrupt state |
-| **CQ11** | a check costs what its answer is worth | 🟡 | it sits on a hot path |
-| **CQ12** | asyncio, and one lock at a time | 🟠 | always: a deadlock or a blocked event loop |
-| **CQ13** | self healing | 🟠 | a copy a lost event or a crash leaves wrong, with nothing to bring it back |
-| **CQ14** | tests check the contract, not the code | 🟡 | a bug fix with no test that reproduces it, when a unit test could |
-| **CQ15** | enums over strings | 🟡 | a string value already misspelled somewhere |
-| **CQ16** | a small interface, a lot behind it | 🟡 | another service or repo will call the interface, and it exposes what a later fix would have to take back |
+| # | Rule | Section | Usual | Blocks (🟠, or 🔴 when the failure can be shown) when |
+|---|---|---|---|---|
+| **DS1** | responsibilities | Responsibilities | 🟠 | a responsibility with no owner, or code whose owner, state or interface is not the plan's |
+| **DS2** | one reason to change | One reason to change | 🟡 | a change you can name elsewhere would break this code |
+| **DS3** | a small interface, a lot behind it | A small interface, a lot behind it | 🟡 | another service or repo will call the interface, and it exposes what a later fix would have to take back |
+| **DS4** | solid, not fragile | SOLID vs fragile | 🟡 | a small change you can name elsewhere breaks it far away, or leaves it silently wrong |
+| **DS5** | one result, all or nothing | One result, all or nothing | 🟠 | always: a half-done result is corrupt state |
+| **DS6** | fail fast, parse at the boundary | Parse at the boundary, and "Fail fast" under Over-engineering | 🟠 | always, once a bad state reaches deep code; 🟡 while nothing reaches it yet |
+| **DS7** | asyncio, and one lock at a time | Asyncio, and One lock at a time | 🟠 | always: a deadlock, a blocked event loop, or a value gone stale across an `await` |
+| **DS8** | self healing | Self healing | 🟠 | a copy a lost event or a crash leaves wrong, with nothing to bring it back |
+| **DS9** | every wait has a bound | Every wait has a bound | 🟠 | always: a wait with no bound holds a worker with nothing to free it |
+| **DS10** | no mechanism nobody asked for | Over-engineering | 🟡 | never: the code works, it is only bigger than needed |
+| **DS11** | one owner for each piece of state and config | One source of truth | 🟡 | the copies already disagree, or one will drift with nothing to catch it |
+| **DS12** | public names say what is true | A name means one thing, literally | 🟡 | a label or status value false for some case, not shipped yet |
+| **IM1** | no option, parameter or abstraction nobody asked for | Over-engineering | 🟡 | never: the code works, it is only bigger than needed |
+| **IM2** | no value or logic written twice | One source of truth | 🟡 | the copies already disagree, or one will drift with nothing to catch it |
+| **IM3** | internal names mean one thing, literally | A name means one thing, literally | 🟡 | never: only the next reader pays |
+| **IM4** | comments say only what the code cannot | Comments in code | 🟡 / ⚪ | never |
+| **IM5** | the plain version wins | The plain version wins | 🟡 | never |
+| **IM6** | every bad path is counted, then logged | Every bad path is counted, then logged | 🟠 | always: a failure nobody can see |
+| **IM7** | a check costs what its answer is worth | A check costs what its answer is worth | 🟡 | it sits on a hot path |
+| **IM8** | tests check the contract, not the code | Tests check the contract, not the code | 🟡 | a bug fix with no test that reproduces it, when a unit test could |
+| **IM9** | enums over strings | Enums over strings | 🟡 | a string value already misspelled somewhere |
 
+- **A section that holds at both levels gives a row in each**, worded for
+  that level: Over-engineering (**DS10**, **IM1**), One source of truth
+  (**DS11**, **IM2**) and A name means one thing (**DS12**, **IM3**). A break
+  goes in the row of the level it lives at, never in both: a cache nobody
+  asked for is **DS10**, an unused parameter **IM1**.
+- **DS1 judges the code against the plan's responsibilities.** With no plan
+  given, it reads ➖ Irrelevant, "no plan given", and the rows under it
+  still judge the structure.
 - **Call** - ✅ Holds, a colour and Broken with what is broken, or
   ➖ Irrelevant when the branch's code never touches the rule; "How we
   know" then says why, such as "the branch takes no lock".
@@ -834,7 +858,7 @@ as a contradiction.
 
 | # | What to do | Where | Who | Fix Profile |
 |---|---|---|---|---|
-| **TD5** | <a cheap clean-up> | **C3**'s 🟡 (CQ3) | 🔧 Fix (rename) | ... |
+| **TD5** | <a cheap clean-up> | **C3**'s 🟡 (IM3) | 🔧 Fix (rename) | ... |
 | **TD6** | <a bycatch fix> | **B1** | 🔧 Fix (docs) | ... |
 ```
 
@@ -1024,8 +1048,8 @@ Each category below has a **default severity** - deviate only with a stated reas
    - Consistent formatting across similar log messages?
    - Include all necessary context (pod_name, pod_ip, model_name)?
 
-6. **Code Quality** [default: the rule's usual colour in "The code quality table"]
-   - **Ask every rule of `clean-code.md` of the change**, and give each its call; "The code quality table" numbers the rules and gives each one's usual colour and when a break of it blocks.
+6. **Design and implementation** [default: the row's usual colour in "The Design and Implementation tables"]
+   - **Ask every rule of `clean-code.md` of the change**, and give each its call; "The Design and Implementation tables" number the rows and give each one's usual colour and when a break of it blocks.
    - Ordering issues? (should things be grouped differently?)
    - Naming clarity? Does each name mean one thing, literally, that a cold reader gets from the name alone? A name that only a comment explains is the wrong name: make it longer or split it. Any state that hides a compound condition, is named for its cause, or kept its name when a change shifted its meaning? When a diff changes what a field means, grep every reader of it.
    - Any TODOs or FIXMEs that shouldn't be there?
