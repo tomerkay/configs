@@ -8,7 +8,7 @@ before Why Yes or Why Not. Every other block is the assessment hook of tkay-repl
 block is checked twice.
 
 It also checks every table of a CR - Goals, Contract, Readiness, Incidents, Code quality,
-In short, Bycatch, the two of To do and Was it fixed: each opens with the header row the standard gives, and each row
+In short, Bycatch, the two of To do, Was it fixed and Summary: each opens with the header row the standard gives, and each row
 is numbered with its table's letters, or is the Profile row under one in the two tables that
 have one.
 
@@ -34,17 +34,21 @@ SHAPE = ("the commit's assessment as list items: **Call:** with the call alone, 
 # Each table: its header row, the letters its rows are numbered with, and whether a row may
 # be the unnumbered Profile row under the one above it.
 TABLES = {
-    "Goals": ("| # | Goal | How we know | Work | Call |", "G", False),
-    "Contract": ("| # | The promise | How we know | Work | Call |", "A|IV", False),
-    "Readiness": ("| # | The claim | How we know | Work | Call |", "SE|HA|OP", False),
-    "Incidents": ("| # | Incident | The spec says | How we know | Work | Call |", "IN", False),
-    "Code quality": ("| # | Rule | How we know | Work | Call |", "CQ", False),
-    "In short": ("| # | What the commit does | Findings | Call |", "C", True),
+    "Goals": ("| # | Goal | How we know | Work | Call | Blocker |", "G", False),
+    "Contract": ("| # | The promise | How we know | Work | Call | Blocker |", "A|IV", False),
+    "Readiness": ("| # | The claim | How we know | Work | Call | Blocker |", "SE|HA|OP", False),
+    "Incidents": ("| # | Incident | The spec says | How we know | Work | Call | Blocker |", "IN",
+                  False),
+    "Code quality": ("| # | Rule | How we know | Work | Call | Blocker |", "CQ", False),
+    "In short": ("| # | What the commit does | Findings | Call | Blocker |", "C", True),
     "🎣 Bycatch": ("| # | What the bycatch is | Findings | Call |", "B", True),
-    "Before it merges": ("| # | What to do | Where | Who | Fix Profile |", "TD", False),
+    "Before it merges": ("| # | What to do | Where | Who | Fix Profile | Blocker |", "TD", False),
     "Optional": ("| # | What to do | Where | Who | Fix Profile |", "TD", False),
     "Was it fixed": ("| # | What was to do | Where | Now |", "TD", False),
+    "Summary": ("| # | Section | Calls | Blocker |", "SC", False),
 }
+# A heading other replies use too: its table is held only when it opens the way a CR's does.
+CR_ONLY = {"Summary": "| # | Section | Calls |"}
 HEADING_RE = re.compile(r"^#{1,4} (.+?)\s*$")
 SEPARATOR_RE = re.compile(r"^\|[\s|:-]+\|$")
 
@@ -71,7 +75,7 @@ def table_problems(lines):
             if not row.startswith("|"):
                 break
             rows.append(row)
-        if not rows:
+        if not rows or not rows[0].startswith(CR_ONLY.get(name, "|")):
             continue
         if rows[0] != want:
             found.append(f"the table under '{name}' opens with `{rows[0]}`, not `{want}`")
@@ -93,9 +97,10 @@ def problems(text):
 def selftest():
     commit = ("- **Call:** ✅ Ship it\n"
               "- **Commit:** **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy\n")
-    commits_table = ("| # | What the commit does | Findings | Call |\n|---|---|---|---|\n"
-                     "| **C1** | adds a check | ✨ Gucci | ✅ Ship it |\n"
-                     "| | **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy | | |\n")
+    commits_table = ("| # | What the commit does | Findings | Call | Blocker |\n"
+                     "|---|---|---|---|---|\n"
+                     "| **C1** | adds a check | ✨ Gucci | ✅ Ship it | - |\n"
+                     "| | **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy | | | |\n")
     bycatch_table = ("| # | What the bycatch is | Findings | Call |\n|---|---|---|---|\n"
                      "| **B1** | a stale doc (`README.md`) | 🟡 1 | ⏸ Leave for now (scope) |\n"
                      "| | **Evidence:** VERIFIED · **Size:** small · **Difficulty:** easy | "
@@ -140,34 +145,66 @@ def selftest():
         ("the In short table with made-up columns",
          "## In short\n\n| # | Commit | Notes |\n|---|---|---|\n| **C1** | x | y |\n", True),
         ("an In short row numbered without its C",
-         f"## In short\n\n{commits_table}| **2** | a fix | ✨ Gucci | ✅ Ship it |\n", True),
+         f"## In short\n\n{commits_table}| **2** | a fix | ✨ Gucci | ✅ Ship it | - |\n", True),
+        ("an In short table without its Blocker column",
+         "## In short\n\n| # | What the commit does | Findings | Call |\n|---|---|---|---|\n"
+         "| **C1** | adds a check | ✨ Gucci | ✅ Ship it |\n", True),
         ("the goals table in shape",
+         "# Goals\n\n| # | Goal | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **G1** | users see no error | the retry test | **C2** | ✅ Met | - |\n", False),
+        ("a goals table without its Blocker column",
          "# Goals\n\n| # | Goal | How we know | Work | Call |\n|---|---|---|---|---|\n"
-         "| **G1** | users see no error | the retry test | **C2** | ✅ Met |\n", False),
+         "| **G1** | users see no error | the retry test | **C2** | ✅ Met |\n", True),
         ("a contract table with an API and an invariant row",
-         "# Contract\n\n| # | The promise | How we know | Work | Call |\n|---|---|---|---|---|\n"
-         "| **A1** | a header | read | **C3** | ✅ Additive |\n"
-         "| **IV1** | one retry | the test | **C2** | ✅ Met |\n", False),
+         "# Contract\n\n| # | The promise | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **A1** | a header | read | **C3** | ✅ Additive | - |\n"
+         "| **IV1** | one retry | the test | **C2** | ✅ Met | - |\n", False),
+        ("the incidents table in shape",
+         "# Incidents\n\n| # | Incident | The spec says | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|---|\n"
+         "| **IN1** | a hung pool | Solved | the test | **C1** | ✅ Met | - |\n", False),
+        ("the code quality table in shape",
+         "# Code quality\n\n| # | Rule | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **CQ1** | comments | read | **C1** | 🟠 Broken (x) | ⛔ Hard: code |\n", False),
         ("a goals row with another table's letter",
-         "# Goals\n\n| # | Goal | How we know | Work | Call |\n|---|---|---|---|---|\n"
-         "| **A1** | users see no error | the retry test | **C2** | ✅ Met |\n", True),
+         "# Goals\n\n| # | Goal | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **A1** | users see no error | the retry test | **C2** | ✅ Met | - |\n", True),
         ("a goals row with no number, which only a two-row table allows",
-         "# Goals\n\n| # | Goal | How we know | Work | Call |\n|---|---|---|---|---|\n"
-         "| | users see no error | the retry test | **C2** | ✅ Met |\n", True),
+         "# Goals\n\n| # | Goal | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| | users see no error | the retry test | **C2** | ✅ Met | - |\n", True),
         ("the To do tables in shape",
-         "# To do\n\n## Before it merges\n\n| # | What to do | Where | Who | Fix Profile |\n"
-         "|---|---|---|---|---|\n| **TD1** | stop retries | **C3**'s 🔴 | 🔧 Fix | x |\n\n"
-         "## Optional\n\nNothing optional.\n", False),
-        ("a To do table that still has a Blocks column",
-         "## Before it merges\n\n| # | What to do | Where | Who | Blocks | Fix Profile |\n"
-         "|---|---|---|---|---|---|\n| **TD1** | stop retries | **C3**'s 🔴 | 🔧 Fix | yes | x |\n",
-         True),
+         "# To do\n\n## Before it merges\n\n"
+         "| # | What to do | Where | Who | Fix Profile | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **TD1** | stop retries | **C3**'s 🔴 | 🔧 Fix | x | ⛔ Hard: code |\n\n"
+         "## Optional\n\n| # | What to do | Where | Who | Fix Profile |\n|---|---|---|---|---|\n"
+         "| **TD2** | rename | **C3**'s ⚪ | 🔧 Fix (rename) | x |\n", False),
+        ("a Before it merges table whose Blocker is not the last column",
+         "## Before it merges\n\n| # | What to do | Where | Who | Blocker | Fix Profile |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **TD1** | stop retries | **C3**'s 🔴 | 🔧 Fix | ⛔ Hard: code | x |\n", True),
+        ("an Optional table with a Blocker column",
+         "## Optional\n\n| # | What to do | Where | Who | Fix Profile | Blocker |\n"
+         "|---|---|---|---|---|---|\n| **TD2** | rename | **C3**'s ⚪ | 🔧 Fix | x | - |\n", True),
         ("the Was it fixed table in shape",
          "# Was it fixed\n\n| # | What was to do | Where | Now |\n|---|---|---|---|\n"
          "| **TD1** | stop retries | **C3**'s 🔴 | ✅ Done (**C6**) |\n", False),
         ("a Was it fixed table with a made-up column",
          "# Was it fixed\n\n| # | What was to do | Status |\n|---|---|---|\n"
          "| **TD1** | stop retries | done |\n", True),
+        ("the Summary table in shape",
+         "# Summary\n\n| # | Section | Calls | Blocker |\n|---|---|---|---|\n"
+         "| **SC1** | Commits | 🔧 Needs change 1 | ⛔ Hard: code |\n", False),
+        ("a Summary table with the old Holds the merge column",
+         "# Summary\n\n| # | Section | Calls | Holds the merge |\n|---|---|---|---|\n"
+         "| **SC1** | Commits | 🔧 Needs change 1 | hard |\n", True),
+        ("a Summary table that is not a CR's is left alone",
+         "## Summary\n\n| # | What changed | Where |\n|---|---|---|\n| 1 | a hook | x |\n", False),
         ("an empty section's line is no table", "# Incidents\n\nThe spec states no incidents.\n",
          False),
         ("the bycatch table in shape", f"# 🎣 Bycatch\n\n{bycatch_table}", False),

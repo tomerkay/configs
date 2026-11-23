@@ -18,8 +18,8 @@ Structure:
 4. One section per problem, with the evidence for it
 5. **The contract: the API, the constraints and invariants, the black-box tests** -
    the most important section of the plan, see below
-6. The fix, opening with the known architecture it follows, naming the owner of
-   each new responsibility, and saying what an auditor would find in it, how it
+6. The fix, opening with the known architecture it follows, giving the design
+   note of each new responsibility, and saying what an auditor would find in it, how it
    survives a failure, and how it is watched, rolled out and turned off - see
    below
 7. **Known incidents** - see below
@@ -41,6 +41,13 @@ deliberately does not - in the words of
 [Design Docs at Google](https://www.industrialempathy.com/posts/design-docs-at-google/),
 "non-goals aren't negated goals". Each non-goal says why in a few words. The
 brainstorm's in-scope and out-of-scope items land here.
+
+**Each goal names the check that proves it**: a black-box test of the contract, named
+as the contract names it, or, when no test can, the run or the read that shows it. A
+goal with no check is written as unchecked, never left silent. A goal only production
+can confirm takes as its check what shows it before the merge - a test or a run of
+the mechanism - and what confirms it after it ships is the answer to "How do we know
+it works?" under "Check operability".
 
 A non-goal is not deferred work: work I agreed to do later is TBD's, and a non-goal
 is not planned at all.
@@ -118,12 +125,10 @@ Once it is chosen, the plan carries it:
 - **Every decision names the design it resembles and the approach it rejected**:
   "Z resembles X's design; over W it gives <advantage>, and it costs
   <disadvantage>." In a decision table, that sentence is the reason column.
-- **Every new responsibility names its one owner**: the module, type or service
-  that will hold it, and why there - "the decision to retry lives in the router,
-  not in each handler: the router already owns pod choice". One line each, under
-  the fix, naming a place the reader knows. A job split across two owners, or
-  given to an owner that already has an unrelated one, is settled in the plan,
-  never left for whoever writes the code to pick.
+- **Every new responsibility gets its design note**, in the shape
+  `design-note.md`, beside this file, gives - its owner, its state, its
+  interface and its departures - under the fix: "the decision to retry lives in
+  the router, not in each handler: the router already owns pod choice".
 - **A departure from the reference is stated where it happens**, with why: a state
   the reference keeps reversible that this design makes final, a check it runs that
   this one skips.
@@ -276,7 +281,9 @@ Not a pile of edits. **Read `references/commits.md` before the first commit
 section**, and write one section per commit, cut and ordered as its section
 "Two Suits: a Fix Stands Alone, a Feature Is a Series" says. For each one: the subject
 line, the files, the tests, and **what the commit body has to say**. Each black-box
-test of the contract is listed under the commit section that delivers what it pins.
+test of the contract, and each goal's check, is listed under the commit section that
+delivers what it pins or proves. A goal whose check no commit section lists means the
+list is not done.
 
 Call out whatever a commit touches that is easy to miss: a doc whose wording it
 invalidates, a rule it deliberately reverses, a config list it has to join.

@@ -372,6 +372,51 @@ and what changes for different reasons lives apart.
 
 ---
 
+# A small interface, a lot behind it
+
+**A module is worth what it hides.** Its interface is everything a caller
+must know to use it right: the signatures, and also the order of the calls,
+the errors, the config it needs and what it leaves behind when it fails. The
+smaller that is against what the module does, the more each caller gets for
+what it learns, and the fewer callers a change inside it reaches - the deep
+module of John Ousterhout's
+[A Philosophy of Software Design](https://web.stanford.edu/~ouster/cgi-bin/aposd.php).
+
+- **A decision the module can make is made inside it, once.** Handed out as
+  a parameter, a flag or a required order of calls, it is made again by
+  every caller, and one of them gets it wrong.
+- **Nothing of the inside shows in the interface.** A return type of the
+  library underneath, a field callers reach through, an error only this
+  storage could raise: each ties every caller to a choice the module was
+  there to hide, and changing that choice then means changing them all.
+- **A pass-through is not a module.** A layer whose methods only forward to
+  the next one, or a wrapper that only renames, gives the caller an
+  interface to learn and nothing for it. The test is to delete it: when
+  neither the callers nor their tests get harder to write, it goes.
+- **Depth is shaped for the callers that exist.** It is how a module the
+  change already needs is cut, never a reason to add one: an interface with
+  one implementation, or a helper for a caller that might come, is still
+  "Over-engineering".
+
+```python
+# ❌ every caller knows the order, and what to undo when a step fails
+conn = pool.acquire()
+conn.begin()
+try:
+    conn.execute(query)
+    conn.commit()
+except Exception:
+    conn.rollback()
+    raise
+finally:
+    pool.release(conn)
+
+# ✅ one call; the order and the cleanup live behind it
+store.run_in_transaction(query)
+```
+
+---
+
 # SOLID vs fragile
 
 **Before writing a line, ask what one small change elsewhere does to it.**

@@ -34,8 +34,8 @@ commit judged against the one before it, and nobody judging what lands.
   blocks.
 - **The commit calls never read greener than the outcome.** If the branch
   at HEAD is broken, at least one row of the In short table is none of
-  `✅ Ship it`, `👌 Fixed later`, `🪓 Split` and `📝 Reword`: a fix that
-  HEAD does not hold is no fix.
+  `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword` and
+  `🔀 Squash into`: a fix that HEAD does not hold is no fix.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
@@ -51,33 +51,15 @@ never interleaved.** Each repo gets its own sections under a heading
 that names the repo, its own branch line, and its own numbering, so
 "<repo> row 2" names one row and no row carries a repo tag. One line
 above the first repo says whether the branches merge independently or in
-which order. A CR Summary over several repos is split the same way.
+which order. A CR Digest over several repos is split the same way.
 
 ## The CR's sections
 
 **Every CR has the same sections, in this order, each under its own
-top-level heading, whatever the branch and whatever it was given:**
+top-level heading, below the title "The overview" gives, whatever the
+branch and whatever it was given:**
 
-```
-# Repo <repo> branch <branch> CR
-# Overview
-# Changes
-# Goals
-# Contract
-# Readiness
-# Incidents
-# Code quality
-# Commits
-## In short
-## In detail
-# 🎣 Bycatch
-# To do
-## Before it merges
-## Optional
-```
-
-1. `# Overview` - what the branch does, its call, and what the CR was given;
-   see "The overview".
+1. `# Overview` - what the branch does; see "The overview".
 2. `# Changes` - one entry per thing the branch does, judged as it lands;
    see "The changes".
 3. `# Goals`, `# Contract`, `# Readiness`, `# Incidents` - whether the
@@ -88,8 +70,10 @@ top-level heading, whatever the branch and whatever it was given:**
    detail`, each commit's review; see "The commits".
 6. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
    table".
-7. `# To do` - every piece of work the CR asks for, in one list; see "To
-   do".
+7. `# To do` - every piece of work the CR asks for, in `## Before it merges`
+   and `## Optional`; see "To do".
+8. `# Summary` - the section calls, the branch call and the CR's file;
+   see "The ending".
 
 A CR that checks the fixes of an earlier one adds `# Was it fixed` right
 after the overview; see "Was it fixed?".
@@ -117,25 +101,25 @@ same with the spec closed.
 row and nothing else: **CH** a change, **G** a goal, **A** an API row,
 **IV** a constraint or invariant, **SE**, **HA** and **OP** a security,
 high-availability and operability claim, **IN** an incident, **CQ** a
-code-quality rule, **C** a commit, **B** a bycatch row, **TD** a To do row.
+code-quality rule, **C** a commit, **B** a bycatch row, **TD** a To do row,
+**SC** a row of the section calls the CR ends with.
 Each is bold and counts from 1 in its section; **B** goes on from the
 session's count of bycatch.
 
 A CR in the session that wrote the code opens with the ⚠️ line this
-skill's `SKILL.md` gives, above everything else. Every CR ends with the
-line naming its file that `SKILL.md` gives, then the branch's call again,
-under `**Branch call:**`, so the last line read is the verdict.
+skill's `SKILL.md` gives, above everything else, and every CR closes as
+"The ending" says.
 
-### The three views: CR, CR Summary and CR Brief
+### The views: CR, CR Digest, CR Brief and CR Summary
 
-**A CR comes in three views, each asked for by its name:**
+**A CR comes in these views, each asked for by its name:**
 
 - **CR** - every section.
-- **CR Summary** - every section but `## In detail`.
-- **CR Brief** - `# Overview` and `# To do`: what the branch does, its
-  call, and every piece of work left, each naming where it comes from.
+- **CR Digest** - every section but `## In detail`.
+- **CR Brief** - `# Overview`, `# To do` and `# Summary`.
+- **CR Summary** - `# Summary` alone.
 
-**A Summary or a Brief is only of a CR already done in this session**:
+**A Digest, a Brief or a Summary is only of a CR already done in this session**:
 
 - **This session already reviewed the branch**: the sections are rebuilt
   from that review under "A repeat CR". A commit whose review is carried
@@ -148,7 +132,7 @@ under `**Branch call:**`, so the last line read is the verdict.
 not at all.
 
 ```
-"CR Summary", after this session's CR of the branch, nothing changed since:
+"CR Digest", after this session's CR of the branch, nothing changed since:
 ❌ every section, In detail included - the CR again
 ✅ every section but In detail
 
@@ -161,7 +145,7 @@ not at all.
 
 **One question I must be able to answer about every single finding, without reading between the lines: is this code broken or merely imperfect?** The colour answers it, and the colour alone decides whether the merge waits for a fix; a 🧪 UNTESTED finding, which has no colour, makes it wait for a run instead:
 
-- **MUST HAVE** is 🔴 and 🟠. It blocks the merge: I fix it now, or I don't ship.
+- **MUST HAVE** is 🔴 and 🟠. It blocks the merge: I fix it now, or I don't ship. One that is a soft blocker I may also merge past on my word; "Hard and soft merge blockers" says which.
 - **NICE TO HAVE** is 🟡 and ⚪. I ship without it; worth doing when I'm in there anyway, and my call by definition.
 
 Nothing moves between the two: no promotion, no demotion, no bracket that makes a 🟡 block or lets a 🟠 through. A finding is headed by its colour and its claim, and the section it sits in says whether it blocks:
@@ -187,8 +171,8 @@ The four colours, the bar each one sets and how one is picked are
 The case that taught it, a fix for a failing nightly suite, traced end to end, that only the hour-long suite could prove:
 
 ```
-❌ FINDINGS: 🟠 1 · Call: 🔧 Needs change (not yet run against the suite it fixes)
-✅ FINDINGS: 🧪 1 · Call: 🧪 Needs test (the nightly suite)
+❌ FINDINGS: 🟠 1 · Call: 🔧 Needs change (not yet run against the suite it fixes) (⛔ Hard blocker: code)
+✅ FINDINGS: 🧪 1 · Call: 🧪 Needs test (the nightly suite) (🚧 Soft blocker: untested)
 ```
 
 A departure from `clean-code.md` keeps the colour the checklist below gives it.
@@ -215,7 +199,7 @@ judges.
   Difficulty of making it.
 
 ```
-- **Call:** 🔧 Needs change (hangs on timeout)
+- **Call:** 🔧 Needs change (hangs on timeout) (⛔ Hard blocker: code)
 - **Commit:** **Evidence:** VERIFIED · **Size:** medium · **Difficulty:** hard
 - **Fix 🔴🟠:** add a client timeout · **Evidence:** LIKELY · **Size:** small · **Difficulty:** easy
 - **Fix 🟡⚪:** rename the two helpers · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
@@ -235,7 +219,8 @@ in. Size and Difficulty describe the thing as it is.
 
 - **✅ Ship it** - the commit goes in as it is.
 - **👌 Fixed later (by `<sha>`)** - a later commit on the branch fixes what
-  blocks it; that commit's own call is picked on its own content.
+  blocks it; that commit's own call is picked on its own content, and
+  says whether it squashes in.
 - **🔧 Needs change** - amending this commit fixes what blocks it.
 - **🙋 Needs your call (<the decision>)** - what blocks it is a choice only
   I can make: a break that may be intended, a design choice where both
@@ -249,12 +234,14 @@ in. Size and Difficulty describe the thing as it is.
   thing; the brackets name the commits it splits into.
 - **📝 Reword (<the reason in a few words>)** - nothing blocks it, but its
   message is false or misleading; a new message fixes it.
-- **🔀 Squash into `<sha>`** - it belongs inside that earlier commit.
+- **🔀 Squash into `<sha>` (<which message survives>)** - nothing blocks
+  it, but it belongs inside that commit, earlier or later.
 - **🗑 Drop** - the branch is better without it.
 
-**A branch** under review, on the Branch call line of its overview. It
-follows from every section but the bycatch, the worst row deciding, in the
-order ❌, ✂️, ⚖️, ⏳, 🙋, 🔧, 🧪, ✅:
+**A branch** under review, on the Branch call line that ends the CR. It
+follows from every section but the bycatch - what the review found on the
+way is not what the branch does - the worst row deciding, in the order ❌,
+✂️, ⚖️, ⏳, 🙋, 🔧, 🧪, ✅:
 
 - **✅ Merge it** - every change is ✅ Keep it, and every row of the spec
   tables is ✅ Met or ✅ Additive.
@@ -262,13 +249,11 @@ order ❌, ✂️, ⚖️, ⏳, 🙋, 🔧, 🧪, ✅:
   untested, and every other is ✅.
 - **🔧 Merge after fixes** - a change is 🔧 Needs fixes, and none is ✂️, ❌
   or 🙋.
-- **🙋 Merge after your call (<the To do rows>)** - a decision only I can
-  make holds the branch, and no ⏳, ✂️, ⚖️ or ❌ outranks it. The bracket
-  names the To do rows that ask.
-- **⏳ Finish the work first (<the rows>)** - a row of a spec table is
-  ⏳ Not reached: the branch may be correct, and it still delivers only
-  part of what it was asked for. The bracket names those rows, and any
-  fix or decision a change needs too.
+- **🙋 Merge after your call** - a decision only I can make holds the
+  branch, and no ⏳, ✂️, ⚖️ or ❌ outranks it.
+- **⏳ Finish the work first** - a row of a spec table is ⏳ Not reached:
+  the branch may be correct, and it still delivers only part of what it
+  was asked for.
 - **✂️ Split first** - a change is ✂️ Carve out; the rest merges once it is
   moved.
 - **⚖️ Close call** - a change is ⚖️ Close call and it decides the branch.
@@ -278,8 +263,8 @@ order ❌, ✂️, ⚖️, ⏳, 🙋, 🔧, 🧪, ✅:
 **A change** - one thing a branch under review does, as it lands:
 
 - **✅ Keep it** - the change is right and every commit it lives in is
-  ✅ Ship it, 👌 Fixed later, 🪓 Split or 📝 Reword - the four calls whose
-  code is right, which differ only in what the commit needs.
+  ✅ Ship it, 👌 Fixed later, 🪓 Split, 📝 Reword or 🔀 Squash into - the
+  calls whose code is right, which differ only in what the commit needs.
 - **🔧 Needs fixes** - the change is right, and a commit it lives in must
   change first; the brackets name the commit and what it needs.
 - **🧪 Needs test** - the change is right as far as the code shows, and a
@@ -349,7 +334,7 @@ only when every entry does, since a branch's call follows its entries. The
 case that set it for a commit:
 
 ```
-🗑 Drop (🍰 No brainer)               a back-merge of the default branch that carries no change
+🗑 Drop (⛔ Hard blocker: drop) (🍰 No brainer)   a back-merge of the default branch that carries no change
 ```
 
 **(🙌 Stops harm)** may follow a commit, entry or branch call, on the
@@ -363,7 +348,7 @@ commit does is a 🔴 finding, and the badge would only repeat it. The
 shape:
 
 ```
-🧪 Needs test (a run on a live cluster) (🙌 Stops harm)   a hotfix for a live leak, traced, not yet run
+🧪 Needs test (a run on a live cluster) (🚧 Soft blocker: untested) (🙌 Stops harm)   a hotfix for a live leak, traced, not yet run
 ```
 
 **The go-ahead floor.**
@@ -371,8 +356,60 @@ shape:
 - **A commit, bycatch or change whose Profile reads DOUBTFUL,
   REFUTED or UNKNOWN never gets a go-ahead call**, and neither does an entry
   or a branch it decides: never ✅ Ship it, 👌 Fixed later, 🪓 Split, 📝 Reword,
-  ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first, ✅ Keep it,
+  🔀 Squash into, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first, ✅ Keep it,
   🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
+
+### Hard and soft merge blockers
+
+**Whatever holds the merge is a hard blocker or a soft one, by whether my
+word can clear it, and its kind says what it is:**
+
+- **⛔ Hard blocker** - something wrong ships, or a choice only I can make
+  is still open: product code that is wrong or missing, a test that passes
+  on the bug it guards, a doc that makes its reader do harm, a change that
+  should not be there. Only its fix or my decision clears it.
+- **🚧 Soft blocker** - what ships is right, and something is still owed: a
+  test, a run, sound work that belongs in another branch. It clears when
+  the work is done, or when I say to merge past it; until then it stays on
+  the branch call. A session handed the CR does the work either way.
+
+The usual level, the kind, and when the level moves:
+
+| What holds the merge | Usual | Kind | Moves when |
+|---|---|---|---|
+| a 🔴, or a 🟠 other than a missing test, in product code | ⛔ | code | never |
+| a 🔴, or a 🟠 other than a missing test, in anything else | ⛔ | what it is in: test code, doc or commit message | never |
+| a spec row not delivered | ⛔ | what delivers it: code, test code or doc | never |
+| 🗑 Drop, ❌ Drop it | ⛔ | drop | never |
+| a 🙋 decision | ⛔ | decision | 🚧 when either answer can still be taken after the merge, and neither leaves what merged wrong |
+| a bug fix with no test that reproduces it | 🚧 | no repro test | ⛔ when the bug coming back would do harm nothing undoes |
+| a 🧪 UNTESTED claim | 🚧 | untested | ⛔ when the claim is what the branch exists for, and its failing would do harm |
+| ✂️ Carve out | 🚧 | carve out | never |
+
+- **Product code is whatever ships and runs**: the code, a chart, a
+  dashboard, config, and a name or a label inside any of them. Test code, a
+  doc and a commit message are not. The kind `code` is product code alone,
+  so a blocker of kind `code` says the code I ship is wrong.
+- **The level is judged by the definition, never picked**: the table gives
+  the usual answer, and a level moves only in the case its row names, with
+  the reason after the kind: `⛔ Hard: untested, its failing loses data`.
+- **The kind is one of the table's words, never improvised.**
+- **In a table, the blocker is a column of its own, `Blocker`, always the
+  last**: `⛔ Hard: code`, or `-` on a row that holds nothing. The header
+  names the blocker, so the cell leaves the word out. The Goals, Contract,
+  Readiness, Incidents, Code quality, In short, Before it merges and
+  Summary tables have it; the bycatch and Optional tables, whose rows never
+  hold the merge, do not.
+- **Outside a table, the call carries it as a badge**, after the reason in
+  brackets and before any other badge: `🔧 Needs change (crashes on an
+  empty list) (⛔ Hard blocker: code)`. A call with no badge holds nothing.
+- **A row or a call that closes more than one blocker carries the worst
+  level, ⛔ before 🚧, then every kind at that level**: `⛔ Hard: code,
+  decision`.
+- **A soft blocker I wave no longer holds the merge**: it reads `🚧 Soft:
+  untested, waved`, or `(🚧 Soft blocker: untested, waved)` as a badge, and
+  a 🧪 I accept untested is waved. A branch whose blockers are all soft
+  merges on my word.
 
 ### Mandatory output shape per commit
 
@@ -426,11 +463,11 @@ Then two sections, in this order, with the divider, each under a `####` heading 
 
 ### The overview — the first section, every CR
 
-What the branch does as a whole at HEAD, its call, and what the CR was
-given, in plain words a teammate reading release notes would follow - no
-file, function, flag or SHA. Under the CR's title, which names the repo by
-its directory and the branch by its full name, so a CR read on its own
-says what it judged:
+What the branch does as a whole at HEAD and what the CR was given, in
+plain words a teammate reading release notes would follow - no
+file, function, flag or SHA. Under the CR's title, which names the repo
+and the branch by its full name, so a CR read on its own says what it
+judged:
 
 ```
 # Repo <repo> branch <branch> CR
@@ -442,21 +479,21 @@ says what it judged:
 - **1.** <what someone who never opens the diff gets when it merges>
 - **2.** <the next thing they get>
 
-**Branch call:** <the branch's call (what decided it)>
-
 **Given:** <the spec, one per line, or "the branch only - no spec">
 ```
 
+- **The title names the repo, never the folder the review ran in.** The
+  repo's name is the folder that holds the git directory every checkout of
+  it shares, which `git rev-parse --path-format=absolute --git-common-dir`
+  prints - or, for a bare repo, that directory's own name without `.git`.
+  A review that ran in a worktree - a checkout whose own `--git-dir` is not
+  that shared directory - adds its folder in a bracket, `# Repo <repo>
+  (worktree <folder>) branch <branch> CR`, so every CR of one repo carries
+  one name and the title still says where the code was read.
 - **What the branch does comes first**, in bullets: everything someone
   who never opens the diff gets when it merges, the most important first.
   A branch that does one thing gets one bullet, still numbered. The
   bullets judge nothing: the calls are the sections'.
-- **The branch call** is one of the branch calls of "The calls and
-  Profiles of a CR", answering whether the branch merges. It is never a
-  judgement of its own: it follows from every section below it but the
-  bycatch, the worst row deciding, in the order ❌, ✂️, ⚖️, ⏳, 🙋, 🔧, 🧪,
-  ✅, and its bracket names the rows that decided it. The bycatch never
-  moves it: what the review found on the way is not what the branch does.
 - **Given** names what the CR was handed besides the branch: a plan, a
   ticket, a request or hand-off file, an MR link, one per line. It is the
   one place the CR names its spec.
@@ -476,7 +513,7 @@ never folded into one entry where a weak part hides behind a strong one.
 **Work:** **C1**, **C2**
 
 • **CH2** <the next thing the branch does>
-🔧 Needs fixes (**C3**'s 🔴)
+🔧 Needs fixes (**C3**'s 🔴) (⛔ Hard blocker: code)
 **Change:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
 **Work:** **C3**, its 🔴
 ```
@@ -489,15 +526,16 @@ never folded into one entry where a weak part hides behind a strong one.
 - **Each entry carries a call on that change as it stands at HEAD**, one
   of the change calls of "The calls and Profiles of a CR": what to do with
   this part, never whether the branch merges. The call carries nothing but
-  its bracket, which says what the change needs.
+  its bracket, which says what the change needs, and its blocker badge
+  when it holds the merge.
 - **Under the call, a Change Profile on that change as it lands**: whether
   it works once every commit it lives in is in, how much it touches and
   how hard it is to get right. A commit's Profile judges the commit alone,
   and what a fix costs is in the commit's row.
 - **The call follows the commits it names.** `✅ Keep it` only when every
-  one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split` or
-  `📝 Reword`; `🧪 Needs test` when one or more is `🧪 Needs test` and the
-  rest are among those four, naming the run; `🙋 Needs your call` when one
+  one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword` or
+  `🔀 Squash into`; `🧪 Needs test` when one or more is `🧪 Needs test` and
+  the rest are among those, naming the run; `🙋 Needs your call` when one
   is, naming the decision; any other commit call makes it `🔧 Needs
   fixes`, naming the commit and what it needs, unless the change itself
   earns `⚖️ Close call`, `✂️ Carve out` or `❌ Drop it`. An entry never
@@ -507,8 +545,9 @@ never folded into one entry where a weak part hides behind a strong one.
 
   ```
   ❌ ✅ Keep it
-     with `<sha>` 🗑 Drop (carries no change) in the In short table
-  ✅ 🔧 Needs fixes (drop the back-merge `<sha>`)
+     with `<sha>` 🗑 Drop (carries no change), Blocker ⛔ Hard: drop, in
+     the In short table
+  ✅ 🔧 Needs fixes (drop the back-merge `<sha>`) (⛔ Hard blocker: drop)
   ```
 
 - **✂️ Carve out is the split recommendation.** Work that is sound but does
@@ -545,10 +584,10 @@ Every table has the same columns:
 ```
 # Goals
 
-| # | Goal | How we know | Work | Call |
-|---|---|---|---|---|
-| **G1** | <the goal, in plain words> | <the test, run or read that showed it> | **C2**, **C3** | ✅ Met |
-| **G2** | <the next goal> | - | not built: <what the new commit adds> | ⏳ Not reached (<what is missing>) |
+| # | Goal | How we know | Work | Call | Blocker |
+|---|---|---|---|---|---|
+| **G1** | <the goal, in plain words> | <the test, run or read that showed it> | **C2**, **C3** | ✅ Met | - |
+| **G2** | <the next goal> | - | not built: <what the new commit adds> | ⏳ Not reached (<what is missing>) | ⛔ Hard: code |
 ```
 
 `# Contract` heads its second column "The promise", `# Readiness` "The
@@ -560,6 +599,8 @@ says", holding the status the spec claims.
   checked.
 - **Work** - where the work lives, as "The CR's sections" says.
 - **Call** - one of the spec-row calls of "The calls and Profiles of a CR".
+- **Blocker** - what the row holds, as "Hard and soft merge blockers"
+  gives it.
 - **The API rows are there with or without a spec.** Every API the branch
   adds, changes or removes gets an **A** row, so a break shows whether or
   not anyone promised otherwise. With no spec, its call says whether an
@@ -589,11 +630,11 @@ breaks, and which it never touches:
 ```
 # Code quality
 
-| # | Rule | How we know | Work | Call |
-|---|---|---|---|---|
-| **CQ1** | comments say only what the code cannot | read of every comment the branch adds | **C3**, its ⚪ | ⚪ Broken (a comment's word is off) |
-| **CQ2** | nothing built that nobody asked for (YAGNI) | read of each commit against what it was for | **C1**, **C2** | ✅ Holds |
-| **CQ3** | one source of truth | ... | ... | ... |
+| # | Rule | How we know | Work | Call | Blocker |
+|---|---|---|---|---|---|
+| **CQ1** | comments say only what the code cannot | read of every comment the branch adds | **C3**, its ⚪ | ⚪ Broken (a comment's word is off) | - |
+| **CQ2** | nothing built that nobody asked for (YAGNI) | read of each commit against what it was for | **C1**, **C2** | ✅ Holds | - |
+| **CQ3** | one source of truth | read of every value the branch adds | **C2**, its 🟠 | 🟠 Broken (two copies already disagree) | ⛔ Hard: code |
 ```
 
 **The rules, in the order and with the numbers every CR gives them**, each
@@ -616,10 +657,13 @@ with its usual colour and when a break of it blocks:
 | **CQ13** | self healing | 🟠 | a copy a lost event or a crash leaves wrong, with nothing to bring it back |
 | **CQ14** | tests check the contract, not the code | 🟡 | a bug fix with no test that reproduces it, when a unit test could |
 | **CQ15** | enums over strings | 🟡 | a string value already misspelled somewhere |
+| **CQ16** | a small interface, a lot behind it | 🟡 | another service or repo will call the interface, and it exposes what a later fix would have to take back |
 
 - **Call** - ✅ Holds, a colour and Broken with what is broken, or
   ➖ Irrelevant when the branch's code never touches the rule; "How we
   know" then says why, such as "the branch takes no lock".
+- **Blocker** - what a break holds, as "Hard and soft merge blockers"
+  gives it; `-` for a row that holds nothing.
 - **A rule broken is a finding** on the commit that should carry the fix,
   under its colour; the row's Work cell names it. A break no single commit
   owns - two commits that each add a copy of the same logic - goes on the
@@ -638,19 +682,22 @@ with its usual colour and when a break of it blocks:
 commit in one line, then `## In detail`, every commit's review in the
 shape "Mandatory output shape per commit" gives, in branch order.
 
+```
 # Commits
 
 ## In short
 
-| # | What the commit does | Findings | Call |
-|---|---|---|---|
-| **C1** | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> |
-| | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | |
+| # | What the commit does | Findings | Call | Blocker |
+|---|---|---|---|---|
+| **C1** | `<sha>` <one sentence> | 🔴 1 · 🟡 2 | <call> | <blocker> |
+| | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | **Fix 🔴🟠:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> · **Fix 🟡⚪:** <the fix> · **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | | |
+```
 
-- **The head row** is the commit, its findings and its call, nothing else.
+- **The head row** is the commit, its findings, its call and its blocker,
+  nothing else.
   **The second row** puts the Commit Profile under the commit, the Fix
-  Profiles under the findings they answer, and leaves the cell under the call
-  empty, since a call carries no Evidence; its `#` cell stays empty, which
+  Profiles under the findings they answer, and leaves the cells under the
+  call and the blocker empty, since neither carries Evidence; its `#` cell stays empty, which
   is what makes it read as part of the row above. A table cell cannot hold a line break, so the lines are rows.
   The column names what a cell holds, so the Commit and Bycatch Profiles
   drop their label there; the two Fix Profiles keep theirs, since they
@@ -662,36 +709,61 @@ shape "Mandatory output shape per commit" gives, in branch order.
   verified against it. Never the subject line pasted in: the subject may be the
   very claim the review flagged as false.
 - **Findings** — the commit's FINDINGS line without the word: `🔴 1 · 🟡 2`,
-  `🧪 1`, or `✨ Gucci` when it has none. A commit with a 🧪 puts its
-  `Test 🧪` Profile in the cell under it, after any Fix Profile.
+  `🧪 1`. With none, it reads `✨ Gucci` beside ✅ Ship it, where it says
+  the commit goes in as it is, and `none` beside any other call. A commit
+  with a 🧪 puts its `Test 🧪` Profile in the cell under it, after any Fix
+  Profile.
 - **Call** — the call of that commit's Full Assessment on the head row, with
-  the reason in a few words for anything other than ✅ Ship it, in the
-  shape of `assessment.md`. The commit call is picked by these
+  the reason in a few words for anything other than ✅ Ship it, which
+  carries a bracket only when a commit squashes into it, in the shape of
+  `assessment.md`. The commit call is picked by these
   rules:
 
 | Call | When |
 |---|---|
 | `✅ Ship it` | no 🔴, 🟠 or 🧪, and it does one thing |
-| `👌 Fixed later (by <sha>)` | its 🔴 or 🟠 are fixed by a later commit on the branch, named in the bracket |
+| `👌 Fixed later (by <sha>)` | its 🔴 or 🟠 are fixed by a later commit on the branch, named in the bracket. Alone it says who fixes it, never that a squash follows; the bracket adds `which squashes in` when one does |
 | `🔧 Needs change` | a 🔴 or 🟠 in the code, and amending this commit fixes it. A 🧪 beside it keeps its `Test 🧪` Profile, and the run waits for the fix |
 | `🙋 Needs your call (<the decision>)` | a 🔴 or 🟠 whose fix is a choice only I can make, written out as "🙋 Your call" says. It outranks 🔧 Needs change: the other fixes wait on the answer |
 | `🧪 Needs test (<the run>)` | no 🔴 or 🟠, and a 🧪 UNTESTED finding. Once I accept the commit untested, the bracket reads `accepted untested`, and the call stays: the commit is still unrun. A commit that also needs 🪓 Split or 📝 Reword keeps this call, and its reason names the other need too. A `🔀 Squash into` or `🗑 Drop` keeps its own call, and the 🧪 moves with a squash to the commit it lands in |
 | `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in `commits.md`. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
 | `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message is false or misleading - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing. When the message and the code disagree, the review says which side is wrong before it picks the call: the code right and the message not is this call; the message describing what the code should have done and the code not doing it is a 🔴 or 🟠 on the code and `🔧 Needs change`; and no way to tell which was meant is a 🟠 on the commit and `🔧 Needs change (message and code disagree)`, the finding stating both readings, what would settle it, and a fix for each |
-| `🔀 Squash into <sha>` | it only exists because an earlier commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction |
+| `🔀 Squash into <sha> (<which message survives>)` | it only exists because another commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction. It works as it is, so it blocks nothing. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the squash too |
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
 The later commit's call is picked by its own row of this table: carrying the
-fix makes it neither a squash nor a ship. It is `🔀 Squash into` the earlier
-commit only when it exists because that one got something wrong, and
+fix makes it neither a squash nor a ship. It is `🔀 Squash into` the commit
+it fixes only when it exists because that one got something wrong, and
 `✅ Ship it` when it stands on its own and fixes the earlier one along the way.
+The earlier commit's 👌 Fixed later is the same either way.
+
+**Which way a squash goes is the reviewer's pick**: into the commit the
+change reads best in, earlier or later. The call sits on the commit that
+moves, its SHA names where it lands, and both rows of the pair say so:
+
+- **The commit that moves** says which message survives:
+  `🔀 Squash into <sha> (fixes it, keep its message)` when it exists only
+  to fix the other, whose message stays as it is, or
+  `(one change with it, new message)` when the two are one change and one
+  message is written for both.
+- **The commit it lands in** adds `(<sha> squashes in)` to its call:
+  `✅ Ship it (<sha> squashes in)`, or `👌 Fixed later (by <sha>, which
+  squashes in)` when the fix is the commit that moves.
+
+So the In short table reads as the rebase it recommends: ✅ Ship it and
+👌 Fixed later a `pick`, 🔀 Squash into a `fixup` or a `squash` beside the
+commit it names, 🗑 Drop a `drop`, 📝 Reword a `reword`, 🪓 Split an `edit`,
+and every other call a `pick` once its fix or its run is in.
+
+**Blocker** — what the commit holds, as "Hard and soft merge blockers"
+gives it; `-` for a commit that holds nothing.
 
 The call agrees with that commit's FINDINGS line: never `✅ Ship it`,
 `🪓 Split` or `📝 Reword` while the line counts a 🔴, a 🟠 or a 🧪. `👌 Fixed
 later` is the one call that carries one, the one its named commit fixes. A
-single-commit CR still has a two-row table. The sections are the only
-summaries allowed in a CR: no prose under a table, but for the one line an
-empty section gives.
+single-commit CR still has a two-row table. The sections and the
+ending's section calls are the only summaries allowed in a CR: no prose
+under a table, but for the one line an empty section gives.
 
 ### The bycatch table — after the commits, every CR
 
@@ -737,7 +809,7 @@ When nothing is open, the heading stays and the table is one line instead:
 "No bycatch." Never skip it silently - an absent section reads as
 "did not look".
 
-### To do — the last section, every CR
+### To do — before the summary, every CR
 
 **Every piece of work the CR asks for, in one section**, so neither I nor
 a session handed the CR to fix has to gather it from the sections above. A
@@ -751,19 +823,19 @@ as a contradiction.
 
 ## Before it merges
 
-| # | What to do | Where | Who | Fix Profile |
-|---|---|---|---|---|
-| **TD1** | decide: <the question> | **C1**'s 🟠 (A2) | 🙋 Your call | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> |
-| **TD2** | <what the fix does> | **C3**'s 🔴 (G2, IN1) | 🔧 Fix | ... |
-| **TD3** | <what the new commit adds> | new commit (G3) | 🔧 Fix | ... |
-| **TD4** | run <the run> on the branch | **C2**'s 🧪 (HA1) | 🧪 Run | ... |
+| # | What to do | Where | Who | Fix Profile | Blocker |
+|---|---|---|---|---|---|
+| **TD1** | decide: <the question> | **C1**'s 🟠 (A2) | 🙋 Your call | **Evidence:** <level> · **Size:** <size> · **Difficulty:** <difficulty> | ⛔ Hard: decision |
+| **TD2** | <what the fix does> | **C3**'s 🔴 (G2, IN1) | 🔧 Fix (product code) | ... | ⛔ Hard: code |
+| **TD3** | <what the new commit adds> | new commit (G3) | 🔧 Fix (new commit) | ... | ⛔ Hard: code |
+| **TD4** | run <the run> on the branch | **C2**'s 🧪 (HA1) | 🧪 Run | ... | 🚧 Soft: untested |
 
 ## Optional
 
 | # | What to do | Where | Who | Fix Profile |
 |---|---|---|---|---|
-| **TD5** | <a cheap clean-up> | **C3**'s 🟡 (CQ3) | 🔧 Fix | ... |
-| **TD6** | <a bycatch fix> | **B1** | 🔧 Fix | ... |
+| **TD5** | <a cheap clean-up> | **C3**'s 🟡 (CQ3) | 🔧 Fix (rename) | ... |
+| **TD6** | <a bycatch fix> | **B1** | 🔧 Fix (docs) | ... |
 ```
 
 - **Before it merges** holds every row that holds the merge: a 🔴 or 🟠, a
@@ -808,7 +880,10 @@ fixed or asked.
   brackets the rows of the sections above it closes.
 - **Who** - who acts, and how:
   - **🔧 Fix** - a session changes the code, as the finding writes the fix
-    out, or writes the new commit the row names;
+    out, or writes the new commit the row names. Its bracket says what the
+    fix edits, read off the fix as the finding writes it: `(product code)`,
+    `(test code)`, `(rename)`, `(docs)`, or `(new commit)` for a row not
+    built yet;
   - **🧪 Run** - a session runs what the 🧪 finding names and reports the
     result, when the run is small or medium and needs nothing only I
     have. A large run, or one that needs a cluster, a deploy or a
@@ -826,9 +901,58 @@ fixed or asked.
   line of fact in the overview.
 - **Fix Profile** - the Evidence that the fix would work, and its Size and
   Difficulty; for a run, Size says how long it takes, not how hard it is.
+- **Blocker** - under Before it merges only: what the row closes, as
+  "Hard and soft merge blockers" gives it, so I see which rows hold the
+  merge because the code is wrong and which owe lighter work. Optional has
+  no Blocker column, since its rows hold nothing.
 
 With nothing in either table, the heading stays and the section is one
 line: "Nothing to do."
+
+### The ending — after To do, every CR
+
+**The CR closes on its verdict, stated once, under `# Summary`**: the
+section calls, then the branch call, then the line naming its file that
+`SKILL.md` gives, so the path is the last line of every view and the
+verdict sits right above it. Every view of a CR ends with it, a CR Brief
+included.
+
+```
+# Summary
+
+| # | Section | Calls | Blocker |
+|---|---|---|---|
+| **SC1** | <a section's title> | <each call its rows carry, with its count> | <the worst blocker its rows carry, or -> |
+
+**Branch call:** <the branch's call (what holds the merge, by level and kind) (its badge)>
+
+<the line naming the CR's file, as SKILL.md gives it>
+```
+
+- **The section calls show where the branch call came from**: one row for
+  each section whose rows or entries carry a call of "The calls and
+  Profiles of a CR", in the order "The CR's sections" gives them, titled
+  as its heading is.
+  - **Calls** - every call the section's rows carry, each with how many
+    rows carry it, the calls that hold the merge first: `🔧 Needs fixes 1
+    · ✅ Keep it 2`. A section with no rows reads ➖ and its one line, such
+    as "➖ (no spec given)".
+  - **Blocker** - the worst level a row of the section carries, with
+    every kind at that level, as "Hard and soft merge blockers" gives it:
+    `⛔ Hard: code, test code`, and `-` when it has none. Which row it is,
+    and what clears it, is To do's to say.
+- **The branch call** is one of the branch calls of "The calls and
+  Profiles of a CR", answering whether the branch merges, and follows
+  from the sections as that list says. It is never a judgement of its
+  own.
+- **Its bracket names what holds the merge, by level and kind**, so the
+  branch call says whether the code is wrong or lighter work is owed: the
+  hard blockers first, then the soft, each kind with its To do rows, the
+  kind as their Blocker cell gives it - `hard - code: **TD1**, test code:
+  **TD2** · soft - untested: **TD3**` - and what To do never lists by its
+  own row: `drop: **C4**`, `carve out: **CH2**`. The call carries the
+  badge of its worst blocker, with every kind at that level, and a ✅ Merge
+  it names nothing, since nothing holds it.
 
 ### Rules that keep the tags honest
 
@@ -1003,8 +1127,8 @@ section is rewritten only where the call moved.
   handed over, has lost the findings it would carry; review that commit
   again. A file carries only the commits its In short table names by SHA
   and its `## In detail` reviews, since the tree test needs the commit the
-  review saw; a CR Summary's or a CR Brief's file holds no reviews and
-  carries none.
+  review saw; a CR Digest's, a CR Brief's or a CR Summary's file holds no
+  reviews and carries none.
 - **The outcome is judged afresh whenever the tip moved.** Each new or
   rewritten commit is read against the carried ones, and a carried commit
   that a later change breaks gets the finding. Every section but the
@@ -1104,7 +1228,7 @@ One commit's review, as it sits under `## In detail`:
 
 FINDINGS: 🔴 1 · 🟠 1 · 🟡 3 · ⚪ 1
 
-- **Call:** 🔧 Needs change (crashes on an empty pod list)
+- **Call:** 🔧 Needs change (crashes on an empty pod list) (⛔ Hard blocker: code)
 - **Commit:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
 - **Fix 🔴🟠:** guard the empty list, call `record_failure()` on timeout · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Fix 🟡⚪:** reword the subject and body · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy

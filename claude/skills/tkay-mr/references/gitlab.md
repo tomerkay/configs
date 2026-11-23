@@ -1,6 +1,6 @@
 # GitLab from the host
 
-`glab` is the tool for everything a task needs on gitlab.com: reading an
+`glab` is the tool for everything a task needs on GitLab: reading an
 MR, its review threads, its pipelines or a job log, and uploading a file.
 It stays inside the sandbox and its token stays inside glab - the one
 failure that makes both look impossible has a one-variable fix.
@@ -38,10 +38,11 @@ sandbox without the variable: drop the variable and this section then.
 
 ## The reads
 
-In auto mode each call declares `allowed_domains: ["gitlab.com"]`. The
-project path is the repo's own, URL-encoded: `<group>%2F<repo>`, read
-from `git remote get-url origin` without its host and `.git`, with every
-`/` in it as `%2F`.
+In auto mode each call declares the repo's GitLab host in
+`allowed_domains` - the host of `git remote get-url origin`, which is
+`gitlab.com` for a repo hosted there. The project path is the repo's own,
+URL-encoded: `<group>%2F<repo>`, read from that same URL without its host
+and `.git`, with every `/` in it as `%2F`.
 
 - The MR and its description: `glab mr view <iid>`.
 - Review threads, with the file and line each anchors to:

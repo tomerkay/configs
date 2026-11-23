@@ -34,11 +34,14 @@ plan's call:
 - **Every "not a problem"**: checked the way the plan says it was.
 - **Every invariant**: names the test that pins it, or is written as
   unpinned.
-- **Every new responsibility**: has one named owner, checked against the
-  code that owner already holds. An owner that would end up with two
-  reasons to change, or a job with two owners or none, is a finding on the
-  fix: 🟠 when a change you can name elsewhere would then break it, 🟡
-  otherwise - the test "One reason to change" in `clean-code.md` gives.
+- **Every new responsibility**: has its design note, as `design-note.md`
+  gives it, with its owner checked against the code that owner already
+  holds. An owner that would end up with two reasons to change, or a job
+  with two owners or none, is a finding on the fix: 🟠 when a change you
+  can name elsewhere would then break it, 🟡 otherwise - the test "One
+  reason to change" in `clean-code.md` gives. A piece of state with two
+  writers, or a departure the note does not name, is a finding the same
+  way.
 - **Every link to a known architecture**: opened, and read for whether it
   says what the plan says it does.
 

@@ -42,8 +42,8 @@ with nobody there to answer.
 ✅ git -C <repo> stash push --include-untracked -- <edited files> <new files>
    go -C <repo> build ./...
 
-❌ M=<scratch>/msg.txt; sed -i '' 's/a/b/' $M; R=<repo>; git -C $R commit -S -F $M
+❌ M=<scratch>/msg.txt; sed -i '' 's/a/b/' $M; R=<repo>; git -C $R commit -F $M
    the run stopped on a prompt with nobody there to answer it
 ✅ <the message edited with the edit tool>
-   git -C <repo> commit -S -F <scratch>/msg.txt
+   git -C <repo> commit -F <scratch>/msg.txt
 ```

@@ -1,6 +1,6 @@
 ---
 name: tkay-cluster-ops
-description: My rules for operations that change a cluster - a helm upgrade of a live release, a field-manager conflict, a node label, and taking my deployments out of a cell or off a node - what I decide myself, what you ask me first, and how you report. Use when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything I own in a namespace before a cluster is destroyed or a node is drained, and whenever a node label would have to be added, changed or removed to make something schedule.
+description: My rules for operations that change one of Crusoe's managed-inference clusters, the ones its Atero site runs, which hand GPU nodes out as cells and deploy through a backoffice - a helm upgrade of a live release, a field-manager conflict, a node label, and taking my deployments out of a cell or off a node - what I decide myself, what you ask me first, and how you report. Use on those clusters, and not on any other, when running helm install/upgrade on an existing release, when a server-side apply hits a field-manager conflict, when asked to take down / remove / drain everything I own in a namespace before a cluster is destroyed or a node is drained, and whenever a node label would have to be added, changed or removed to make something schedule.
 ---
 
 # Cluster operations

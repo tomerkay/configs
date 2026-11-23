@@ -1,6 +1,6 @@
 ---
 name: tkay-review
-description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the CR's sections from the overview to the To do list, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Summary or a CR Brief, or a plan review of a full plan - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
+description: The code review (CR) standard - every finding coloured by severity, MUST HAVE and NICE TO HAVE decided by the colour, the per-commit review shape, the CR's sections from the overview to the To do list, one CR per repo. Use only when asked for a code review, a CR, a review of a branch, a PR, an MR or commits, a CR asked for on an MR or PR link, a CR Digest, a CR Brief or a CR Summary, a plan review of a full plan, or a doc review of a change to markdown docs - never while writing code, which the tkay-code skill owns. In a session that wrote the code or the plan under review, it asks first whether to review there, and once it has reviewed, it asks before any code is written there.
 hooks:
   Stop:
     - hooks:
@@ -13,11 +13,15 @@ hooks:
 **Read `references/code-review.md` before writing a single finding.** It is
 the whole standard: what a finding is, how bad each one is, what blocks the
 merge, the CR's sections from the overview to the To do list, the shape of
-a commit's review, the three views of a CR, and what a CR on an MR link may
+a commit's review, the views of a CR, and what a CR on an MR link may
 and may not do.
 
 **A plan review reads `references/plan-review.md` as well**, before its first
 finding: it says what changes when the thing judged is a plan, not a branch.
+
+**A doc review reads `references/doc-review.md` as well**, before its first
+finding: it says what changes when the thing judged is a change to markdown
+docs, not to code, and when a change gets one.
 
 ## Shared references
 
@@ -34,10 +38,17 @@ skill's own `references/` so it works installed alone:
 | `references/numbered-lists.md` | how every list and table in a CR is numbered |
 | `references/severity.md` | the four colours a finding carries, and the Fix Profile |
 | `references/bycatch.md` | the bycatch table, its calls, and which session rows it carries |
-| `references/plan-shape.md` | the shape a plan review holds a plan to |
+| `references/plan-shape.md` | a plan review only: the shape it holds a plan to |
+| `references/design-note.md` | a plan review only: the design note a plan gives each new responsibility |
+| `references/writing-mds.md` | a doc review only: where a fact goes and how a doc points |
+| `references/copied-stale-and-personal.md` | a doc review only: the rules it asks of every added line |
+| `references/questions.md` | when a reference above names it: how a proposal or a question that stops a reply is written |
+| `references/issue-tree.md` | when a reference above names it: the closing a session gives once nothing is open |
+| `references/reading-list.md` | when a reference above names it: how a reply to a message about several things opens |
 
-Read all but the last before the first finding of a CR, and all of them
-before the first finding of a plan review. **Never answer from memory of a
+Read every one before the first finding, but for a row that names the one
+review it is for, which is read before that review's, and a row read when a
+reference names it, which is read then. **Never answer from memory of a
 reference you have not read this session.**
 
 The hook in this skill's frontmatter checks the shape of every assessment
@@ -68,7 +79,9 @@ nothing after it:**
 
   A plan review asked for in a session that wrote the plan asks the same
   question, with "wrote the plan" for what holds and "a plan review" and
-  "the plan" for "a CR" and "the code".
+  "the plan" for "a CR" and "the code". A doc review asked for in a session
+  that wrote the doc asks it with "wrote the doc", "a doc review" and "the
+  doc".
 
 - **Code asked for in a session that wrote a CR** - a fix of what it
   found, or any other code:
@@ -142,7 +155,8 @@ staged changes in place and fixes them, with no question and no ⚠️ line.
 **A CR changes no file, and never offers to.** Every fix is written out
 under its finding and left for me - no "want me to fix it?", no fix as a
 next step. A fix I ask for anyway is code after a CR, and the question
-above comes first. A plan review edits no plan, on the same terms.
+above comes first. A plan review edits no plan, and a doc review no doc, on
+the same terms.
 
 ## Every CR is also a file
 
@@ -150,19 +164,18 @@ above comes first. A plan review edits no plan, on the same terms.
 a scratch directory that outlives the session, never in the repo under
 review. The file is `cr-<n>.md`, the next free number in that directory,
 so no CR overwrites another: the review after a round of fixes is a new
-CR and a new file, and so is a CR Summary or a CR Brief. A CR over
-several repos is one file per repo. Each CR in chat ends, under its To
-do, with one line that names its file by its full path, and then its
-branch call again:
+CR and a new file, and so is a CR Digest, a CR Brief or a CR Summary. A
+CR over several repos is one file per repo. Each CR in chat ends, under its To
+do, with the ending `references/code-review.md` gives, whose last line
+names its file by its full path:
 
 ```
 **CR file:** <full path>
-
-**Branch call:** <the branch's call>
 ```
 
 A plan review is a file the same way, named `plan-review-<n>.md`, and its
-line reads `**Plan review file:**`.
+line reads `**Plan review file:**`; a doc review is `doc-review-<n>.md`, and
+its line `**Doc review file:**`.
 
 ## The repo's conventions win
 

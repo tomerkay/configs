@@ -4,11 +4,18 @@
 the override is named to me in one line - with one exception, under "Every
 commit carries a body" below.
 
-**Every commit is signed.** Never `--no-gpg-sign`, and a rebase or
-cherry-pick re-signs with `-S`. Inside a sandbox gpg cannot reach its agent
-or open its key database, so signing fails and a signature check reports
-`%G?` as `E` (cannot check) on a good signature. Run both the commit and the
-check outside the sandbox, and never commit without the signature.
+**Every commit is signed, on a machine set up to sign**: one where
+`git config commit.gpgsign` is true or `git config user.signingkey` names a
+key. There, never `--no-gpg-sign`, and a rebase or cherry-pick re-signs
+with `-S`. Inside a sandbox gpg cannot reach its agent or open its key
+database, so signing fails and a signature check reports `%G?` as `E`
+(cannot check) on a good signature. Run both the commit and the check
+outside the sandbox, and never commit without the signature.
+
+**On a machine with neither set, commits go in unsigned**, with no `-S`
+anywhere, and the first commit of the session says so in one line. A
+signature that fails on a machine set up to sign is never this case: it
+stops the commit.
 
 ## Commits Serve the Branch - One Thing Each, and No More Cuts Than That
 

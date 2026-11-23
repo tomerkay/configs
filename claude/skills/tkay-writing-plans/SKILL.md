@@ -49,12 +49,14 @@ rabbit holes - never a list where every idea stands unchallenged.
      `references/plan-shape.md` in full - search outward, bring the candidates with
      links and your recommendation - before any item rests on a design. The chosen
      one is an item of the brainstorm.
-  3. What must always be true.
-  4. The questions of "Check security", "Check high availability" and "Check
+  3. The design note of `references/design-note.md` for each new responsibility,
+     on the architecture chosen: its four fields are items of the brainstorm.
+  4. What must always be true.
+  5. The questions of "Check security", "Check high availability" and "Check
      operability" in `references/plan-shape.md`, asked of what we are
      brainstorming.
-  5. What has failed here before, and which of those the brainstorm must answer.
-  6. What is not a problem, what rests on an inference, and when planning turns into
+  6. What has failed here before, and which of those the brainstorm must answer.
+  7. What is not a problem, what rests on an inference, and when planning turns into
      a rabbit hole.
 
   What waits for the full plan is the writing: the document, the contract and its
@@ -74,10 +76,12 @@ rabbit holes - never a list where every idea stands unchallenged.
   order, and no other:
   1. **Problem and motivation** - one heading; two only when the motivation is not
      the problem.
-  2. **The design it follows** - one bullet: the known architecture picked, with its
-     link.
-  3. **What we are going to do, and what we are not** - the goals and the
-     non-goals.
+  2. **The design it follows** - the known architecture picked, with its link, then
+     one bullet per new responsibility: its owner, the state it keeps and any
+     departure, as `references/design-note.md` gives them.
+  3. **What we are going to do, and what we are not** - the goals, each with the
+     check that proves it, as "Goals and non-goals" in `references/plan-shape.md`
+     asks, and the non-goals.
   4. **The contract** - only what the plan adds, changes or removes, plus the
      invariants the change rests on, and the test that pins each, by a name that
      states the behaviour. The existing API that stays as it is goes unmentioned,

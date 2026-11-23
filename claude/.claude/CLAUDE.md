@@ -17,10 +17,11 @@ name what each kind adds; the procedure itself is this one:
 1. **Stage it.** Copy the file into this session's handoff directory and make
    every edit to the copy. Keep a second, untouched copy beside it: the base
    the edits were made on.
-2. **Review the staged diff with the `tkay-review` standard**, as a full
-   CR: every section that standard gives, from the overview to the To do
-   list. The diff stands in for the commit; a Full Assessment on its own
-   is not a review.
+2. **Review the staged diff with the `tkay-review` standard**: a doc
+   review when the diff touches only what that standard's doc review
+   covers, a full CR with every section it gives otherwise. The diff
+   stands in for the commit; a Full Assessment on its own is not a
+   review.
    **Then fix and review again, up to three rounds**, each on the staged
    copy: fix every MUST HAVE finding, every bycatch row whose call is 🔧 Add
    fix, and every NICE TO HAVE finding and ⏸ Leave for now bycatch row in a
@@ -265,14 +266,13 @@ you write or edit one:
   in it carries `--context`/`--kube-context` and `-n`, a safety rule it
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine
   is the price of standalone; keep it to what that skill actually needs.
-- **Atero-specific knowledge stays in `tkay-cluster-ops`, the root
-  `CLAUDE.md` and `personal/`** - my workplace's clusters, cells,
-  backoffice, charts and repos: what an operation on a cluster or a cell
-  needs goes in `tkay-cluster-ops`, everything else in the root
-  `CLAUDE.md` or `personal/`. Every other
-  `tkay-*` skill works for an engineer anywhere, `tkay-house-rules`
-  included; an example taken from my work that names no Atero system is
-  fine.
+- **Knowledge specific to my workplace, Crusoe and its Atero site, stays
+  in `tkay-cluster-ops`, the root `CLAUDE.md` and `personal/`** - its
+  clusters, cells, backoffice, charts and repos: what an operation on a
+  cluster or a cell needs goes in `tkay-cluster-ops`, everything else in
+  the root `CLAUDE.md` or `personal/`. Every other `tkay-*` skill works
+  for an engineer anywhere, `tkay-house-rules` included; an example taken
+  from my work that names no Crusoe or Atero system is fine.
 - **It names nobody and nowhere**: not me, no cluster, node,
   namespace or label value. It says "me" and "my", which reads as whoever
   loaded it, and derives anything personal at run time (`git config

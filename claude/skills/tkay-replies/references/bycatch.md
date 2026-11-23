@@ -21,19 +21,26 @@ a rule that sent it the wrong way, a fact it had to dig up, a tool or a
 hook that cost a retry. Each snag whose fix would spare the next session
 the same one is a row.
 
-**A refusal or a rating the session works around is a row the moment it
-is worked around**, before anyone judges whether the tool was right: the
-colour it has if the tool was wrong, and Evidence UNKNOWN. It leaves the
-file only when a read of the tool's own rule shows the tool right. A
-judgement in your head that the tool was being reasonably careful is no
-read. The case that taught it, a hook that refused a build during a
-review:
+**A refusal or a rating that stops a command the session meant to run is
+a row the moment it stops it**, whatever the session does next - another
+route, the claim left untested, or nothing - and before anyone judges
+whether the tool was right: the colour it has if the tool was wrong, and
+Evidence UNKNOWN. It leaves the file only when a read of the tool's own
+rule shows the tool right. A judgement in your head that the tool was
+being reasonably careful is no read. The cases that taught it, a hook
+that refused a build during a review, and one that refused a read-only
+probe:
 
 ```
 ❌ the build refused, `go vet` run instead, and no row: "the hook is
    being careful"
 ✅ a row written at the refusal; a read of the hook's rule then found a
    build it refuses that writes nothing
+
+❌ the probe refused, its claim left untested, and no row: "nothing was
+   worked around"
+✅ a row written at the refusal; a read of the hook's rule then found a
+   one-line script it refuses that writes nothing
 ```
 
 ## When it is shown

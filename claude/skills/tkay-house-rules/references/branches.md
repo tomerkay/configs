@@ -111,8 +111,10 @@ comment marker between SHA and subject, and a pattern that matches nothing
 leaves every `pick` in place, so the rebase "succeeds" with nothing changed.
 Verify the new SHAs appeared before trusting it. `-S` re-signs every
 rewritten commit - confirm with `git log --format='%h %G? %s'` before deleting
-the backup. When a permission layer refuses such a script as destructive, hand
-me the command to run; never reach the same rewrite by another route.
+the backup. On a machine `commits.md` lets commit unsigned, the rebase runs
+without `-S` and there is no signature to confirm. When a permission layer
+refuses such a script as destructive, hand me the command to run; never
+reach the same rewrite by another route.
 
 **The rebase builds every commit whose tree is new, as it replays them.** A
 replay that applies without a conflict proves nothing about the code: git

@@ -3,7 +3,9 @@
 on Bash commands.
 
 For Bash it classifies what the command can change and rewrites the tool's `description`
-so a permission dialog opens with the rating:
+so a permission dialog opens with the rating - except in auto mode, which refuses a call
+whose input changed after its review, so there the input changes only when the command
+does or the hook asks itself:
 
     🟢 READ    changes nothing
     🟠 WRITE   changes local, recoverable state (files, commits, installs, helm releases)
@@ -150,10 +152,17 @@ GENERIC_DANGER_WORDS = {"delete", "destroy", "remove", "rm", "rb", "terminate", 
 # ----- the gate -----------------------------------------------------------------------
 
 REFUSAL = 'YOU MUST WRITE "LFG!" for me to actually start implementing.'
+# A Bash command's write target is often not in its text, so the gate can deny a command
+# that changes no repo, and a session that only takes another route leaves the misread unfixed.
+BASH_REFUSAL = (REFUSAL + " If this command changes no repo, the hook misread it: record "
+                "that as a bycatch row before anything else.")
 CLAUDE_HOME = os.path.realpath(os.path.expanduser("~/.claude")) + "/"
 STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
+# Auto mode reviews a call before this hook runs and refuses one whose input the hook then
+# changed, so there the rating is written only into a prompt the hook raises itself.
+AUTO_MODE = "auto"
 GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
 PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebook_path"}
 
@@ -998,6 +1007,12 @@ def classify_python(args):
     return RUNS_CODE
 
 
+def classify_perl(args):
+    """perl and ruby: an in-place edit names its target and is a write; anything else runs
+    code, as python does."""
+    return WRITE if edits_in_place(args) else RUNS_CODE
+
+
 def classify_board(args):
     """The grafana-dashboards skill's board.py: fetch and diff read the live board, fetch
     and shot write a file where --out says, publish writes its next version, login saves a
@@ -1506,6 +1521,7 @@ HANDLERS = {
     "sed": classify_sed, "gsed": classify_sed,
     "awk": classify_awk, "gawk": classify_awk, "mawk": classify_awk, "nawk": classify_awk,
     "python": classify_python, "python3": classify_python,
+    "perl": classify_perl, "ruby": classify_perl,
     "pip": classify_pip, "pip3": classify_pip,
     "uv": classify_uv,
     "ruff": classify_ruff, "black": classify_formatter, "isort": classify_formatter,
@@ -1935,7 +1951,7 @@ def writes_unnamed_tmp(command, named):
 ENV_WRITE_REASON = ("changes a .env file: git keeps no copy of an ignored one, so an "
                     "overwrite is permanent, and the managed Edit deny covers only the "
                     f"session's own directory: {ON_WORDS}")
-IN_PLACE_EDITORS = {"sed", "gsed", "perl"}
+IN_PLACE_EDITORS = {"sed", "gsed", "perl", "ruby"}
 
 
 def env_file(path):
@@ -3331,7 +3347,7 @@ def decide_bash(tool_input, gate_open, cwd, named):
         elif all(words is not None and named_ref_fetch(words) for words in blockers):
             out.append((DENY, NAMED_REF_FETCH_REASON))
         else:
-            out.append((DENY, REFUSAL))
+            out.append((DENY, BASH_REFUSAL))
     if rm_escapes_scratch(command):
         out.append((ASK, "rm names a path outside the scratch root next to a scratch path"))
     return out
@@ -3425,18 +3441,24 @@ def hook_output(payload):
         tool_input = payload.get("tool_input")
         if not isinstance(tool_input, dict):
             raise ValueError("tool_input missing")
-        if tool_name == "Bash" and isinstance(tool_input.get("command"), str):
-            description = LABEL_RE.sub("", tool_input.get("description") or "").strip()
+        bash = tool_name == "Bash" and isinstance(tool_input.get("command"), str)
+        description = LABEL_RE.sub("", tool_input.get("description") or "").strip()
+        dropped = 0
+        if bash:
             tool_input, dropped = stripped_bash_input(tool_input)
+        session_id = payload.get("session_id")
+        decision = decide(tool_name, tool_input, gate_is_open(session_id), payload.get("cwd"),
+                          named_scratch_paths(session_id))
+        # A prompt the hook raises itself always carries the rating; auto mode only reviews
+        # what the hook leaves to it.
+        asks = bool(decision) and decision[0] == ASK
+        if bash and (dropped or asks or payload.get("permission_mode") != AUTO_MODE):
             if dropped:
                 description = f"{description} (scratch rm dropped)".strip()
             updated = dict(tool_input)
             rating = classify_command(tool_input["command"])
             updated["description"] = f"{rating} · {description}" if description else rating
             output["updatedInput"] = updated
-        session_id = payload.get("session_id")
-        decision = decide(tool_name, tool_input, gate_is_open(session_id), payload.get("cwd"),
-                          named_scratch_paths(session_id))
     except Exception as exc:
         decision = (DENY, f"tool-gate.py failed closed: {type(exc).__name__}: {exc}")
     if decision:
@@ -4026,6 +4048,7 @@ def selftest():
         (True, "Bash", "mv /y/b /x/.env.local", ASK),
         (True, "Bash", "sed -i '' s/a/b/ /x/.env.local", ASK),
         (True, "Bash", "perl -pi -e s/a/b/ /x/.env", ASK),
+        (True, "Bash", "ruby -pi -e 'x' /x/.env", ASK),
         (True, "Bash", "sed -n 1p /x/.env.local", None),
         (True, "Bash", "cat /x/.env.local", None),
         (True, "Bash", "rm -f /x/.env.local", ASK),
@@ -4053,6 +4076,13 @@ def selftest():
         (False, "Bash", "python3 --help", None),
         # A logical line runs on through a quoted or an escaped newline.
         (False, "Bash", 'python3 -c "\nimport json\nprint(1)\n"', None),
+        # perl and ruby code runs as python's does; only an in-place edit names its target.
+        (False, "Bash", f"cd {rx} && perl -e 'print 1'", None),
+        (False, "Bash", f"cd {rx} && ruby -e 'puts 1'", None),
+        (False, "Bash", f"cd {rx} && perl -e 'alarm 12; exec @ARGV' pomerium-cli version", None),
+        (False, "Bash", f"cd {rx} && perl -pi -e s/a/b/ f", DENY),
+        (False, "Bash", f"cd {rx} && perl -i.bak -pe s/a/b/ f", DENY),
+        (False, "Bash", f"cd {rx} && ruby -pi -e 'x' f", DENY),
         (False, "Bash", "kubectl get pods \\\n  --context X -n Y", None),
         (False, "Bash", f'echo "a\nb"\ngit -C {rx} add f', DENY),
         (False, "Bash", f"git -C {rx} \\\n  stash", DENY),
@@ -4274,8 +4304,8 @@ def selftest():
         # (command, expected reason) with the gate closed
         # The path a first statement assigns is read in place of its variable, so the gate
         # judges the path - a repo path gets the refusal - and every other shape holds.
-        (f"D={rx}; mkdir -p $D/old", REFUSAL),
-        (f"D={rx}; cd $D && printf a > mod/go.mod", REFUSAL),
+        (f"D={rx}; mkdir -p $D/old", BASH_REFUSAL),
+        (f"D={rx}; cd $D && printf a > mod/go.mod", BASH_REFUSAL),
         (f'D="{home}/.cache/d"; mkdir -p $D', SHELL_PATH_REASON),
         (f"D={home}/.cache/d mkdir -p $D", SHELL_PATH_REASON),
         (f"D={home}/.cache/d | mkdir -p $D", SHELL_PATH_REASON),
@@ -4285,25 +4315,25 @@ def selftest():
         (f"D={home}/.cache/d; mkdir -p $DIR", SHELL_PATH_REASON),
         (f"D={home}/.cache/d; mkdir -p $D$(echo /x)", SHELL_PATH_REASON),
         (f"cd {rx} && git archive HEAD | tar -x -C $D/old", SHELL_PATH_REASON),
-        (f"cp $SRC {rx}/f", REFUSAL),
-        ('git commit -m "$MSG"', REFUSAL),
-        (f"git -C $D commit -m m && touch {rx}/f", REFUSAL),
+        (f"cp $SRC {rx}/f", BASH_REFUSAL),
+        ('git commit -m "$MSG"', BASH_REFUSAL),
+        (f"git -C $D commit -m m && touch {rx}/f", BASH_REFUSAL),
         ("echo hi > $TMPDIR/x", SHELL_PATH_REASON),
-        ("echo hi > out.txt", REFUSAL),
-        (f"echo hi > $D/x; echo hi > {rx}/f", REFUSAL),
+        ("echo hi > out.txt", BASH_REFUSAL),
+        (f"echo hi > $D/x; echo hi > {rx}/f", BASH_REFUSAL),
         (f"go test ./x; rm {rx}/zz_test.go; git status --short", RM_CHAINED_REASON),
         (f"rm {rx}/a && echo done", RM_CHAINED_REASON),
         (f"find {rx} -name '*.orig' -exec rm {{}} +", RM_CHAINED_REASON),
         ("mkdir -p $D/m && cd $D && printf a > m/f", SHELL_PATH_REASON),
-        (f"cd $D && printf a > {rx}/f", REFUSAL),
-        (f"cd {rx} || cd /x; printf a > f", REFUSAL),
+        (f"cd $D && printf a > {rx}/f", BASH_REFUSAL),
+        (f"cd {rx} || cd /x; printf a > f", BASH_REFUSAL),
         # A fetch into a ref of its own is told to read FETCH_HEAD; one that moves a branch
         # or a tag, or comes with another repo write, keeps the refusal.
         ("git fetch origin refs/merge-requests/1/head:refs/cr/mr-1", NAMED_REF_FETCH_REASON),
-        ("git fetch origin main:main", REFUSAL),
-        ("git fetch origin x:refs/tags/t", REFUSAL),
-        ("git fetch origin x:refs/cr/a main:main", REFUSAL),
-        (f"git fetch origin x:refs/cr/a && touch {rx}/f", REFUSAL),
+        ("git fetch origin main:main", BASH_REFUSAL),
+        ("git fetch origin x:refs/tags/t", BASH_REFUSAL),
+        ("git fetch origin x:refs/cr/a main:main", BASH_REFUSAL),
+        (f"git fetch origin x:refs/cr/a && touch {rx}/f", BASH_REFUSAL),
     ]
     for command, expected in reason_cases:
         got = decide("Bash", {"command": command}, False, os.path.join(REPO_ROOTS[0], "no-repo"))
@@ -4374,6 +4404,22 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} strip {command!r} -> {got!r}"
               + ("" if ok else f" (want {expected!r})"))
+    rewrite_cases = [
+        # (permission mode, command, whether the hook changes the call's input)
+        ("default", "ls", True),
+        (None, "ls", True),
+        ("auto", "ls", False),
+        ("auto", f"rm -rf {s}build && ls", True),
+        ("auto", "kubectl delete pod x --context c -n n", True),
+    ]
+    for mode, command, expected in rewrite_cases:
+        payload = {"tool_name": "Bash", "session_id": "s", "permission_mode": mode,
+                   "tool_input": {"command": command, "description": "lists files"}}
+        got = "updatedInput" in (hook_output(payload) or {}).get("hookSpecificOutput", {})
+        ok = got == expected
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} rewrite {mode} {command!r} -> {got}"
+              + ("" if ok else f" (want {expected})"))
     label_cases = [
         # (command, expected rating): heredoc bodies are data, never programs
         (f"git commit -q -F - <<'EOF'\nfix: drop; rm -rf {s}x\nEOF", WRITE),
@@ -4505,6 +4551,9 @@ def selftest():
         ("uv run pytest -q", RUNS_CODE),
         ("python3 /x/run.py", RUNS_CODE),
         ("python3 -c 'print(1)'", RUNS_CODE),
+        ("perl -e 'print 1'", RUNS_CODE),
+        ("ruby -e 'puts 1'", RUNS_CODE),
+        ("perl -pi -e s/a/b/ f", WRITE),
         ("cp a b && go test ./x", RUNS_CODE),
         ("make test", RUNS_CODE),
         ("npm test", RUNS_CODE),

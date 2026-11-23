@@ -64,6 +64,10 @@ The same line opens the goal's own text, so the run reads it first.
    Nothing the run needs waits on a prompt in the middle of the night.
 3. **The skills the goal names come from this session's skill list**: the
    one for writing code and fixing a review, and the one for a code review.
+   When either is not in the list, say so before the goal is written, and
+   the goal leaves out what needs it: with no review skill, the run has no
+   CR cycles and its report says the branch was not reviewed; with no code
+   skill, commits and fixes follow the repo's own conventions.
 4. **The branch**: the run works on the branch the repo's checkout is
    on. On the default branch, unless I have said the repo is worked on
    it, the goal creates a new one. When the work does not belong on the
@@ -179,7 +183,7 @@ harness's cap on a `/goal` condition.
   the run spends no fix attempt on a failure that step explains, and
   carries on with the work that does not need it. A live goal asks me
   and waits.
-- **One signed commit per piece of work**, on the branch settled before
+- **One commit per piece of work**, on the branch settled before
   the goal was handed over, in the repo's checkout, by the code skill's
   standards and the repo's conventions.
   After each commit, build and test the packages it touched.

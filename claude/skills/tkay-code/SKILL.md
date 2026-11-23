@@ -29,6 +29,23 @@ you catch yourself recalling how my commit bodies are structured, stop and
 read the file. A remembered version of my standards is the same failure as
 not having them.
 
+## A structural change states its design before its first line
+
+**A change is structural when it adds a module, a responsibility, state that
+outlives a call, or an interface between two components.** A change inside
+what exists - a condition, a value, a function body - is not. When unsure
+which it is, treat it as structural.
+
+**Before the first line of a structural change that follows no agreed plan,
+write its design note in chat**, in the shape `references/design-note.md`
+gives: a few lines I can correct while correcting them is still free. It
+is not a question: the work goes on under it, and I interrupt when the
+design is wrong.
+
+**When the design rests on a choice between known architectures, the
+change needs a plan**: say so in place of the note, name the choice, and
+wait for my answer before any code.
+
 ## A code review is another skill, and another session
 
 **This skill writes code; it never reviews it.** The CR standard lives in
@@ -38,7 +55,9 @@ code written with the review rubric in context is written to the rubric,
 and a review by the code's author is not independent. When asked for a CR in
 a session that has this skill loaded, load the review skill anyway; it asks
 whether to review here before it starts, as it asks before any code is
-written in a session that wrote a CR.
+written in a session that wrote a CR. When the review skill is not
+installed, say that the CR standard is a skill this session does not have,
+and review nothing by this skill's rules.
 
 ## The repo's conventions win
 
