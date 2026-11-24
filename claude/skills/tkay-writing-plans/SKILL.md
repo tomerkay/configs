@@ -10,6 +10,10 @@ before the first line of one. Write it to a directory that survives the session
 unless I name somewhere else - never `/tmp` or a session scratchpad, which can
 vanish while the plan is still in use.
 
+**Every plan, in every mode, is human readable**: read
+`references/human-readable.md` before the first item of a brainstorm, a shape
+plan or a full plan.
+
 ## Three modes: a brainstorm plan, a shape plan, a full plan
 
 **A plan is brainstormed until I ask for a shape plan or a full plan in those words.** The

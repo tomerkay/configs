@@ -23,7 +23,8 @@
       "Bash(helm dependency *)",
       "Bash(git -C ~/.claude add -u)",
       "Bash(git -C ~/.claude commit *)",
-      "Bash(cp /Users/tkay/.cache/claude-handoff/* /Users/tkay/.claude/hooks/*)"
+      "Bash(cp /Users/tkay/.cache/claude-handoff/* /Users/tkay/.claude/hooks/*)",
+      "Edit(~/.cache/claude-handoff/**)"
     ],
     "ask": [
       "Bash(python3 *board.py publish *)",
@@ -36,10 +37,11 @@
     ],
     "additionalDirectories": [
       "/tmp",
-      "/Users/tkay/misc/values"
+      "/Users/tkay/misc/values",
+      "/Users/tkay/.cache/claude-handoff"
     ]
   },
-  "model": "fable",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {

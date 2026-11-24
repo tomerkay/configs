@@ -1,6 +1,6 @@
 ---
 name: tkay-replies
-description: The shape of a reply in chat - how an answer is held to the truth, the assessment a proposal or a judgement carries, proposals and questions that stop the reply as numbered ❓ lines, the reading list that opens a reply to a message about several things, the issue tree, the bycatch list, numbered lists and tables, bracketed copy-paste blocks, before-and-after snippets, and the TL;DR that closes a long reply. Use before the first reply of a session, and whenever a reply proposes a change or gives an assessment of a change, an option or an idea, stops for an answer, answers a message about several things, shows where we stand, reports something found on the way, hands over something to copy, shows how a change will look, or runs long.
+description: The shape of a reply in chat - how an answer is held to the truth, the assessment a proposal or a judgement carries, proposals and questions that stop the reply as numbered ❓ lines, the reading list that opens a reply to a message about several things, the issue tree, the bycatch list, numbered lists and tables, bracketed copy-paste blocks, before-and-after snippets, the TL;DR that closes a long reply, and the human-readable prose every text a person reads is held to. Use before the first reply of a session, and whenever a reply proposes a change or gives an assessment of a change, an option or an idea, stops for an answer, answers a message about several things, shows where we stand, reports something found on the way, hands over something to copy, shows how a change will look, or runs long - and whenever writing prose a person reads anywhere else: a commit message, a plan, a doc, an MR, a chat post.
 hooks:
   Stop:
     - hooks:
@@ -19,6 +19,7 @@ reference; they refer to each other by file name.
 | When the reply | Read |
 |---|---|
 | answers anything - every reply | `references/answers.md` |
+| holds prose a person reads - and any such prose written elsewhere | `references/human-readable.md` |
 | proposes a change, or gives an assessment of a change, an option or an idea | `references/assessment.md` |
 | stops for my answer - a proposal or a question | `references/questions.md` |
 | answers a message of mine about several things | `references/reading-list.md` |
@@ -54,4 +55,6 @@ point a hook sent back:
 ```
 
 These shapes are for replies in chat only - never a commit message, a chat
-post or a file, whose own conventions hold.
+post or a file, whose own conventions hold. The one exception is
+`references/human-readable.md`, which binds every text it names, wherever
+it lands.

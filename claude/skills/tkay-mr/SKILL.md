@@ -10,7 +10,8 @@ description: Standards for an MR or PR page and for GitLab from the host - the t
 | Task | Read first |
 |---|---|
 | Anything on a GitLab MR - its review threads, its pipeline, a job log - or any `glab` call | `references/gitlab.md` — **before the first glab call** |
-| Writing an MR or PR title or description, or adding screenshots to it | `references/mr-page.md` — **before you look for the MR** |
+| Writing an MR or PR title or description, or adding screenshots to it | `references/mr-page.md` and `references/human-readable.md` — **before you look for the MR** |
+| Writing a note on an MR or PR | `references/human-readable.md` — **before the first word of it** |
 | A Go CLI, `glab` among them, fails TLS with `OSStatus -26276` inside the sandbox | `references/go-tls-in-sandbox.md` |
 
 **Never answer from memory of a reference you have not read this session.**

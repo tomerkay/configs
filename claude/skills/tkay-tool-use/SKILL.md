@@ -20,6 +20,7 @@ description: How tool calls run - shell commands, file reads and MCP tools alike
 | a nightly goal runs, with nobody there to answer | `references/unwatched-goal.md` |
 | I ask for a goal that builds something and name no plan file | `references/plain-goal.md` and `references/goal-run.md` |
 | a command would `cd` into another directory | `references/working-directory.md` |
+| writing the description on a command's permission prompt, or a run's report | `references/human-readable.md` |
 
 **Read the reference before the call that needs it.** Never answer from
 memory of a reference you have not read this session.

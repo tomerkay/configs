@@ -451,9 +451,11 @@ The shapes of a reply in chat - how an answer is held to the truth, the
 assessment a proposal carries, proposals and questions as numbered ❓
 lines, the reading list, the issue tree, numbered lists, bracketed copy
 blocks, before-and-after snippets and the TL;DR of a long reply - are the
-`tkay-replies` skill's, which owns them:
+`tkay-replies` skill's, which owns them, and so is the human-readable prose
+every text a person reads is held to, in chat or anywhere else:
 
 @~/.claude/skills/tkay-replies/references/answers.md
+@~/.claude/skills/tkay-replies/references/human-readable.md
 @~/.claude/skills/tkay-replies/references/assessment.md
 @~/.claude/skills/tkay-replies/references/questions.md
 @~/.claude/skills/tkay-replies/references/reading-list.md

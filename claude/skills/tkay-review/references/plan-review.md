@@ -40,8 +40,15 @@ plan's call:
   mechanism and the test the plan names, in the code once it exists and in
   the fix's design before it does. A Solved with no mechanism behind it is 🟠.
 - **Every "not a problem"**: checked the way the plan says it was.
-- **Every invariant**: names the test that pins it, or is written as
-  unpinned.
+- **Every promise and every goal**, as `plan-shape.md` asks: each API
+  behaviour, each failure the API promises and each invariant names the
+  test that pins it, or is written as unpinned; each goal names the check
+  that proves it - a test, or a run or a read when no test can - or is
+  written as unchecked. Each of these is a 🟠:
+  - a promise or a goal left silent;
+  - one written as unpinned or unchecked, or proved by a run or a read,
+    where a test could pin or prove it;
+  - a test or a check no commit section lists.
 - **Every new responsibility**: has its owner, state, interface and
   departures, as "Responsibilities" in `clean-code.md` gives them - a shape
   plan's bullets give the owner, the state and any departure - with its
@@ -66,7 +73,7 @@ three lines `code-review.md` gives every 🧪. A doubt it can name is a 🟠 RIS
 | Tag | In a plan |
 |-----|-----------|
 | 🔴 **BUG** | The design as written fails a concrete scenario: the state, the sequence, the wrong outcome. |
-| 🟠 **RISK** | A check of `plan-shape.md` missing or answered with no reason, an invariant with no test, a status with no mechanism, a decision with no architecture behind it, a number that does not reproduce. |
+| 🟠 **RISK** | A check of `plan-shape.md` missing or answered with no reason, a promise or a goal the "Every promise and every goal" check makes 🟠, a status with no mechanism, a decision with no architecture behind it, a number that does not reproduce. |
 | 🟡 **QUALITY** | The design holds, but the plan breaks its shape: a section out of place, a line for nobody, a value that goes stale, a TBD entry the plan depends on. |
 | ⚪ **NIT** | Wording, ordering, formatting. |
 
@@ -136,10 +143,16 @@ The In short table:
     scenario no edit fixes.
 - **A blocker in a plan review** is `⛔ Hard: design` for a break whose fix
   edits the planned design, and the kind of what the fix touches otherwise -
-  `test code` for a test the plan must add, `doc` for its wording - as
-  "Hard and soft merge blockers" in `code-review.md` gives.
+  `no test` for a test or a check the plan must add or list under a commit
+  section, `doc` for its wording - at the level "Hard and soft merge
+  blockers" in `code-review.md` gives.
 
 ## The plan's call
+
+**When a full plan's call is ✅ Build it, I can believe it on tests:**
+every promise and every goal passes the "Every promise and every goal"
+check in "Claims are checked, not trusted". A shape plan names no tests,
+so its call promises nothing about them.
 
 The worst finding decides it, in the order ❌, 🔧, 🧪, ✅:
 

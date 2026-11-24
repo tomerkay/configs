@@ -10,6 +10,9 @@ silently, and nothing personal in a repo. **Read
 `references/copied-stale-and-personal.md` before writing the first line of
 any file.**
 
+**Every line is human readable**, as `references/human-readable.md` says:
+read it before the first line too.
+
 ## Where a fact goes
 
 Four homes, tried in this order. The first that fits is where the fact is

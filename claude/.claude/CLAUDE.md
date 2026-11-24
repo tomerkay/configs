@@ -54,9 +54,19 @@ name what each kind adds; the procedure itself is this one:
    safeguard, and a paste is the same install with a round trip added.
    **Compare the live file with the base first.** When they differ - another
    session changed it since - the `cp` would overwrite that change, and the
-   commit's diff would no longer be the reviewed one: install nothing, take
-   the live file as the new base, stage the edits again on it, and run steps
-   2 and 3 again.
+   commit's diff would no longer be the reviewed one: install nothing, copy
+   the live file in as the new base, beside the old one, and stage the edits
+   again on it. **The edits move onto the new base with `git -C <this
+   session's handoff directory> merge-file <staged copy> <old base> <new
+   base>`**, which writes the merge into the staged copy. A non-zero exit up
+   to 127 is the number of conflicts: make the edit again by hand on the new
+   base's text in place of each marked block. An exit above 127 is an error,
+   and the staged copy is untouched: fix the command and run it again. Then
+   check the result with a plain `diff` against the new base: it must show
+   the edits of the last reviewed diff and nothing else, every line read.
+   Then run steps 2 and 3 again. The macOS `diff3 -m` is never used for the
+   merge: it can drop a line at the edge of a change and still report a
+   clean merge.
 5. **If the install or the commit is refused**, confirm the staged copy still
    exists, print the exact command for me as a `! <command>` and stop. Never
    reach the same change by another route.
@@ -160,8 +170,9 @@ shows something new - the `model` line below aside - say so in one line
 and judge each new commit or uncommitted change against the proposal:
 
 - **It touches a file the proposal changes, or a rule the proposal rests
-  on or restates**: read it, stage the proposal again on top of it and
-  review it again before the step goes on.
+  on or restates**: read it, stage the proposal again on top of it, as
+  the install step of "A staged change, installed on one question" moves
+  the edits onto a new base, and review it again before the step goes on.
 - **It does not**: name it as unrelated in that same line, and go on.
 
 The install's comparison of the live file with the base, in "A staged

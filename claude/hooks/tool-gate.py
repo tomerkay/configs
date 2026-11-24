@@ -93,6 +93,9 @@ LOOP_HEADERS = {"for", "case", "select"}
 COMPOUND_OPENERS = {"if", "while", "until", "for", "case", "select", "{"}
 COMPOUND_CLOSERS = {"fi", "done", "esac", "}"}
 CHDIR_PROGRAMS = {"cd", "pushd", "popd"}
+# Wrappers that run the program as a process of its own, so a `cd` behind one moves no
+# directory of the shell's.
+CHILD_WRAPPERS = {"env", "nohup", "nice", "stdbuf", "caffeinate", "timeout"}
 
 READ_PROGRAMS = {
     "cat", "head", "tail", "less", "more", "wc", "grep", "egrep", "fgrep", "zgrep", "rg", "ag",
@@ -373,9 +376,12 @@ def generic_verbs(args):
 def git_subcommand_args(args):
     """The git subcommand and its arguments, with the global options ahead of it removed."""
     rest = list(args)
-    while rest and rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P"):
+    # GOTCHA: only the words ahead of the subcommand are git's own. After it, a word shaped
+    # like --git-dir= is the subcommand's: archive's -o value, merge-file's -L label.
+    while rest and (rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P")
+                    or rest[0].startswith(("--git-dir=", "--work-tree="))):
         rest = rest[2:] if rest[0] in ("-C", "-c", "--git-dir", "--work-tree") else rest[1:]
-    return [a for a in rest if not a.startswith("--git-dir=") and not a.startswith("--work-tree=")]
+    return rest
 
 
 def classify_git(args):
@@ -403,6 +409,8 @@ def classify_git(args):
         # GOTCHA: git runs unsandboxed under the managed policy, and `log`/`diff`/`show --output`
         # write a file anywhere, so a read verb with it is a write.
         return WRITE if has_flag(rest, "--output") else READ
+    if sub == "merge-file":
+        return READ if git_merge_file_writes(rest) == [] else WRITE
     if sub == "symbolic-ref":
         # One name with only these flags reads the ref it points at. Anything else may write:
         # a second name repoints it, and git takes a bundled -qd or an abbreviated --del as a
@@ -1058,14 +1066,57 @@ def classify_pip(args):
     return WRITE
 
 
+# Every option `uv run` takes a value for, written as a separate word: the ones
+# `uv run --help` lists and the hidden ones uv still reads.
+UV_RUN_VALUE_FLAGS = (
+    "--extra", "--no-extra", "--group", "--no-group", "--only-group", "--no-editable-package",
+    "--env-file", "-w", "--with", "--with-editable", "--with-requirements", "--package",
+    "--python-platform", "--index", "--default-index", "-i", "--index-url", "--extra-index-url",
+    "-f", "--find-links", "--index-strategy", "--keyring-provider", "-P", "--upgrade-package",
+    "--upgrade-group", "--resolution", "--prerelease", "--prerelease-package", "--fork-strategy",
+    "--exclude-newer", "--exclude-newer-package", "--no-sources-package", "--reinstall-package",
+    "--link-mode", "-C", "--config-setting", "--config-settings-package",
+    "--no-build-isolation-package", "--no-build-package", "--no-binary-package", "--cache-dir",
+    "--refresh-package", "-p", "--python", "--color", "--allow-insecure-host", "--directory",
+    "--project", "--config-file", "--config-settings", "--max-recursion-depth",
+    "--python-preference", "--python-fetch", "--preview-features")
+
+
+UV_RUN_SHORT_VALUE_FLAGS = "".join(o[1] for o in UV_RUN_VALUE_FLAGS if not o.startswith("--"))
+
+
+def uv_short_flags(word):
+    """The letters of a bundle of uv's short options up to the first that takes a value, and
+    whether that value is the next word: the rest of the bundle is the value otherwise."""
+    for j, ch in enumerate(word[1:], 1):
+        if ch in UV_RUN_SHORT_VALUE_FLAGS:
+            return word[1:j + 1], j == len(word) - 1
+    return word[1:], False
+
+
+def uv_run_options(args):
+    """uv run's own options, the words between `run` and the command it runs."""
+    rest = args[args.index("run") + 1:]
+    i = 0
+    while i < len(rest) and rest[i].startswith("-"):
+        a = rest[i]
+        if a.startswith("--") or a == "-":
+            i += 2 if a in UV_RUN_VALUE_FLAGS else 1
+        else:
+            i += 2 if uv_short_flags(a)[1] else 1
+    return rest[:i]
+
+
 def uv_run_tail(args):
     """The command `uv run` runs, with uv's own options removed."""
-    tail = list(args)
-    tail = tail[tail.index("run") + 1:]
-    while tail and tail[0].startswith("-"):
-        tail = tail[2:] if tail[0] in ("--with", "--python", "-p", "--package",
-                                      "--directory", "--project", "--extra") else tail[1:]
-    return tail
+    return args[args.index("run") + 1 + len(uv_run_options(args)):]
+
+
+def uv_runs_module(args):
+    """True when uv run's own options ask it to run a module: --module, or an m in a bundle
+    of short flags, which takes no value of its own."""
+    return any(a == "--module" or (not a.startswith("--") and "m" in uv_short_flags(a)[0])
+               for a in uv_run_options(args) if a.startswith("-"))
 
 
 def classify_uv(args):
@@ -2424,6 +2475,46 @@ def git_archive_outputs(args):
     return outputs
 
 
+GIT_MERGE_FILE_VALUE_FLAGS = {"-L", "--diff-algorithm", "--marker-size"}
+# GOTCHA: git also takes an abbreviated long option (--no-std) and a bundle of short ones
+# (-qL <label>), so a flag outside these two sets is held unread, never skipped.
+GIT_MERGE_FILE_FLAGS = {"-p", "--stdout", "--no-stdout", "-q", "--quiet", "--no-quiet",
+                        "--diff3", "--no-diff3", "--zdiff3", "--no-zdiff3", "--ours",
+                        "--no-ours", "--theirs", "--no-theirs", "--union", "--no-union",
+                        "--object-id", "--no-object-id", "--no-marker-size"}
+
+
+def last_switch(flags, on, off):
+    """Whether the last of `flags` found in `on` or `off` is in `on`."""
+    state = False
+    for f in flags:
+        state = True if f in on else False if f in off else state
+    return state
+
+
+def git_merge_file_writes(rest):
+    """What `git merge-file <rest>` writes: [<current>] when it overwrites that file, [] when
+    it prints the merge, None when it writes the object store or its words cannot be read."""
+    words, _ = split_globals(rest, GIT_MERGE_FILE_VALUE_FLAGS)
+    cut = words.index("--") if "--" in words else len(words)
+    flags = [w for w in words[:cut] if w.startswith("-")]
+    paths = [w for w in words[:cut] if not w.startswith("-")] + words[cut + 1:]
+    if len(paths) != 3 or any(f not in GIT_MERGE_FILE_FLAGS for f in flags):
+        return None
+    if last_switch(flags, {"--object-id"}, {"--no-object-id"}):
+        return None
+    return [] if last_switch(flags, {"-p", "--stdout"}, {"--no-stdout"}) else paths[:1]
+
+
+def git_merge_file_outputs(args):
+    """The file a `git merge-file` invocation overwrites, or [] for any other git and for
+    one the gate holds unread."""
+    rest = git_subcommand_args(args)
+    if rest[:1] != ["merge-file"]:
+        return []
+    return git_merge_file_writes(rest[1:]) or []
+
+
 GO_MODULE_FILES = ("go.mod", "go.work")
 # The subcommands whose own writes are the module files, vendor/ and a build's binary, and
 # nothing a directive or a script decides. `go work sync` rewrites the go.mod of every
@@ -2552,6 +2643,17 @@ def helm_repo_writes_outside_repos(here, args):
                for f in ("--repository-config", "--repository-cache") if f in seen)
 
 
+def uv_run_command(words):
+    """The command a `uv run` runs, through every `uv run` the words start with, or the words
+    as they are: uv runs it as the segment's own command, so its writes are that command's."""
+    while words and program_of(words) == "uv" and positionals(words[1:])[:1] == ["run"]:
+        tail = strip_prefix(uv_run_tail(words[1:]))
+        if not tail:
+            break
+        words = tail
+    return words
+
+
 def gate_blockers(command, cwd, run_time_dir=None):
     """The words of each program the gate holds, a `tee` of each redirect target outside
     scratch, or [None] for a line it cannot parse; empty when nothing changes a repo by a
@@ -2585,12 +2687,16 @@ def gate_blockers(command, cwd, run_time_dir=None):
             blockers.extend(["tee", t] for t in targets_of.pop(index, ())
                             if t not in HARMLESS_TARGETS
                             and not inside_gate_scratch(path_from(here, t)))
-            words = strip_prefix(words)
+            stripped = strip_prefix(words)
+            child = stripped != uv_run_command(stripped) or bool(
+                CHILD_WRAPPERS & set(words[:len(words) - len(stripped)]))
+            words = uv_run_command(stripped)
             if not words or program_of(words) in LOOP_HEADERS:
                 continue
             prog, args = program_of(words), words[1:]
             if prog in CHDIR_PROGRAMS:
-                here = (cd_target(here, prog, args) or run_time_dir) if moves else None
+                if not child:
+                    here = (cd_target(here, prog, args) or run_time_dir) if moves else None
                 continue
             level = classify_program(prog, args)
             if level == READ:
@@ -2614,9 +2720,10 @@ def gate_blockers(command, cwd, run_time_dir=None):
                 # A clone outside the roots is the clone check's to ask about.
                 if target is not None and not inside_roots(target):
                     continue
-                # Only an absolute -o is trusted: git resolves a relative one against a
-                # directory that -C and its own setup decide, not the text.
-                outputs = git_archive_outputs(args)
+                # Only an absolute output path - archive's -o, merge-file's <current> - is
+                # trusted: git resolves a relative one against a directory that -C and its own
+                # setup decide, not the text.
+                outputs = git_archive_outputs(args) or git_merge_file_outputs(args)
                 if outputs and all(inside_gate_scratch(o) for o in outputs):
                     continue
                 blockers.append(words)
@@ -3199,6 +3306,49 @@ URL_IN_TEXT_RE = re.compile(r"[A-Za-z][\w+.-]*://[^\s'\"]+")
 SCRIPT_SCAN_LIMIT = 2 * 1024 * 1024
 
 
+PYTHON_VALUE_LONG_FLAGS = {"--check-hash-based-pycs"}
+
+
+def python_run(args):
+    """What a Python invocation runs, past Python's own flags: ("script", <path>), or
+    ("module", <name>) for -m without -I or -P, which loads it from the working directory
+    first. None for -c, a script read from standard input, a module run with -I or -P, or
+    nothing."""
+    safe_path = False
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--":
+            return ("script", args[i + 1]) if i + 1 < len(args) else None
+        if a == "-" or not a.startswith("-"):
+            return None if a == "-" else ("script", a)
+        if a.startswith("--"):
+            i += 2 if a in PYTHON_VALUE_LONG_FLAGS else 1
+            continue
+        # A bundle of short flags: -c and -m end Python's options, -m with the module as the
+        # rest of the word or the next word; -W and -X take their value the same way.
+        for j, ch in enumerate(a[1:], 1):
+            if ch == "c":
+                return None
+            if ch == "m":
+                name = a[j + 1:] or (args[i + 1] if i + 1 < len(args) else "")
+                return ("module", name) if name and not safe_path else None
+            if ch in "IP":
+                safe_path = True
+            if ch in "WX":
+                i += 1 if a[j + 1:] else 2
+                break
+        else:
+            i += 1
+    return None
+
+
+def python_script(args):
+    """The script file a Python invocation runs, past Python's own flags, or None."""
+    run = python_run(args)
+    return run[1] if run and run[0] == "script" else None
+
+
 def script_of(words):
     """The script file an invocation runs, as typed, or None when it runs no script file."""
     words = strip_prefix(words)
@@ -3211,13 +3361,97 @@ def script_of(words):
         pos = positionals(args)
         return pos[0] if pos else None
     if PYTHON_RE.fullmatch(prog):
-        return args[0] if args and not args[0].startswith("-") else None
+        return python_script(args)
     if prog == "uv" and positionals(args)[:1] == ["run"]:
         tail = uv_run_tail(args)
         if tail and tail[0].endswith(".py"):
             return tail[0]
         return script_of(tail) if tail else None
     return words[0] if "/" in words[0] else None
+
+
+def module_of(words):
+    """The module a Python invocation runs with -m where the working directory comes first
+    on its import path, or None."""
+    words = strip_prefix(words)
+    if not words:
+        return None
+    prog, args = program_of(words), words[1:]
+    if PYTHON_RE.fullmatch(prog):
+        run = python_run(args)
+        return run[1] if run and run[0] == "module" else None
+    if prog == "uv" and positionals(args)[:1] == ["run"]:
+        tail = uv_run_tail(args)
+        if tail and uv_runs_module(args):
+            return tail[0]
+        return module_of(tail) if tail else None
+    return None
+
+
+def uv_interpreter_of(words):
+    """The file `uv run` is given as its interpreter with -p or --python, which uv runs to
+    query it, or None when none is given."""
+    words = strip_prefix(words)
+    if not words or program_of(words) != "uv" or positionals(words[1:])[:1] != ["run"]:
+        return None
+    options = uv_run_options(words[1:])
+    for i, a in enumerate(options):
+        nxt = options[i + 1] if i + 1 < len(options) else ""
+        if a.startswith("--python="):
+            value = a.split("=", 1)[1]
+        elif a == "--python":
+            value = nxt
+        elif not a.startswith("--") and uv_short_flags(a)[0].endswith("p"):
+            letters, next_word = uv_short_flags(a)
+            value = nxt if next_word else a[len(letters) + 1:].lstrip("=")
+        else:
+            continue
+        return value or None
+    return None
+
+
+def uv_interpreter_file(here, value):
+    """The file uv runs to query the interpreter it is given: a directory's bin/python, the
+    file itself for a path, or None for a version or a name uv looks up on PATH."""
+    path = resolved_dir(here, value)
+    if path is not None and os.path.isdir(path):
+        return os.path.join(value, "bin", "python")
+    return value if "/" in value else None
+
+
+def module_files(name):
+    """The files, relative to the working directory, that `python -m <name>` runs when the
+    module is found there: each part of the name as a package's __init__.py or a module
+    file - Python imports every parent before the last part - then a package's
+    __main__.py."""
+    parts = name.split(".")
+    path = "/".join(parts)
+    return (["/".join(parts[:k]) + "/__init__.py" for k in range(1, len(parts) + 1)]
+            + ["/".join(parts[:k]) + ".py" for k in range(1, len(parts) + 1)]
+            + [path + "/__main__.py"])
+
+
+def listed(found):
+    """The first lines a scan found, for a prompt's reason."""
+    return "; ".join(found[:5]) + ("; ..." if len(found) > 5 else "")
+
+
+def module_decisions(here, name):
+    """One ask when `python -m <name>` would load a file from the working directory whose
+    text holds a command that needs words."""
+    if "$" in name or "/" in name or "" in name.split("."):
+        return []
+    if here is None:
+        return [(ASK, f"runs module {name} from a directory known only at run time, so the "
+                      "file it loads from there could not be checked for commands that "
+                      "change live or remote state")]
+    found = [f"{rel}:{line}" for rel in module_files(name)
+             for line in script_lines_needing_words(os.path.join(here, rel))]
+    if not found:
+        return []
+    return [(ASK, f"runs module {name}, whose file in the working directory holds commands "
+                  f"that change live or remote state - {listed(found)}. One prompt covers "
+                  "the whole run; no words needed")]
 
 
 def script_lines_needing_words(path):
@@ -3242,6 +3476,21 @@ def script_lines_needing_words(path):
     return found
 
 
+def own_cli_copy(path, words, script):
+    """True for a copy of this hook in a gate scratch root, run by Python as its own CLI:
+    --selftest, or one command to classify after an optional --open. A staged copy's selftest
+    holds every pattern the scan looks for, so scanning it would ask on every run."""
+    real = os.path.realpath(path)
+    if (not PYTHON_RE.fullmatch(program_of(words))
+            or os.path.basename(real) != os.path.basename(__file__)
+            or not inside_gate_scratch(real)):
+        return False
+    tail = words[words.index(script) + 1:] if script in words else []
+    if tail[:1] == ["--open"]:
+        tail = tail[1:]
+    return tail == ["--selftest"] or (len(tail) == 1 and not tail[0].startswith("-"))
+
+
 def script_decisions(command, cwd):
     """One ask per script the command runs whose text holds a command that needs words.
 
@@ -3261,25 +3510,32 @@ def script_decisions(command, cwd):
             if words and program_of(words) in CHDIR_PROGRAMS:
                 here = cd_target(here, program_of(words), words[1:]) if moves else None
                 continue
-            script = script_of(words)
-            if not script:
-                continue
-            path = resolved_dir(here, script)
-            if here is None and path is None and "$" not in script:
-                out.append((ASK, f"runs {script} from a directory known only at run time, so "
-                                 "its text could not be checked for commands that change live "
-                                 "or remote state"))
-                continue
-            # This script's own CLI only classifies text; its selftest holds every pattern.
-            if path is None or os.path.realpath(path) == os.path.realpath(__file__):
-                continue
-            found = script_lines_needing_words(path)
-            if found:
-                shown = "; ".join(found[:5]) + ("; ..." if len(found) > 5 else "")
-                out.append((ASK, f"runs {script}, whose text holds commands that change live "
-                                 f"or remote state - {shown}. One prompt covers the whole "
-                                 "run; no words needed"))
+            module = module_of(words)
+            if module:
+                out.extend(module_decisions(here, module))
+            interpreter = uv_interpreter_of(words)
+            for script in (script_of(words), interpreter and uv_interpreter_file(here, interpreter)):
+                if script:
+                    out.extend(script_file_decisions(here, words, script))
     return out
+
+
+def script_file_decisions(here, words, script):
+    """One ask when a file the segment runs holds a command that needs words."""
+    path = resolved_dir(here, script)
+    if here is None and path is None and "$" not in script:
+        return [(ASK, f"runs {script} from a directory known only at run time, so its text "
+                      "could not be checked for commands that change live or remote state")]
+    # This script's own CLI only classifies text; its selftest holds every pattern.
+    if path is None or os.path.realpath(path) == os.path.realpath(__file__):
+        return []
+    if own_cli_copy(path, words, script):
+        return []
+    found = script_lines_needing_words(path)
+    if not found:
+        return []
+    return [(ASK, f"runs {script}, whose text holds commands that change live or remote "
+                  f"state - {listed(found)}. One prompt covers the whole run; no words needed")]
 
 
 SHELL_PATH_REASON = ("a write path, or the directory a cd before it moves to, is built by the "
@@ -3678,6 +3934,27 @@ def selftest():
         (False, "Bash", f"git -C /x archive -o {scratch}d/x.tar HEAD", None),
         (False, "Bash", f"git -C /x archive HEAD -o{scratch}d/x.tar", None),
         (False, "Bash", f"git -C /x archive HEAD --output={scratch}d/x.tar", None),
+        (False, "Bash", f"git archive -o --work-tree=x {scratch}y.tar HEAD", DENY),
+        (False, "Bash", f"git --git-dir={rx}/.git archive -o {scratch}y.tar HEAD", None),
+        (False, "Bash", f"git merge-file {scratch}s.md {scratch}b.md {scratch}n.md", None),
+        (False, "Bash", f"git merge-file -L a -L b -L c {scratch}s.md {home}/b.md {home}/n.md",
+         None),
+        (False, "Bash", f"git merge-file -p {home}/s.md {home}/b.md {home}/n.md", None),
+        (False, "Bash", f"git merge-file --stdout {home}/s.md {home}/b.md {home}/n.md", None),
+        (False, "Bash", f"git merge-file {home}/s.md {scratch}b.md {scratch}n.md", DENY),
+        (False, "Bash", "git merge-file s.md b.md n.md", DENY),
+        (False, "Bash", f"git merge-file -L {scratch}s.md {home}/s.md {home}/b.md {home}/n.md",
+         DENY),
+        (False, "Bash", f"git merge-file --object-id -p {scratch}s {scratch}b {scratch}n", DENY),
+        (False, "Bash", f"git merge-file -L -p -L b -L c {rx}/s.md {rx}/b.md {rx}/n.md", DENY),
+        (False, "Bash", f"git merge-file -p --no-stdout {rx}/s.md {rx}/b.md {rx}/n.md", DENY),
+        (False, "Bash", f"git merge-file -p --no-std {rx}/s.md {rx}/b.md {rx}/n.md", DENY),
+        (False, "Bash", f"git -C {rx} merge-file -- -p {scratch}b.md {scratch}n.md", DENY),
+        (False, "Bash", f"git merge-file -qL {scratch}s.md {rx}/s.md {rx}/b.md {rx}/n.md", DENY),
+        (False, "Bash", f"git merge-file -p -L --work-tree=x --no-stdout {rx}/s.md {rx}/b.md "
+                        f"{rx}/n.md", DENY),
+        (False, "Bash", f"git merge-file --marker-size 9 --diff-algorithm histogram "
+                        f"{scratch}s.md {rx}/b.md {rx}/n.md", None),
         (False, "Bash", f"git -C {rx} archive -o x.tar HEAD", DENY),
         (False, "Bash", f"git -C {rx} symbolic-ref --short refs/remotes/origin/HEAD", None),
         (False, "Bash", f"git -C {rx} symbolic-ref -q HEAD", None),
@@ -4569,6 +4846,7 @@ def selftest():
         ("python3 -m pytest -q", RUNS_CODE),
         ("python3 -m unittest", RUNS_CODE),
         ("uv run pytest -q", RUNS_CODE),
+        ("uv run --group dev pytest", RUNS_CODE),
         ("python3 /x/run.py", RUNS_CODE),
         ("python3 -c 'print(1)'", RUNS_CODE),
         ("perl -e 'print 1'", RUNS_CODE),
@@ -4831,6 +5109,13 @@ def selftest():
                                  f"{scratch_dir}/r2"}, None),
             ("Bash", {"command": f"/bin/cp a {on_main}/x"}, DENY),
             ("Bash", {"command": f"/usr/bin/sed -i '' s/a/b/ {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"uv run sed -i '' s/a/b/ {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"uv run --with x cp a {on_main}/x"}, DENY),
+            ("Bash", {"command": f"uv run -q uv run touch {on_main}/x"}, DENY),
+            ("Bash", {"command": f"uv run cd {scratch_dir} && touch x"}, DENY),
+            ("Bash", {"command": f"env cd {scratch_dir}; touch x"}, DENY),
+            ("Bash", {"command": f"uv run sed -i '' 's/a b/c/' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"uv run python3 {not_repo}/tool.py"}, None),
             ("Bash", {"command": f"{not_repo}/tool.sh"}, None),
             ("Edit", {"file_path": f"{on_main}/README.md"}, DENY),
             ("Write", {"file_path": f"{on_main}/sub/new.py"}, DENY),
@@ -4884,6 +5169,13 @@ def selftest():
             ("./deploy.sh", ASK),
             ("bash deploy.sh", ASK),
             ("python3 cleanup.py", ASK),
+            ("python3 -u cleanup.py", ASK),
+            ("python3 -uB cleanup.py", ASK),
+            ("python3 -I -W ignore cleanup.py", ASK),
+            ("python3 -Wignore -X dev cleanup.py", ASK),
+            ("python3 --check-hash-based-pycs never cleanup.py", ASK),
+            ("python3 -- cleanup.py", ASK),
+            ("python3 -c 'print(1)' cleanup.py", None),
             ("uv run --with x python cleanup.py", ASK),
             ("./mock.sh", None),
             ("sh remote.sh", ASK),
@@ -4900,13 +5192,81 @@ def selftest():
             ("bash -c 'echo deploy.sh'", None),
             ("./missing.sh", None),
         ]
-        for command, expected in script_cases:
-            got = decide("Bash", {"command": command}, True, not_repo)
-            got = got[0] if got else None
-            ok = got == expected
-            failures += not ok
-            print(f"{'ok  ' if ok else 'FAIL'} script {command!r} -> {got}"
-                  + ("" if ok else f" (want {expected})"))
+        # python -m loads a module from the working directory first, unless -I or -P.
+        for rel in ("evilmod.py", "evilpkg/__main__.py", "initpkg/__init__.py",
+                    "initpkg/sub.py", "readmod.py", "evilenv/bin/python"):
+            os.makedirs(os.path.dirname(os.path.join(not_repo, rel)), exist_ok=True)
+            with open(os.path.join(not_repo, rel), "w") as f:
+                f.write(scripts["read.sh" if rel in ("initpkg/sub.py", "readmod.py")
+                                else "deploy.sh"])
+        script_cases += [
+            ("python3 -m evilmod", ASK),
+            ("python3 -mevilmod", ASK),
+            ("python3 -u -m evilmod x", ASK),
+            ("python3 -m evilpkg", ASK),
+            ("python3 -m initpkg.sub", ASK),
+            ("uv run python3 -m evilmod", ASK),
+            ("uv run -m evilmod", ASK),
+            ("uv run -m evilmod.py", ASK),
+            ("python3 -m evilmod.py", ASK),
+            ("python3 -m evilmod.sub", ASK),
+            ("python3 -I -m evilmod.py", None),
+            ("uv run -qm evilmod", ASK),
+            ("uv run --with x --module evilmod", ASK),
+            ("uv run --python 3.12 -m evilmod", ASK),
+            ("uv run -p ./cleanup.py", ASK),
+            ("uv run --python ./cleanup.py python3 -c 'x'", ASK),
+            ("uv run -p 3.12 -m readmod", None),
+            ("uv run -p evilenv pytest", ASK),
+            ("uv run --python ./evilenv/ pytest", ASK),
+            ("uv run -w x -m evilmod", ASK),
+            ("uv run -qw x -m evilmod", ASK),
+            ("uv run -wnumpy python3 -m evilmod", ASK),
+            ("uv run -qw x python3 cleanup.py", ASK),
+            ("uv run --color never -m evilmod", ASK),
+            ("uv run --env-file e python3 cleanup.py", ASK),
+            ("uv run --group dev python3 cleanup.py", ASK),
+            ("uv run -qp ./cleanup.py", ASK),
+            ("uv run --python-preference only-system python3 cleanup.py", ASK),
+            ("uv run --max-recursion-depth 9 -m evilmod", ASK),
+            (f"cd {root} && python3 -m plain.evilmod", ASK),
+            ("python3 -I -m evilmod", None),
+            ("python3 -Pm evilmod", None),
+            ("python3 -c 'x' -m evilmod", None),
+            ("python3 -m readmod", None),
+            ("python3 -m json.tool", None),
+        ]
+        # A copy of this hook in a scratch root runs its own CLI unscanned; any other run of
+        # it, or a copy outside scratch, is scanned like any script.
+        own_dir = os.path.join(root, "own-scratch")
+        os.makedirs(own_dir)
+        own = os.path.join(own_dir, os.path.basename(__file__))
+        loose = os.path.join(not_repo, os.path.basename(__file__))
+        for copy in (own, loose):
+            with open(copy, "w") as f:
+                f.write(scripts["deploy.sh"])
+        script_cases += [
+            (f"python3 {own} --selftest", None),
+            (f"python3 {own} 'git status'", None),
+            (f"python3 {own} --open 'git status'", None),
+            (f"python3 {own} --other x", ASK),
+            (f"python3 {own} a b", ASK),
+            (f"bash {own} 'git status'", ASK),
+            (f"{own} --selftest", ASK),
+            (f"python3 {loose} --selftest", ASK),
+        ]
+        saved_scratch = GATE_SCRATCH_ROOTS
+        GATE_SCRATCH_ROOTS = (os.path.realpath(own_dir) + "/",)
+        try:
+            for command, expected in script_cases:
+                got = decide("Bash", {"command": command}, True, not_repo)
+                got = got[0] if got else None
+                ok = got == expected
+                failures += not ok
+                print(f"{'ok  ' if ok else 'FAIL'} script {command!r} -> {got}"
+                      + ("" if ok else f" (want {expected})"))
+        finally:
+            GATE_SCRATCH_ROOTS = saved_scratch
     # A write under the scratch root lands only in a path the user named.
     named = (os.path.realpath("/tmp/claude/a.diff"), os.path.realpath("/tmp/claude/out"),
              os.path.realpath("/tmp/n.txt"))

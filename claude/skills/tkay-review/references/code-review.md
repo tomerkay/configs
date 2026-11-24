@@ -189,6 +189,12 @@ A departure from `clean-code.md` keeps the colour the checklist below gives it.
 Every assessment in a CR is written in the frame of `assessment.md`, with these calls and Profiles added for what a review
 judges.
 
+**When the branch call is ✅ Merge it, I can believe it on tests:** every
+test a claim of the branch rests on ran and passed, and the branch carries
+no 🟠 of the test rule in "Rules that keep the tags honest". A 🟡 of that
+rule can sit under ✅ Merge it, and the CR names each one. A "No test" 🟠
+I merge past on my word keeps the call below ✅ Merge it, named as waved.
+
 **The Profiles.** Under the Call line of a commit:
 
 - **Commit**, in a CR: the thing as it sits in the code. Then one Fix
@@ -378,13 +384,13 @@ The usual level, the kind, and when the level moves:
 
 | What holds the merge | Usual | Kind | Moves when |
 |---|---|---|---|
-| a 🔴, or a 🟠 other than a missing test, in product code | ⛔ | code | never |
-| a 🔴, or a 🟠 other than a missing test, in anything else | ⛔ | what it is in: test code, doc or commit message | never |
+| a 🔴, or a 🟠 other than one the `no test` row holds, in product code | ⛔ | code | never |
+| a 🔴, or a 🟠 other than one the `no test` row holds, in anything else | ⛔ | what it is in: test code, doc or commit message | never |
 | a spec row not delivered | ⛔ | what delivers it: code, test code or doc | never |
 | 🗑 Drop, ❌ Drop it | ⛔ | drop | never |
-| a 🔴, or a 🟠 other than a missing test, in a plan's design, in a plan review | ⛔ | design | never |
+| a 🔴, or a 🟠 other than one the `no test` row holds, in a plan's design, in a plan review | ⛔ | design | never |
 | a 🙋 decision | ⛔ | decision | 🚧 when either answer can still be taken after the merge, and neither leaves what merged wrong |
-| a bug fix with no test that reproduces it | 🚧 | no repro test | ⛔ when the bug coming back would do harm nothing undoes |
+| a 🟠 "No test" finding of the test rule in "Rules that keep the tags honest", or a 🟠 of the "Every promise and every goal" check in `plan-review.md` | 🚧 | no test | ⛔ when its breaking would do harm nothing undoes |
 | a 🧪 UNTESTED claim | 🚧 | untested | ⛔ when the claim is what the branch exists for, and its failing would do harm |
 | ✂️ Carve out | 🚧 | carve out | never |
 
@@ -618,6 +624,12 @@ says", holding the status the spec claims.
   ⏳ Finish the work first; ❌ Missed and ❌ Breaks callers block through
   their finding; 🧪 Met untested makes it wait for the run. A spec merged
   in stages moves what a stage does not deliver to its TBD first.
+- **A row the branch delivers, whose test the spec names and the branch
+  does not have**, is 🔧 Met after fixes, never ✅ Met: the code delivers
+  the promise, and nothing pins it. The missing test is a "No test"
+  finding of the test rule in "Rules that keep the tags honest", on the
+  commit that should carry it. A row whose code is missing as well is
+  ⏳ Not reached or ❌ Missed, as their calls say.
 - **A table the spec has nothing for says so**, in one line: "No spec
   given - nothing to check the branch against." when no spec was given,
   "The spec states no <rows>." when it is silent there. The Contract table
@@ -653,7 +665,7 @@ break of it blocks:
 
 | # | Rule | Section | Usual | Blocks (🟠, or 🔴 when the failure can be shown) when |
 |---|---|---|---|---|
-| **DS1** | responsibilities | Responsibilities | 🟠 | a responsibility with no owner, or code whose owner, state or interface is not the plan's |
+| **DS1** | responsibilities | Responsibilities | 🟠 | a responsibility with no owner or split across two, or code whose owner, state or interface is not the plan's |
 | **DS2** | one reason to change | One reason to change | 🟡 | a change you can name elsewhere would break this code |
 | **DS3** | a small interface, a lot behind it | A small interface, a lot behind it | 🟡 | another service or repo will call the interface, and it exposes what a later fix would have to take back |
 | **DS4** | solid, not fragile | SOLID vs fragile | 🟡 | a small change you can name elsewhere breaks it far away, or leaves it silently wrong |
@@ -672,7 +684,7 @@ break of it blocks:
 | **IM5** | the plain version wins | The plain version wins | 🟡 | never |
 | **IM6** | every bad path is counted, then logged | Every bad path is counted, then logged | 🟠 | always: a failure nobody can see |
 | **IM7** | a check costs what its answer is worth | A check costs what its answer is worth | 🟡 | it sits on a hot path |
-| **IM8** | tests check the contract, not the code | Tests check the contract, not the code | 🟡 | a bug fix with no test that reproduces it, when a unit test could |
+| **IM8** | tests check the contract, not the code | Tests check the contract, not the code | 🟡 | a 🟠 of the test rule in "Rules that keep the tags honest" |
 | **IM9** | enums over strings | Enums over strings | 🟡 | a string value already misspelled somewhere |
 
 - **A section that holds at both levels gives a row in each**, worded for
@@ -680,9 +692,11 @@ break of it blocks:
   (**DS11**, **IM2**) and A name means one thing (**DS12**, **IM3**). A break
   goes in the row of the level it lives at, never in both: a cache nobody
   asked for is **DS10**, an unused parameter **IM1**.
-- **DS1 judges the code against the plan's responsibilities.** With no plan
-  given, it reads ➖ Irrelevant, "no plan given", and the rows under it
-  still judge the structure.
+- **DS1 judges each responsibility the branch adds.** Reading the code is
+  enough to check that each has exactly one owner: none is left without
+  one, and none is split across two. Against a plan, it also checks that
+  the code's owner, state and interface are the plan's; with no plan
+  given, "How we know" says that check was skipped.
 - **Call** - ✅ Holds, a colour and Broken with what is broken, or
   ➖ Irrelevant when the branch's code never touches the rule; "How we
   know" then says why, such as "the branch takes no lock".
@@ -1008,7 +1022,13 @@ included.
   - Clever code a plain version replaces with the same behaviour → 🟡. Clever code hiding a bug you traced → 🔴 for the bug, and the plain version is the fix.
   - Suspicious logic you traced and it's genuinely wrong → 🔴. Suspicious logic you can't prove either way → 🟠, and say what would prove it.
   - Perf: measurable regression on the per-request path → 🟠 minimum. Cold path → 🟡.
-  - Tests: a test coupled to the implementation (private state, mocked internals, a whole-object snapshot), or a test of nothing the component promises → 🟡. A bug fix with no test that reproduces it → 🟠 when a unit test through the component's public interface could fail on the unfixed code: the bug can come back and nothing will notice. When none could - a race, a failure only a live cluster shows, a fix to config alone - it is 🟡, and the bracket names which of those it is. A test that cannot fail on the bug it is named for (the expected value computed with the code's own formula, the unit under test mocked out) → 🟠: it reports green while the thing it guards is broken. "Tests check the contract, not the code" in `clean-code.md` says what a good one checks.
+  - The test rule: a test pins a promise - a behaviour the component's callers rely on, never each function behind it. "Tests check the contract, not the code" in `clean-code.md` says what a good one checks.
+    - **No test**: a promise the branch adds or changes with no test through the component's public interface → 🟠 when a unit test could fail on the code without it: the promise can break and nothing will notice. A bug fix is one, with the bug as the promise. When no unit test could - a race, a behaviour only a live cluster shows, a change to config alone - it is 🟡, and the bracket names which of those it is. A test the spec names that the branch does not have is a "No test" finding too, and that one is 🟠 whatever kind of test it is: the spec asked for it, so the branch can add it.
+    - **Every test the branch adds or changes is asked these questions**, the first two from Google's [What to look for in a code review](https://google.github.io/eng-practices/review/reviewer/looking-for.html):
+      - **Would it fail if the promise broke?** A test that cannot (the expected value computed with the code's own formula, the unit under test mocked out, an exception swallowed) → 🟠: it reports green while the thing it guards is broken.
+      - **Does it pin only what is promised?** A test that goes red when something nobody promised changes (private state, mocked internals, a whole-object snapshot, an outside service's format or timing) → 🟡, with the fix "pin only the promise".
+      - **Is it the lightest test that pins the promise?** An end-to-end run where a unit test would pin it, and the spec did not name it → 🟡, with the fix "the lighter test".
+      - **Does it pin something no other test does?** A test of nothing the component promises, or of a promise another test already pins → 🟡, with the fix "delete it" - the other test, when the spec names this one.
 - **Still report the nits.** NICE TO HAVE ≠ "don't mention". Put them below the divider where they can't be mistaken for real problems.
 - **🟠 is not a wish list.** If everything is 🟠, the colour means nothing and I'll start ignoring it. Be willing to write 🟡 and stand behind it.
 
@@ -1311,17 +1331,19 @@ And when it's clean, the FINDINGS line says so plainly - don't make a pile of ni
 FINDINGS: ⚪ 2
 
 - **Call:** ✅ Ship it
-- **Commit:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** super easy
+- **Commit:** **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Fix ⚪:** delete the comment, strip the whitespace · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
   - **1.** a request with no auth header gets a 401 instead of a 500
+  - **2.** its new test of a request with no auth header fails on the parent commit
 - **Why Not?**
   - none (checked: grepped every caller, none relied on the exception)
 
 #### MUST HAVE — 🔴🟠, blocks the merge
 None - no 🔴 and no 🟠. I traced both new branches in `extract_token()` and the
-null path is handled; metric fires on every path; no callers of the removed
-helper remain in HEAD (grepped).
+null path is handled; its new test passes here and fails on the parent
+commit; metric fires on every path; no callers of the removed helper remain
+in HEAD (grepped).
 
 ---
 
