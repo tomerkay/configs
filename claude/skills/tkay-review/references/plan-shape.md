@@ -277,10 +277,10 @@ in its bucket.
 **Read the code each commit will touch before cutting the list**, so a
 refactor it needs is found while planning, not while executing.
 
-Not a pile of edits. **Read `references/commits.md` before the first commit
+Not a pile of edits. **Read `references/commit-boundaries.md` before the first commit
 section**, and write one section per commit, cut and ordered as its section
 "Two Suits: a Fix Stands Alone, a Feature Is a Series" says. For each one: the subject
-line, the files, the tests, and **what the commit body has to say**. Each black-box
+line, the files, the tests, and **what the commit message has to say**. Each black-box
 test of the contract, and each goal's check, is listed under the commit section that
 delivers what it pins or proves. A goal whose check no commit section lists means the
 list is not done.

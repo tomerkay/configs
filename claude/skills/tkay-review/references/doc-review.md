@@ -27,5 +27,5 @@ the branch holds.
 **Its title names the repo and the branch**, `# Repo <repo> branch
 <branch> doc review`, the repo named as `code-review.md` names it in a CR's
 title. A staged diff stands in for its commit. Its findings come from the
-doc checks and the commit standard, since the rules the cut leaves out are
+doc checks and the commit checks of `code-review.md`, since the rules the cut leaves out are
 not read.

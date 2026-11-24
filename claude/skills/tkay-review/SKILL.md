@@ -35,7 +35,7 @@ skill's own `references/` so it works installed alone:
 | `references/clean-code.md` | every review but a doc review: what clean code is - every code finding is a departure from it |
 | `references/security.md` | every review but a doc review: the security questions every code change is asked |
 | `references/assessment.md` | the frame every assessment in a CR is written in |
-| `references/commits.md` | the commit standard a CR judges messages and boundaries by |
+| `references/commit-boundaries.md` | how a branch is cut into commits, which a CR judges each commit's boundaries by |
 | `references/answers.md` | how an answer, a finding included, is held to the truth |
 | `references/human-readable.md` | the plain words every line of a review is written in |
 | `references/numbered-lists.md` | how every list and table in a CR is numbered |
@@ -97,8 +97,8 @@ its line `**Doc review file:**`.
 
 ## The repo's conventions win
 
-**Where the repo documents a convention - commit message format, branch
-names, MR description sections, test style, comment style - judge by the
+**Where the repo documents a convention - how commits are cut, MR
+description sections, test style, comment style - judge by the
 repo, not by these references.** The references fill only what the repo
 leaves unsaid. When the two disagree, follow the repo and say in one line
 which rule of mine it overrode.

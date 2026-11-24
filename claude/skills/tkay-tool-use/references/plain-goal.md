@@ -18,7 +18,7 @@ answer goes into the goal as a "settled: <decision>" clause.
 ## What the run adds
 
 - **The work is the request and its settled clauses**, cut into commits as
-  the code skill's commit standard says.
+  the code skill's rules for cutting commits say.
 - **A gap that changes what a user or a caller observes, and that neither
   the request nor a settled clause decides, is a 🙋 Your call**: write it
   in the report with its scenario, options and recommendation. A live

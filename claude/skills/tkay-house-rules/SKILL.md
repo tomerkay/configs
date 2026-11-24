@@ -28,6 +28,7 @@ rule above names it:
 
 | Read | For |
 |---|---|
-| `references/commits.md` | which commit a change belongs in, and how a branch is named |
+| `references/commit-boundaries.md` | which commit a change belongs in |
+| `references/commits.md` | how a branch is named, and when a commit goes in unsigned |
 | `references/scratch-files.md` | where the files a session writes go, and how they are named |
 | `references/scratch-in-a-repo.md` | a file of the session's own that a tool reads from a repo |

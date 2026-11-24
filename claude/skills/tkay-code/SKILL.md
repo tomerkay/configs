@@ -13,7 +13,7 @@ task-specific standards.
 
 | Task | Read first |
 |---|---|
-| Writing or amending any commit message, committing at all, or naming a branch | `references/commits.md` and `references/human-readable.md` — **before you type the message** |
+| Writing or amending any commit message, committing at all, or naming a branch | `references/commits.md`, `references/commit-boundaries.md` and `references/human-readable.md` — **before you type the message** |
 | Fixing what a code review found - a CR, an MR's review threads, a review summary | `references/fixing-review-findings.md` — **before the first fix** |
 | Running a throwaway test, or handing a tool a file of your own, inside a repo | `references/scratch-in-a-repo.md` |
 | Writing or moving deploy tooling, a topology file or values — anything that decides what lives under `dev/` versus `deploy/` | `references/deploy-layout.md` — before creating or moving the file |

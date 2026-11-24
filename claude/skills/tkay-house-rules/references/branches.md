@@ -41,7 +41,7 @@ to find later. Ask only before deleting a branch you did not create.
 
 ## Where a change lands
 
-**Which commit a change belongs in is `commits.md`'s; where it lands is
+**Which commit a change belongs in is `commit-boundaries.md`'s; where it lands is
 this, and history below HEAD is mine to rewrite.** A change that belongs
 in HEAD is amended into HEAD - that needs no word from me. A change that
 belongs in a commit below HEAD lands as a new commit on top, with its own
@@ -85,7 +85,7 @@ squash.
   their SHAs, so rewording one of them is a rewrite of its own and needs my
   word.
 - **Squash and split only on my yes** to that question, or my words naming
-  them. What folds into what is decided by `commits.md`'s test of which
+  them. What folds into what is decided by `commit-boundaries.md`'s test of which
   commit a change belongs in, following a code review of the branch as it
   stands when there is one, and shown to me before the rebase starts.
 

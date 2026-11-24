@@ -876,7 +876,7 @@ Comments that go:
 
 **The test:** delete every trace of our conversation from your memory, then read the comment. If it now reads as a defence of a decision, or refers to code/bugs/alternatives that aren't in the file, it goes.
 
-**Where that content does belong:** the commit message body (which is exactly where "previously X, now Y" is required), or my chat. Not the source.
+**Where that content does belong:** the commit message, which is where "previously X, now Y" belongs, or my chat. Not the source.
 
 **What survives:** a comment stating a fact about the code as it exists that a careful reader could not deduce — a non-obvious invariant, an ordering requirement, a gotcha that will bite them. `# MUST NOT await: the loop is single-threaded, so yielding here allows a torn read` is fine. `# MUST NOT await, because I originally wrote this with an await and it broke` is not. An approach that looks right and is not gets the same form: `# MUST NOT batch these: the API rejects more than one per call` names the hazard, not the attempt.
 

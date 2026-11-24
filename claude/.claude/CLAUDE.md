@@ -27,32 +27,62 @@ name what each kind adds; the procedure itself is this one:
    writing standard, that it wrote none of the change, and **which review
    to write, by its name** - "a doc review" or "a CR", picked by the line
    above - since the standard writes a doc review only when asked for one
-   by that name. It is handed the base and staged copies, the diff - made
-   after the last edit - the commit messages and, from the second round
-   on, the previous round's review file, and **the spec: every decision I
-   made on the change, each written out as a goal the change must meet**,
-   in my own words where I gave them. It gets nothing else of the
-   session: none of its reasoning, and no hint of where to look. The
+   by that name. It is handed the base and staged copies, the whole diff
+   and each staged commit's own diff - made after the last edit - with its
+   message, under its name S1, S2, and is told that its review names each
+   commit by that name in place of a SHA; from the second round on, it is
+   also handed the previous round's review file. It is handed **the spec:
+   every decision I made on the change, each written out as a goal the
+   change must meet**, in my own words where I gave them. It gets nothing
+   else of the session: none of its reasoning, and no hint of where to look. The
    review standard's exemption for this repo spares the session its
    question; it never keeps the review in the session.
-   **Then fix and review again, up to three rounds**, each on the staged
-   copy: fix every MUST HAVE finding, every bycatch row whose call is 🔧 Add
-   fix, and every NICE TO HAVE finding and ⏸ Leave for now bycatch row in a
-   file this procedure covers whose fix is rated super easy, or small and
-   easy, with Evidence at least CONFIDENT - on the commit's Fix 🟡⚪ line or
-   the row's own Fix Profile - then review the fixed copy in the same shape,
-   since a fix lands in code the rest of the change depends on and can bring
-   a problem of its own. A bycatch fix is staged as a commit of its own,
-   installed on the same yes. The standard's question before code after a CR
-   is not asked here: a session in this repo or in `~/repos/configs` is one
-   it exempts. **The rounds end at the first review that finds nothing a
-   round fixes, or with the review after the third round**, which is the
-   final one. When the final review still finds a MUST HAVE, fix nothing
-   more and do not ask the install question: explain the problem, propose a
+   **Then fix and review again, up to three rounds, but only while the
+   review holds a MUST HAVE still open**: a 🔴 or 🟠 finding on a staged
+   commit, or a goal or promise the review calls ⏳ Not reached, ❌ Missed
+   or ❌ Breaks callers - never a bycatch row, and not one a later staged
+   commit already fixed: a fixed finding is not open, whatever its colour.
+   A MUST HAVE or a bycatch fix the review leaves as 🙋 Your call is put to
+   me as a ❓ of its own, and the round waits: it stages the option I pick,
+   never one it picks itself. Such a round fixes every MUST HAVE still
+   open, every bycatch row whose call is 🔧 Add fix, and every NICE TO HAVE
+   finding and ⏸ Leave for now bycatch row in a file this procedure covers
+   whose fix is rated super easy, or small and easy, with Evidence at least
+   CONFIDENT - on the commit's Fix 🟡⚪ line or the row's own Fix Profile -
+   then reviews the fixed copy in the same shape, since a fix lands in code
+   the rest of the change depends on and can bring a problem of its own.
+   **After a review with no MUST HAVE open, nothing is fixed**: what else
+   it found stays as it is, and the install question lists it.
+   **Each round's fixes are staged as new commits on top of the ones it
+   reviewed, one for each commit they fix, never folded into them**, so
+   every commit a round has judged keeps its diff and every fix commit
+   folds into exactly one commit on the install. Each staged commit is
+   named S1, S2 in order, and keeps a copy of the staged file as it stands
+   after it and its own diff against the copy of the commit before it: the
+   name stands in for the SHA the review standard names a commit by, and a
+   commit whose own diff and the copy before it are byte for byte the ones
+   the previous review saw is unchanged. The next round starts from the
+   previous round's review as the review standard's repeat CR does: an
+   unchanged commit keeps its findings and has its call decided again, so
+   one whose MUST HAVE a later commit fixes reads 👌 Fixed later, and the
+   round reads the new commits and judges the result at the top.
+   **The staged commits shape the review, not the install**: on the install
+   each fix commit is folded into the commit it fixes, so the change
+   installs as the commits it was proposed as. The final staged copy
+   installs in one `cp`, and each of those commits is cut from it hunk by
+   hunk, holding its own lines and those of the fixes folded into it. A
+   bycatch fix is staged as a commit of its own, installed on the same yes.
+   The standard's question before code after a CR is not asked here: a
+   session in this repo or in `~/repos/configs` is one it exempts. **The
+   rounds end at the first review with no MUST HAVE open, or with the
+   review after the third round**, which is the final one.
+   When the final review's To do still holds a MUST HAVE, fix nothing more
+   and do not ask the install question: explain the problem, propose a
    different fix as a ❓ of its own, and stop. The fix I pick is staged and
    reviewed in this same shape before the install question comes. Anything
    else the final review finds stays as it is.
-3. **Ask once**: show the diff, the last review and the commit message,
+3. **Ask once**: show the diff, the last review and the message of each
+   commit that installs,
    written by the `tkay-code` commit standard, then end the reply with
    "❓ Q<n> Install it into `<file>` and commit?", with the change's Full
    Assessment nested under it, as every proposal carries one: the call on
@@ -77,9 +107,12 @@ name what each kind adds; the procedure itself is this one:
    and the staged copy is untouched: fix the command and run it again. Then
    check the result with a plain `diff` against the new base: it must show
    the edits of the last reviewed diff and nothing else, every line read.
-   Then run steps 2 and 3 again. The macOS `diff3 -m` is never used for the
-   merge: it can drop a line at the edge of a change and still report a
-   clean merge.
+   Then run steps 2 and 3 again, with the staged commits started over on
+   the new base as the commits that install - each fix commit folded into
+   the one it fixes - named on from the last S<n>, so the next review finds
+   none of them in the previous one and reads them in full. The macOS
+   `diff3 -m` is never used for the merge: it can drop a line at the edge
+   of a change and still report a clean merge.
 5. **If the install or the commit is refused**, confirm the staged copy still
    exists, print the exact command for me as a `! <command>` and stop. Never
    reach the same change by another route.

@@ -8,7 +8,7 @@ merely imperfect:
 |-----|---------|----------------|
 | 🔴 **BUG** | Code is wrong. It will misbehave, crash, corrupt data, hang, or produce the wrong result. | You can state a concrete failure: *"input/state X → wrong output or crash at `file:line`"* |
 | 🟠 **RISK** | Not provably broken today, but a real hazard: race window, unbounded growth, missing error path, perf regression on the hot path, silent failure, broken observability. Two that look like quality and are hazards: a promise - a behaviour callers rely on, a bug fix included - with no test that pins it when a unit test could; and a label value (enum, metric label, status word) that is false for some case producing it and has not shipped yet - after it ships, renaming it breaks every dashboard and alert that reads it. | You can name the condition that triggers it (concurrency, scale, empty input, upstream error) |
-| 🟡 **QUALITY** | Behaves correctly. Structure, naming, DRY, missing log, stale docs, a weak or false commit message, a broken rule of the repo's `CLAUDE.md`. | Code is right, but whoever maintains it pays a price |
+| 🟡 **QUALITY** | Behaves correctly. Structure, naming, DRY, missing log, stale docs, a commit message that does not hold, a broken rule of the repo's `CLAUDE.md`. | Code is right, but whoever maintains it pays a price |
 | ⚪ **NIT** | Cosmetic. Whitespace, comment wording, ordering, style preference. | If I ignore it forever, nothing bad happens |
 
 **The colour is picked on the hazard, never on the kind of thing.** Docs

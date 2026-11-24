@@ -102,7 +102,7 @@ READ_PROGRAMS = {
     "ack", "fd", "ls", "tree", "stat", "file", "du", "df", "echo", "printf", "true", "false",
     "exit", "return",
     "test", "[", "[[", "which", "whereis", "type", "whoami", "id", "hostname", "uname", "date",
-    "pwd", "printenv", "jq", "sort", "uniq", "cut", "tr", "column", "diff", "cmp", "comm",
+    "pwd", "printenv", "jq", "sort", "uniq", "cut", "tr", "column", "diff", "diff3", "cmp", "comm",
     "md5", "md5sum", "sha1sum", "sha256sum", "shasum", "base64", "xxd", "od", "strings",
     "hexdump", "realpath", "dirname", "basename", "readlink", "seq", "nl", "rev", "paste",
     "fold", "expand", "bc", "dc", "sleep", "cal", "uptime", "ps", "pgrep", "lsof", "netstat",
@@ -1007,9 +1007,6 @@ def classify_awk(args):
 def classify_python(args):
     if not args or args in (["--version"], ["-V"]):
         return READ
-    # GOTCHA: this script's own CLI only classifies text, and CLAUDE.md tells the model to run it.
-    if os.path.realpath(os.path.expanduser(args[0])) == os.path.realpath(__file__):
-        return READ
     if args[0] == "-m" and len(args) > 1:
         if args[1] in ("json.tool", "tomllib"):
             return READ
@@ -1018,10 +1015,20 @@ def classify_python(args):
         if args[1] == "pip":
             return classify_pip(args[2:])
         return RUNS_CODE
-    if os.path.basename(args[0]) in PUBLISHING_SCRIPTS:
+    # The script is read past Python's own flags, so `python3 -u x.py` is rated as x.py.
+    script = python_script(args)
+    if script is None:
+        return RUNS_CODE
+    # GOTCHA: this script's own CLI only classifies text, and CLAUDE.md tells the model to run
+    # it. Python's -i then runs whatever code standard input holds.
+    if (os.path.realpath(os.path.expanduser(script)) == os.path.realpath(__file__)
+            and not any(a.startswith("-") and not a.startswith("--") and "i" in a
+                        for a in args[:args.index(script)])):
+        return READ
+    if os.path.basename(script) in PUBLISHING_SCRIPTS:
         return DANGER
-    if os.path.basename(args[0]) == "board.py":
-        return classify_board(args[1:])
+    if os.path.basename(script) == "board.py":
+        return classify_board(args[args.index(script) + 1:])
     return RUNS_CODE
 
 
@@ -1443,11 +1450,29 @@ def classify_find(args):
     return classify_words(sub) if sub is not None else READ
 
 
+# The letters of xargs's short options that take a value, BSD's and GNU's, and GNU's long ones.
+XARGS_VALUE_LETTERS = "EIJLPRSadns"
+XARGS_VALUE_OPTS = {"--arg-file", "--delimiter", "--max-args", "--max-chars", "--max-lines",
+                    "--max-procs", "--process-slot-var"}
+
+
 def xargs_rest(args):
+    """The command xargs runs, past its options as its getopt reads them: short options
+    bundle, and one that takes a value ends its word, taking the rest of it or the next."""
     rest = list(args)
     while rest and rest[0].startswith("-"):
-        takes_value = rest[0] in ("-n", "-P", "-L", "-I", "-d", "-s", "-E", "-a", "-J")
-        rest = rest[2:] if takes_value and len(rest[0]) == 2 else rest[1:]
+        a = rest.pop(0)
+        if a == "--":
+            break
+        if a.startswith("--"):
+            if a in XARGS_VALUE_OPTS and rest:
+                rest.pop(0)
+            continue
+        for k, letter in enumerate(a[1:], 2):
+            if letter in XARGS_VALUE_LETTERS:
+                if k == len(a) and rest:
+                    rest.pop(0)
+                break
     return rest
 
 
@@ -1679,6 +1704,9 @@ def classify_program(prog, args):
         return DANGER
     if prog in HANDLERS:
         return HANDLERS[prog](args)
+    # python3.N is the same interpreter as python3, as the script scan already reads it.
+    if PYTHON_RE.fullmatch(prog):
+        return classify_python(args)
     if prog in READ_PROGRAMS:
         return READ
     if prog in WRITE_PROGRAMS:
@@ -1686,43 +1714,155 @@ def classify_program(prog, args):
     return _unknown_level
 
 
-def strip_prefix(words):
-    """Drop env assignments, transparent wrappers and `timeout <args>` ahead of the program,
-    keeping GOFLAGS for a go command."""
-    words = list(words)
+# The long options of env that take a value, and the letters of its short ones that do;
+# -S's value is the command line itself.
+ENV_VALUE_OPTS = {"--unset", "--chdir"}
+ENV_VALUE_LETTERS = "uCPS"
+
+
+def env_options_split(words):
+    """env's own options and the words after them, read as env's getopt reads them: short
+    options bundle, and -u, -C and -P take their value, attached or next, each listed as an
+    option word and a value word; -S's value is split into words that are read again from
+    the start, options included; `--` ends them. The -S word and its value are in neither
+    list, since the words they stand for are."""
+    options, words = [], list(words)
+    while words and words[0].startswith("-"):
+        a = words.pop(0)
+        value = None
+        if a.startswith("--"):
+            name, eq, rest = a.partition("=")
+            if name == "--split-string":
+                value = rest if eq else (words.pop(0) if words else "")
+            else:
+                options.append(a)
+                if a == "--":
+                    break
+                if not eq and a in ENV_VALUE_OPTS and words:
+                    options.append(words.pop(0))
+                continue
+        elif a == "-":
+            options.append(a)
+        else:
+            for k, letter in enumerate(a[1:], 2):
+                if letter not in ENV_VALUE_LETTERS:
+                    options.append("-" + letter)
+                    continue
+                arg = a[k:] or (words.pop(0) if words else "")
+                if letter == "S":
+                    value = arg
+                else:
+                    options += ["-" + letter, arg]
+                break
+        if value is not None:
+            try:
+                words = shlex.split(value) + words
+            except ValueError:
+                words = [value] + words
+    return options, words
+
+
+def env_chdir(here, segment):
+    """here, moved by every -C or --chdir an env ahead of the segment's program gives, or
+    None when only the shell knows where."""
+    prefix, _ = split_prefix(segment)
+    after_env = False
+    for k, w in enumerate(prefix):
+        if w == "env":
+            after_env = True
+            continue
+        if not after_env:
+            continue
+        value = None
+        if w in ("-C", "--chdir") and k + 1 < len(prefix):
+            value = prefix[k + 1]
+        elif w.startswith("--chdir="):
+            value = w.split("=", 1)[1]
+        elif w.startswith("-C") and len(w) > 2:
+            value = w[2:]
+        if value is not None:
+            here = resolved_dir(here, value)
+    return here
+
+
+def split_prefix(words):
+    """The words ahead of the program and the words from the program on: env assignments,
+    transparent wrappers with their options, and `timeout <args>`, with an env -S value split
+    into the words it stands for, and GOFLAGS kept for a go command."""
+    prefix, words = [], list(words)
     goflags = []
     # GOTCHA: shlex leaves a bare `$` behind when nested quotes split `$(...)` apart.
     while words and (ENV_ASSIGN_RE.match(words[0]) or words[0] in TRANSPARENT or words[0] == "$"):
-        wrapper, words = words[0], words[1:]
+        wrapper = words.pop(0)
+        prefix.append(wrapper)
         if wrapper.startswith("GOFLAGS="):
             goflags = wrapper.split("=", 1)[1].split()
         if wrapper == "caffeinate":
             while words and words[0].startswith("-"):
-                words = words[2:] if words[0] in CAFFEINATE_VALUE_OPTS else words[1:]
+                n = 2 if words[0] in CAFFEINATE_VALUE_OPTS else 1
+                prefix, words = prefix + words[:n], words[n:]
+        if wrapper == "env":
+            options, words = env_options_split(words)
+            prefix = prefix + options
     if words and words[0] == "timeout":
-        words = words[1:]
+        prefix.append(words.pop(0))
         while words and (words[0].startswith("-") or re.match(r"^\d+[smhd]?$", words[0])):
-            words = words[1:]
+            prefix.append(words.pop(0))
     while words and words[0] in SYNTAX_ONLY:
-        words = words[1:]
+        prefix.append(words.pop(0))
     # Go reads GOFLAGS as flags given before its own, so they are judged as arguments.
     if goflags and words and program_of(words) == "go":
         words = words[:1] + goflags + words[1:]
-    return words
+    return prefix, words
+
+
+def strip_prefix(words):
+    """Drop env assignments, transparent wrappers and `timeout <args>` ahead of the program,
+    keeping GOFLAGS for a go command."""
+    return split_prefix(words)[1]
 
 
 def program_of(words):
     return words[0].rsplit("/", 1)[-1]
 
 
+# A non-empty PYTHON* variable, as assigned or exported.
+PYTHON_ENV_ASSIGN_RE = re.compile(r"PYTHON[A-Z0-9_]*=.")
+
+
+def exports_python_env(command):
+    """True when the command exports a non-empty PYTHON* variable, which reaches every Python
+    run after it as an assignment ahead of it does."""
+    for line in command_lines(command):
+        try:
+            segments, _ = split_line(line)
+        except ValueError:
+            continue
+        for segment in segments:
+            words = strip_prefix(segment)
+            if words and program_of(words) == "export" and any(
+                    PYTHON_ENV_ASSIGN_RE.match(w) for w in words[1:]):
+                return True
+    return False
+
+
 def classify_words(words):
-    words = strip_prefix(words)
+    prefix, words = split_prefix(words)
     if not words:
         return READ
     prog = program_of(words)
     if prog in LOOP_HEADERS:
         return READ
-    return classify_program(prog, words[1:])
+    level = classify_program(prog, words[1:])
+    # env's -P finds the program on a path the command names, so any file can run.
+    if "env" in prefix and "-P" in prefix[prefix.index("env"):]:
+        level = worst(level, RUNS_CODE)
+    # GOTCHA: Python reads its PYTHON* variables before any script: PYTHONPATH shadows a module
+    # it imports and PYTHONUSERBASE adds .pth files it runs, so a run rated a read - this hook's
+    # own CLI, json.tool - or what a uv run or a shell runs with one set can run any code.
+    if level == READ and any(PYTHON_ENV_ASSIGN_RE.match(w) for w in prefix):
+        return RUNS_CODE
+    return level
 
 
 def worst(*levels):
@@ -1918,6 +2058,8 @@ def classify_command(command):
         except ValueError:
             line_level = UNCLASSIFIED
         level = worst(level, line_level)
+    if level == READ and exports_python_env(command):
+        return RUNS_CODE
     return level
 
 
@@ -2436,7 +2578,8 @@ def runs_opaque_code(words):
     pos = positionals(args)
     if PYTHON_RE.fullmatch(prog):
         # A script the hook has its own handler for writes where its arguments say.
-        return not (args and os.path.basename(args[0]) in KNOWN_PYTHON_SCRIPTS)
+        script = python_script(args)
+        return not (script and os.path.basename(script) in KNOWN_PYTHON_SCRIPTS)
     if prog in INTERPRETERS:
         return True
     if prog == "uv":
@@ -2708,10 +2851,11 @@ def uv_run_command(here, words):
     and the words as they are: uv runs it as the segment's own command, in the directory
     its --directory names, so its writes are that command's, from there."""
     while words and program_of(words) == "uv" and uv_runs(words[1:]):
-        tail = strip_prefix(uv_run_tail(words[1:]))
+        raw = uv_run_tail(words[1:])
+        tail = strip_prefix(raw)
         if not tail:
             break
-        here, words = uv_here(here, words), tail
+        here, words = env_chdir(uv_here(here, words), raw), tail
     return here, words
 
 
@@ -2751,8 +2895,8 @@ def gate_blockers(command, cwd, run_time_dir=None):
                             if t not in HARMLESS_TARGETS
                             and not inside_gate_scratch(path_from(base, t)))
             stripped = strip_prefix(words)
-            wrappers = set(words[:len(words) - len(stripped)])
-            here, words = uv_run_command(base, stripped)
+            wrappers = set(split_prefix(words)[0])
+            here, words = uv_run_command(env_chdir(base, words), stripped)
             child = words != stripped or bool(CHILD_WRAPPERS & wrappers)
             if not words or program_of(words) in LOOP_HEADERS:
                 continue
@@ -2773,6 +2917,11 @@ def gate_blockers(command, cwd, run_time_dir=None):
             if level == RUNS_CODE or runs_opaque_code(words):
                 continue
             if prog in ("gh", "glab") and gh_writes_remote_only(args):
+                continue
+            # xargs adds its input's words to the command it runs, so the files a write
+            # through it reaches are not in the text.
+            if prog == "xargs":
+                blockers.append(words)
                 continue
             if prog == "git":
                 target = git_target_dir(here, args)
@@ -2814,14 +2963,19 @@ def gate_blockers(command, cwd, run_time_dir=None):
                 continue
             if prog in ("sed", "gsed") and sed_edits_only_scratch(here, args):
                 continue
-            if PYTHON_RE.fullmatch(prog) and args and os.path.basename(args[0]) == "board.py":
+            script = python_script(args) if PYTHON_RE.fullmatch(prog) else None
+            if script and os.path.basename(script) == "board.py":
                 # Its only file in a repo can be the --out of a fetch or shot: login saves the
                 # browser session under ~/.agent-browser, and publish writes to Grafana.
-                out = board_out(args[1:])
+                out = board_out(args[args.index(script) + 1:])
                 if out is None or inside_gate_scratch(path_from(here, out)):
                     continue
             if prog == "go" and go_writes_into_scratch(here, args):
                 continue
+            if prog == "patch":
+                files = patch_writes(here, args)
+                if files and all(inside_gate_scratch(path_from(here, f)) for f in files):
+                    continue
             if prog == "helm" and not HELM_ENV_RE.search(command) \
                     and (helm_dependency_writes_into_scratch(here, args)
                          or helm_repo_writes_outside_repos(here, args)):
@@ -2846,7 +3000,7 @@ def gate_blockers(command, cwd, run_time_dir=None):
                 continue
             # go generate and go work sync write where directives and the workspace say, so
             # go keeps the rules above.
-            if prog not in SCRATCH_WRITERS | MODE_WRITERS | {"go"} \
+            if prog not in SCRATCH_WRITERS | MODE_WRITERS | {"go", "patch"} \
                     and writes_outside_roots(here, args):
                 continue
             blockers.append(words)
@@ -2855,6 +3009,62 @@ def gate_blockers(command, cwd, run_time_dir=None):
                         if t not in HARMLESS_TARGETS
                         and not inside_gate_scratch(path_from(base, t)))
     return blockers
+
+
+# The options of patch a pass is decided for, spelled in full: any other one, an
+# abbreviation included, holds the patch, since it may move where patch writes.
+PATCH_FLAGS = {"-b", "--backup", "-c", "--context", "-e", "--ed", "-E", "--remove-empty-files",
+               "-f", "--force", "-l", "--ignore-whitespace", "-n", "--normal", "-N", "--forward",
+               "-R", "--reverse", "-s", "--quiet", "--silent", "-t", "--batch", "-u", "--unified"}
+PATCH_VALUE_OPTS = {"-p": "-p", "--strip": "-p", "-i": "-i", "--input": "-i", "-o": "-o",
+                    "--output": "-o", "-r": "-r", "--reject-file": "-r", "-z": "-z",
+                    "--suffix": "-z", "-F": "-F", "--fuzz": "-F", "-V": "-V",
+                    "--version-control": "-V"}
+# A line that starts a file's changes in a patch file, past the indentation patch skips.
+PATCH_START_RE = re.compile(r"[ \tX]*(?:(\+\+\+|---) |\*\*\* |Index:|diff |Prereq:"
+                            r"|\d+(?:,\d+)?[acd](?:\d+(?:,\d+)?)?\s*$)")
+
+
+def patch_writes(here, args):
+    """The files a patch writes, as typed, or [] when the hook cannot name them all: the -o
+    file, else the file it is given, and a -r reject file. patch applies every other file's
+    changes the patch file holds to the file it names, so the patch file must be readable
+    and hold one unified diff of one file."""
+    options, files, i = {}, [], 0
+    while i < len(args):
+        a = args[i]
+        name, eq, value = a.partition("=")
+        if a.startswith("--") and eq and name in PATCH_VALUE_OPTS:
+            options[PATCH_VALUE_OPTS[name]] = value
+        elif a in PATCH_VALUE_OPTS and i + 1 < len(args):
+            options[PATCH_VALUE_OPTS[a]] = args[i + 1]
+            i += 1
+        elif not a.startswith("--") and len(a) > 2 and a[:2] in PATCH_VALUE_OPTS:
+            options[a[:2]] = a[2:]
+        elif a in PATCH_FLAGS:
+            pass
+        elif a.startswith("-"):
+            return []
+        else:
+            files.append(a)
+        i += 1
+    patch_file = options.get("-i") or (files[1] if len(files) > 1 else None)
+    path = patch_file and path_from(here, patch_file)
+    if not path:
+        return []
+    try:
+        with open(path, errors="replace") as f:
+            starts = sorted(m.group(1) or "other" for m in map(PATCH_START_RE.match, f) if m)
+    except OSError:
+        return []
+    # One unified diff of one file: patch writes each other file a header names, in any
+    # diff format and at any indentation.
+    if starts != ["+++", "---"]:
+        return []
+    out = options.get("-o")
+    target = [out] if out else files[:1]
+    reject = options.get("-r")
+    return target + [reject] if target and reject else target
 
 
 def path_from(here, path):
@@ -2962,12 +3172,22 @@ SED_SAFE_SUBSTITUTE_FLAGS = set("gIipmM0123456789")
 SED_LINE_ADDRESS_RE = re.compile(r"^(?:\d+|\$)(?:,(?:\d+|\$))?")
 
 
-def sed_substitution(script):
-    """True when script is one or more s commands, apart by `;` or a newline, each on every
-    line or on a line number or range, whose flags neither write (w) nor run (e) anything."""
+def sed_edits_only_its_file(script):
+    """True when script is one or more s or d commands, apart by `;` or a newline, each on
+    every line or on a line number or range, an s whose flags neither write (w) nor run (e)
+    anything: a d only drops lines from the file sed edits."""
     rest = script
     while True:
         rest = SED_LINE_ADDRESS_RE.sub("", rest.lstrip(), count=1)
+        if rest[:1] == "d":
+            tail = rest[1:]
+            stop = re.search(r"[;\n]", tail)
+            if (tail[:stop.start()] if stop else tail).strip():
+                return False
+            if not stop or not tail[stop.end():].strip():
+                return True
+            rest = tail[stop.end():]
+            continue
         if len(rest) < 4 or rest[0] != "s" or rest[1] in "\\\n":
             return False
         delim, seen, i = rest[1], 0, 2
@@ -2990,8 +3210,8 @@ def sed_substitution(script):
 
 
 def sed_edits_only_scratch(here, args):
-    """True when sed edits in place with substitutions alone, and every file it edits lies in
-    a gate scratch root.
+    """True when sed edits in place with substitutions and deletes alone, and every file it
+    edits lies in a gate scratch root.
 
     GOTCHA: BSD sed, the one macOS ships, takes the word after a bare -i (or after a flag
     cluster ending in i) as the backup suffix, and GNU sed does not. Only '' or a word
@@ -3040,7 +3260,7 @@ def sed_edits_only_scratch(here, args):
     if not scripts and pos:
         scripts.append(pos.pop(0))
     return (in_place and bool(scripts) and bool(pos)
-            and all(sed_substitution(s) for s in scripts)
+            and all(sed_edits_only_its_file(s) for s in scripts)
             and all(inside_gate_scratch(path_from(here, p)) for p in pos))
 
 
@@ -3129,7 +3349,7 @@ def pin_decisions(prog, args):
     elif prog == "glab" and creates_remote_tag(args):
         out.append((ASK, "creates a tag or release on the remote, which can start its release "
                          f"pipeline: {ON_WORDS}"))
-    elif prog in PUBLISHING_SCRIPTS or (prog in ("python", "python3", "uv") and any(
+    elif prog in PUBLISHING_SCRIPTS or ((PYTHON_RE.fullmatch(prog) or prog == "uv") and any(
             os.path.basename(a) in PUBLISHING_SCRIPTS for a in positionals(args))):
         out.append((ASK, "runs a script that pushes images and moves shared registry tags: "
                          f"{ON_WORDS}"))
@@ -3452,17 +3672,15 @@ def module_of(words):
 
 
 # The environment variables the scans read, followed through export and unset.
-TRACKED_ENV = ("PYTHONPATH",)
+TRACKED_ENV = ("PYTHONPATH", "UV_PYTHON")
 
 
 def prefix_assignments(segment):
     """The NAME=value words ahead of the program, through every `uv run` layer, in order."""
-    words = strip_prefix(segment)
-    found = segment[:len(segment) - len(words)]
+    found, words = split_prefix(segment)
     while words and program_of(words) == "uv" and uv_runs(words[1:]):
-        raw = uv_run_tail(words[1:])
-        words = strip_prefix(raw)
-        found = found + raw[:len(raw) - len(words)]
+        prefix, words = split_prefix(uv_run_tail(words[1:]))
+        found = found + prefix
     return [w for w in found if ENV_ASSIGN_RE.match(w)]
 
 
@@ -3510,29 +3728,50 @@ def import_roots(here, segment, letters, exported):
     return roots
 
 
-def uv_interpreter_of(segment):
-    """The file `uv run` is given as its interpreter with -p or --python, or by a UV_PYTHON
-    assignment ahead of it, which uv takes as --python, or None when none is given. uv runs
-    it to query it. The option wins over the assignment, as it does in uv."""
+# The options of `uv python find` that take a value, besides uv's global ones.
+UV_PYTHON_FIND_VALUE_FLAGS = ("--script", "--python-downloads-json-url")
+
+
+def uv_interpreter_of(segment, exported):
+    """The interpreter a uv or uvx command is given, which uv runs to query it: the value of
+    -p or --python, the request `uv python find` names, else the UV_PYTHON the command sees,
+    or None when none is given. The option wins over the environment, as it does in uv."""
     words = strip_prefix(segment)
-    if not words or program_of(words) != "uv" or not uv_runs(words[1:]):
+    if not words or program_of(words) not in ("uv", "uvx"):
         return None
-    assigned = [w.split("=", 1)[1] for w in segment[:len(segment) - len(words)]
-                if w.startswith("UV_PYTHON=")]
-    options = uv_run_options(words[1:])
+    args = words[1:]
+    fallback = env_value("UV_PYTHON", segment, exported) or None
+    if program_of(words) == "uvx":
+        options = args
+    elif uv_runs(args):
+        options = uv_run_options(args)
+    else:
+        i = uv_subcommand(args)
+        if i is None:
+            return None
+        if args[i] == "python" and args[i + 1:i + 2] == ["find"]:
+            rest = args[i + 2:]
+            k = 0
+            while k < len(rest) and rest[k].startswith("-"):
+                k += 2 if rest[k] in UV_GLOBAL_VALUE_FLAGS + UV_PYTHON_FIND_VALUE_FLAGS else 1
+            if k < len(rest):
+                return rest[k]
+        options = args
     for i, a in enumerate(options):
         nxt = options[i + 1] if i + 1 < len(options) else ""
         if a.startswith("--python="):
             value = a.split("=", 1)[1]
         elif a == "--python":
             value = nxt
-        elif not a.startswith("--") and uv_short_flags(a)[0].endswith("p"):
+        # Only a word that starts with a dash is a bundle of short options.
+        elif (a.startswith("-") and not a.startswith("--")
+              and uv_short_flags(a)[0].endswith("p")):
             letters, next_word = uv_short_flags(a)
             value = nxt if next_word else a[len(letters) + 1:].lstrip("=")
         else:
             continue
         return value or None
-    return assigned[-1] if assigned and assigned[-1] else None
+    return fallback
 
 
 def uv_interpreter_file(here, value):
@@ -3644,10 +3883,16 @@ def script_decisions(command, cwd, exported=None):
                 shell_vars.update(w.split("=", 1) for w in segment if ENV_ASSIGN_RE.match(w))
             if track_exports(words, shell_vars, exported):
                 continue
+            # xargs runs the command after its own options, with the input's words added.
+            while words and program_of(words) == "xargs":
+                segment = xargs_rest(words[1:])
+                words = strip_prefix(segment)
             # A shell's -c body runs as commands of its own, in a shell of its own, so its
             # scripts and modules are scanned like the line's, with the variables it is
             # handed, and its cd moves nothing here.
-            inner_at, inner = uv_run_command(here, words)
+            # env's -C moves where the program runs, not the shell.
+            seg_here = env_chdir(here, segment)
+            inner_at, inner = uv_run_command(seg_here, words)
             if inner and program_of(inner) in ("bash", "sh", "zsh", "dash"):
                 body = shell_body(inner[1:])
                 if body is not None:
@@ -3660,8 +3905,8 @@ def script_decisions(command, cwd, exported=None):
             # uv's --directory moves where the segment's files are found, not the shell: the
             # command uv runs is found from every --directory down to it, and the interpreter
             # uv queries from the outer uv's own.
-            ran_at, _ = uv_run_command(here, words)
-            at = uv_here(here, words)
+            ran_at, _ = uv_run_command(seg_here, words)
+            at = uv_here(seg_here, words)
             module = module_of(words)
             if module:
                 name, letters = module
@@ -3670,10 +3915,21 @@ def script_decisions(command, cwd, exported=None):
             script = script_of(words)
             if script:
                 out.extend(script_file_decisions(ran_at, words, script))
-            interpreter = uv_interpreter_of(segment)
-            interpreter_file = interpreter and uv_interpreter_file(at, interpreter)
-            if interpreter_file:
-                out.extend(script_file_decisions(at, words, interpreter_file))
+            # Each uv a `uv run` runs queries its own interpreter, from its own directory.
+            layer, layer_at = segment, at
+            while True:
+                interpreter = uv_interpreter_of(layer, exported)
+                interpreter_file = interpreter and uv_interpreter_file(layer_at, interpreter)
+                if interpreter_file:
+                    out.extend(script_file_decisions(layer_at, words, interpreter_file))
+                layer_words = strip_prefix(layer)
+                if not (layer_words and program_of(layer_words) == "uv"
+                        and uv_runs(layer_words[1:])):
+                    break
+                layer = uv_run_tail(layer_words[1:])
+                if not strip_prefix(layer):
+                    break
+                layer_at = uv_here(env_chdir(layer_at, layer), layer)
     return out
 
 
@@ -5011,6 +5267,30 @@ def selftest():
         ("uv sync -V", WRITE),
         ("uv --version", READ),
         ("uv -q -V", READ),
+        ("env -i ls", READ),
+        ("diff3 -m a base b", READ),
+        ("python3.12 x.py", RUNS_CODE),
+        ("python3.12 -m json.tool f", READ),
+        ("python3.12 build_vllm_overlay.py", DANGER),
+        ("python3 -u build_vllm_overlay.py", DANGER),
+        ("python3 -W ignore build_vllm_overlay.py --push", DANGER),
+        (f"python3 -u {__file__} 'git status'", READ),
+        (f"python3 -u -i {__file__} 'git status'", RUNS_CODE),
+        (f"PYTHONINSPECT=1 python3 {__file__} 'git status'", RUNS_CODE),
+        (f"env PYTHONINSPECT=x python3 {__file__} 'git status'", RUNS_CODE),
+        (f"PYTHONINSPECT= python3 {__file__} 'git status'", READ),
+        (f"PYTHONPATH=pyp python3 {__file__} 'git status'", RUNS_CODE),
+        (f"PYTHONPATH=pyp uv run python3 {__file__} 'git status'", RUNS_CODE),
+        (f"export PYTHONPATH=pyp; python3 {__file__} 'git status'", RUNS_CODE),
+        ("PYTHONUSERBASE=ub python3 -m json.tool f.json", RUNS_CODE),
+        ("export PYTHONPATH=", READ),
+        ("env -u HOME sed -i s/a/b/ f", WRITE),
+        ("env -iu HOME sed -i s/a/b/ f", WRITE),
+        ("env -P /x ls", RUNS_CODE),
+        ("env -iP/x ls", RUNS_CODE),
+        ("env -S '-P /x ls'", RUNS_CODE),
+        ("env -S '-i sed -i s/a/b/ f'", WRITE),
+        ("env --split-string='sed -i s/a/b/ f'", WRITE),
         ("python3 /x/run.py", RUNS_CODE),
         ("python3 -c 'print(1)'", RUNS_CODE),
         ("perl -e 'print 1'", RUNS_CODE),
@@ -5130,6 +5410,17 @@ def selftest():
         saved_roots = GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS
         scratch_dir = os.path.join(root, "scratch")
         os.makedirs(scratch_dir)
+        with open(os.path.join(scratch_dir, "p.diff"), "w") as f:
+            f.write("--- f.md\n+++ f.md\n@@ -1 +1 @@\n-a\n+b\n")
+        with open(os.path.join(scratch_dir, "multi.diff"), "w") as f:
+            f.write("--- f.md\n+++ f.md\n@@ -1 +1 @@\n-a\n+b\n"
+                    "--- README.md\n+++ README.md\n@@ -1 +1 @@\n-a\n+b\n")
+        with open(os.path.join(scratch_dir, "mixed.diff"), "w") as f:
+            f.write("--- f.md\n+++ f.md\n@@ -1 +1 @@\n-a\n+b\n*** README.md\n--- README.md\n"
+                    "***************\n*** 1 ****\n! a\n--- 1 ----\n! b\n")
+        with open(os.path.join(scratch_dir, "indent.diff"), "w") as f:
+            f.write("--- f.md\n+++ f.md\n@@ -1 +1 @@\n-a\n+b\n"
+                    " --- README.md\n +++ README.md\n @@ -1 +1 @@\n -a\n +b\n")
         GATE_SCRATCH_ROOTS = (os.path.realpath(scratch_dir) + "/",)
         REPO_ROOTS = (os.path.realpath(root) + "/",)
         TMP_ROOT = os.path.realpath(root) + "/harness/"
@@ -5155,7 +5446,13 @@ def selftest():
              DENY),
             ("Bash", {"command": f"sed -i '' 's/a/b/; s/c/d/w {on_main}/out' {scratch_dir}/f.md"},
              DENY),
-            ("Bash", {"command": f"sed -i '' 's/a/b/; 3d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' 's/a/b/; 3d' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' '62,151d' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' '$d' {scratch_dir}/f.md"}, None),
+            ("Bash", {"command": f"sed -i '' '62,151d' {on_main}/README.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '/x/d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '3dw {on_main}/out' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '3d; w {on_main}/out' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i '' 's/a/b/; s/c/d/e' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i '' 's/a/b/; s/c/d/' {on_main}/README.md"}, DENY),
             ("Bash", {"command": f"ln -s ../../x/a.md {scratch_dir}/a.md"}, None),
@@ -5165,7 +5462,7 @@ def selftest():
             ("Bash", {"command": f"ln -s ../x/a.md ../x/b.md {scratch_dir}/d"}, None),
             ("Bash", {"command": f"sed -i '' 3s/a/b/ {on_main}/README.md"}, DENY),
             ("Bash", {"command": f"sed -i '' '3s/a/b/w {on_main}/out' {scratch_dir}/f.md"}, DENY),
-            ("Bash", {"command": f"sed -i '' '3d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '3d' {scratch_dir}/f.md"}, None),
             ("Bash", {"command": f"sed -i '' '/x/s/a/b/' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i 's/a/b/' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -Ei 's/a+/b/' {scratch_dir}/f.md"}, DENY),
@@ -5174,7 +5471,7 @@ def selftest():
              DENY),
             ("Bash", {"command": f"sed -i '' 's/a/b/w {on_main}/out' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i '' 's/a/b/e' {scratch_dir}/f.md"}, DENY),
-            ("Bash", {"command": f"sed -i '' '1d' {scratch_dir}/f.md"}, DENY),
+            ("Bash", {"command": f"sed -i '' '1d' {scratch_dir}/f.md"}, None),
             ("Bash", {"command": f"sed -i '' -f {scratch_dir}/s.sed {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed -i '/x/' 's/a/b/' {scratch_dir}/f.md"}, DENY),
             ("Bash", {"command": f"sed --in-place=../x 's/a/b/' {scratch_dir}/f.md"}, DENY),
@@ -5278,6 +5575,46 @@ def selftest():
             ("Bash", {"command": f"uv run -q uv run touch {on_main}/x"}, DENY),
             ("Bash", {"command": f"uv run cd {scratch_dir} && touch x"}, DENY),
             ("Bash", {"command": f"env cd {scratch_dir}; touch x"}, DENY),
+            ("Bash", {"command": f"patch {scratch_dir}/f.md {scratch_dir}/p.diff"}, None),
+            ("Bash", {"command": f"patch {scratch_dir}/f.md {scratch_dir}/multi.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && patch f.md multi.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && xargs patch f.md mixed.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && echo {on_main}/README.md "
+                                 "| xargs sed -i '' s/a/b/"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && echo f.md | xargs cat"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && patch f.md mixed.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && patch f.md indent.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && patch f.md p.diff"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && patch --out={on_main}/README.md f.md p.diff"},
+             DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && patch -b -B {on_main}/x- f.md p.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && patch -g 1 {on_main}/README.md p.diff"}, DENY),
+            ("Bash", {"command": f"patch -p1 -o {scratch_dir}/out.md -i {scratch_dir}/p.diff "
+                                 f"{on_main}/README.md"}, None),
+            ("Bash", {"command": f"patch {on_main}/README.md {scratch_dir}/p.diff"}, DENY),
+            ("Bash", {"command": f"patch -p1 < {scratch_dir}/p.diff"}, DENY),
+            ("Bash", {"command": f"patch -d {scratch_dir} -p1 -i {scratch_dir}/p.diff"}, DENY),
+            ("Bash", {"command": f"patch -r {on_main}/x.rej {scratch_dir}/f.md "
+                                 f"{scratch_dir}/p.diff"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && env -C {on_main} sed -i '' s/a/b/ README.md"},
+             DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && env -C {on_main} -S 'sed -i s/a/b/ README.md'"},
+             DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && caffeinate -i env -C {on_main} "
+                                 "-S 'sed -i s/a/b/ README.md'"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && GOFLAGS=-v env -C {on_main} go mod tidy"},
+             DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && env --chdir={on_main} touch README.md"},
+             DENY),
+            ("Bash", {"command": f"env -C {scratch_dir} sed -i '' 's/a b/c/' f.md"}, None),
+            ("Bash", {"command": f"cd {scratch_dir} && env -iC {on_main} sed -i '' s/a/b/ README.md"},
+             DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && env -iC{on_main} sed -i '' s/a/b/ README.md"},
+             DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && env -S '-C{on_main} touch README.md'"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && env -i -S '-C {on_main} touch README.md'"},
+             DENY),
+            ("Bash", {"command": f"env -iC{scratch_dir} sed -i '' 's/a b/c/' f.md"}, None),
             ("Bash", {"command": f"cd {scratch_dir} && uv run --directory {on_main} "
                                  "sed -i '' s/a/b/ README.md"}, DENY),
             ("Bash", {"command": f"cd {on_main} && uv --directory {scratch_dir} run "
@@ -5408,6 +5745,23 @@ def selftest():
             ("env UV_PYTHON=evilenv uv run pytest", ASK),
             ("UV_PYTHON=./cleanup.py uv run -p 3.12 pytest", None),
             ("UV_PYTHON=3.12 uv run -m readmod", None),
+            ("export UV_PYTHON=./cleanup.py && uv run pytest", ASK),
+            ("export UV_PYTHON=./cleanup.py; unset UV_PYTHON; uv run pytest", None),
+            ("UV_PYTHON=./cleanup.py; export UV_PYTHON; uv run pytest", ASK),
+            ("export UV_PYTHON=./cleanup.py; bash -c 'uv run pytest'", ASK),
+            ("UV_PYTHON=./cleanup.py bash -c 'uv run pytest'", ASK),
+            ("uv sync -p ./cleanup.py", ASK),
+            ("uv venv --python evilenv", ASK),
+            ("uv pip install -p ./cleanup.py x", ASK),
+            ("uv python find ./cleanup.py", ASK),
+            ("uv python find --color never ./cleanup.py", ASK),
+            ("uvx -p ./cleanup.py ruff", ASK),
+            ("uvx --from x -p ./cleanup.py ruff", ASK),
+            ("UV_PYTHON=./cleanup.py uv sync", ASK),
+            ("uv run --with xp -p ./cleanup.py pytest", ASK),
+            ("uv sync -p 3.12", None),
+            ("uv run uv run -p ./cleanup.py pytest", ASK),
+            ("python3.12 build_vllm_overlay.py", ASK),
             ("PYTHONPATH=pyp python3 -m evilpp", ASK),
             ("env PYTHONPATH=x:pyp python3 -P -m evilpp", ASK),
             ("PYTHONPATH=pyp uv run -m evilpp", ASK),
@@ -5432,6 +5786,22 @@ def selftest():
             ("uv run -p ./cleanup.py bash -c 'true'", ASK),
             ("PYTHONPATH=pyp bash -c 'python3 -m evilpp'", ASK),
             ("export PYTHONPATH=pyp; bash -c 'python3 -m evilpp'", ASK),
+            ("env -i python3 cleanup.py", ASK),
+            ("env -u HOME PYTHONPATH=pyp python3 -m evilpp", ASK),
+            ("env -S 'python3 cleanup.py'", ASK),
+            ("echo x | xargs python3 cleanup.py", ASK),
+            ("echo x | xargs -n 1 python3 -m evilmod", ASK),
+            ("echo x | xargs -I{} python3 readmod.py {}", None),
+            ("echo x | xargs -R 1 -I{} python3 cleanup.py {}", ASK),
+            ("echo x | xargs -S 255 -I{} python3 cleanup.py {}", ASK),
+            ("echo x | xargs -0n 1 python3 cleanup.py", ASK),
+            ("echo x | xargs --max-args 1 python3 cleanup.py", ASK),
+            ("env -C pyp python3 evilpp.py", ASK),
+            ("env -C pyp -S 'python3 evilpp.py x y'", ASK),
+            ("env -S 'PYTHONPATH=pyp python3 -m evilpp'", ASK),
+            ("caffeinate -i env -S 'PYTHONPATH=pyp python3 -m evilpp'", ASK),
+            ("env -iC pyp python3 evilpp.py", ASK),
+            ("env -S '-i PYTHONPATH=pyp python3 -m evilpp'", ASK),
             (f"cd {root} && python3 -m plain.evilmod", ASK),
             ("python3 -I -m evilmod", None),
             ("python3 -Pm evilmod", None),

@@ -15,7 +15,8 @@ FENCE_RE = re.compile(r"^\s*(```|~~~)")
 # The variation selector after ⚖, 🗑 and ⏸ is optional: both spellings render as the same
 # symbol.
 CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Strongly don't|❌ Don't)"
-CR_CALL = (r"(✅ Ship it|👌 Fixed later|🔧 Needs change|🪓 Split|📝 Reword|🔀 Squash into"
+CR_CALL = (r"(✅ Ship it|👌 Fixed later|🔧 Needs change|🪓 Split|📝 Reword|📭 Missing description"
+           r"|🔀 Squash into"
            r"|🗑️? Drop|✅ Merge it|🔧 Merge after fixes|✂️? Split first|⚖️? Close call|❌ Don't merge"
            r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|⏸️? Leave for now"
            r"|🧪 Needs test|🧪 Merge after tests|⏳ Finish the work first"

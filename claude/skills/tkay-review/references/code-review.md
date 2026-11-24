@@ -1,6 +1,6 @@
 # Code Review Standards
 
-`clean-code.md`, `security.md`, `commits.md`, `assessment.md`,
+`clean-code.md`, `security.md`, `commit-boundaries.md`, `assessment.md`,
 `severity.md`, `bycatch.md`, `writing-mds.md` and
 `copied-stale-and-personal.md` sit beside this file in `references/`; this
 skill's SKILL.md says what each is for.
@@ -36,8 +36,9 @@ commit judged against the one before it, and nobody judging what lands.
   blocks.
 - **The commit calls never read greener than the outcome.** If the branch
   at HEAD is broken, at least one row of the In short table is none of
-  `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword` and
-  `🔀 Squash into`: a fix that HEAD does not hold is no fix.
+  `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword`,
+  `📭 Missing description` and `🔀 Squash into`: a fix that HEAD does not
+  hold is no fix.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
@@ -253,7 +254,9 @@ in. Size and Difficulty describe the thing as it is.
 - **🪓 Split (<the parts>)** - nothing blocks it, but it does more than one
   thing; the brackets name the commits it splits into.
 - **📝 Reword (<the reason in a few words>)** - nothing blocks it, but its
-  message is false or misleading; a new message fixes it.
+  message does not hold; a new message fixes it.
+- **📭 Missing description** - nothing blocks it, but its message has
+  nothing under its subject line; a description fixes it.
 - **🔀 Squash into `<sha>` (<which message survives>)** - nothing blocks
   it, but it belongs inside that commit, earlier or later.
 - **🗑 Drop** - the branch is better without it.
@@ -283,8 +286,8 @@ way is not what the branch does - the worst row deciding, in the order ❌,
 **A change** - one thing a branch under review does, as it lands:
 
 - **✅ Keep it** - the change is right and every commit it lives in is
-  ✅ Ship it, 👌 Fixed later, 🪓 Split, 📝 Reword or 🔀 Squash into - the
-  calls whose code is right, which differ only in what the commit needs.
+  ✅ Ship it, 👌 Fixed later, 🪓 Split, 📝 Reword, 📭 Missing description or
+  🔀 Squash into - the calls whose code is right, which differ only in what the commit needs.
 - **🔧 Needs fixes** - the change is right, and a commit it lives in must
   change first; the brackets name the commit and what it needs.
 - **🧪 Needs test** - the change is right as far as the code shows, and a
@@ -376,7 +379,7 @@ shape:
 - **A commit, bycatch or change whose Profile reads DOUBTFUL,
   REFUTED or UNKNOWN never gets a go-ahead call**, and neither does an entry
   or a branch it decides: never ✅ Ship it, 👌 Fixed later, 🪓 Split, 📝 Reword,
-  🔀 Squash into, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first, ✅ Keep it,
+  📭 Missing description, 🔀 Squash into, ✅ Merge it, 🔧 Merge after fixes, ✂️ Split first, ✅ Keep it,
   🔧 Needs fixes, ✂️ Carve out or 🔧 Add fix.
 
 ### Hard and soft merge blockers
@@ -554,8 +557,8 @@ never folded into one entry where a weak part hides behind a strong one.
   how hard it is to get right. A commit's Profile judges the commit alone,
   and what a fix costs is in the commit's row.
 - **The call follows the commits it names.** `✅ Keep it` only when every
-  one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword` or
-  `🔀 Squash into`; `🧪 Needs test` when one or more is `🧪 Needs test` and
+  one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword`,
+  `📭 Missing description` or `🔀 Squash into`; `🧪 Needs test` when one or more is `🧪 Needs test` and
   the rest are among those, naming the run; `🙋 Needs your call` when one
   is, naming the decision; any other commit call makes it `🔧 Needs
   fixes`, naming the commit and what it needs, unless the change itself
@@ -776,10 +779,11 @@ shape "Mandatory output shape per commit" gives, in branch order.
 | `👌 Fixed later (by <sha>)` | its 🔴 or 🟠 are fixed by a later commit on the branch, named in the bracket. Alone it says who fixes it, never that a squash follows; the bracket adds `which squashes in` when one does |
 | `🔧 Needs change` | a 🔴 or 🟠 in the code, and amending this commit fixes it. A 🧪 beside it keeps its `Test 🧪` Profile, and the run waits for the fix |
 | `🙋 Needs your call (<the decision>)` | a 🔴 or 🟠 whose fix is a choice only I can make, written out as "🙋 Your call" says. It outranks 🔧 Needs change: the other fixes wait on the answer |
-| `🧪 Needs test (<the run>)` | no 🔴 or 🟠, and a 🧪 UNTESTED finding. Once I accept the commit untested, the bracket reads `accepted untested`, and the call stays: the commit is still unrun. A commit that also needs 🪓 Split or 📝 Reword keeps this call, and its reason names the other need too. A `🔀 Squash into` or `🗑 Drop` keeps its own call, and the 🧪 moves with a squash to the commit it lands in |
-| `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in `commits.md`. It works as it is, so it blocks nothing. A `Bycatch:` bullet that is not one simple line is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
-| `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message is false or misleading - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing. When the message and the code disagree, the review says which side is wrong before it picks the call: the code right and the message not is this call; the message describing what the code should have done and the code not doing it is a 🔴 or 🟠 on the code and `🔧 Needs change`; and no way to tell which was meant is a 🟠 on the commit and `🔧 Needs change (message and code disagree)`, the finding stating both readings, what would settle it, and a fix for each |
-| `🔀 Squash into <sha> (<which message survives>)` | it only exists because another commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `commits.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction. It works as it is, so it blocks nothing. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the squash too |
+| `🧪 Needs test (<the run>)` | no 🔴 or 🟠, and a 🧪 UNTESTED finding. Once I accept the commit untested, the bracket reads `accepted untested`, and the call stays: the commit is still unrun. A commit that also needs 🪓 Split, 📝 Reword or 📭 Missing description keeps this call, and its reason names the other need too. A `🔀 Squash into` or `🗑 Drop` keeps its own call, and the 🧪 moves with a squash to the commit it lands in |
+| `🪓 Split (<the parts>)` | no 🔴 or 🟠, but it does more than one thing a reader, a revert or a bisect would want apart - the one-thing test in `commit-boundaries.md`. It works as it is, so it blocks nothing. A fix the message lists as found on the way, which needs a reason of its own, is the usual sign. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the split too |
+| `📝 Reword (<the reason>)` | no 🔴 or 🟠, but its message does not hold - a claim the diff does not back, or a behaviour change the diff makes that the message leaves out - a 🟡 in the message with the code right. Only the message changes, so it blocks nothing. When the message and the code disagree, the review says which side is wrong before it picks the call: the code right and the message not is this call; the message describing what the code should have done and the code not doing it is a 🔴 or 🟠 on the code and `🔧 Needs change`; and no way to tell which was meant is a 🟠 on the commit and `🔧 Needs change (message and code disagree)`, the finding stating both readings, what would settle it, and a fix for each |
+| `📭 Missing description` | no 🔴 or 🟠, and its message holds, but it has nothing under its subject line - a 🟡 in the message with the code right. A description fixes it, so it blocks nothing. A message that also does not hold is `📝 Reword`, its reason naming both |
+| `🔀 Squash into <sha> (<which message survives>)` | it only exists because another commit on the branch got something wrong or left it half done, or the two read better as one — apart they hide what the branch does — the squash rule in `commit-boundaries.md`. Never a fix for a bug that reached the default branch or a release, which stands alone in either direction. It works as it is, so it blocks nothing. A commit that also has a 🔴 or 🟠 is `🔧 Needs change`, and its reason names the squash too |
 | `🗑 Drop` | the branch is better without it: nothing needs it, a later commit undoes it, or it is out of scope |
 
 The later commit's call is picked by its own row of this table: carrying the
@@ -803,14 +807,16 @@ moves, its SHA names where it lands, and both rows of the pair say so:
 
 So the In short table reads as the rebase it recommends: ✅ Ship it and
 👌 Fixed later a `pick`, 🔀 Squash into a `fixup` or a `squash` beside the
-commit it names, 🗑 Drop a `drop`, 📝 Reword a `reword`, 🪓 Split an `edit`,
+commit it names, 🗑 Drop a `drop`, 📝 Reword and 📭 Missing description a
+`reword`, 🪓 Split an `edit`,
 and every other call a `pick` once its fix or its run is in.
 
 **Blocker** — what the commit holds, as "Hard and soft merge blockers"
 gives it; `-` for a commit that holds nothing.
 
 The call agrees with that commit's FINDINGS line: never `✅ Ship it`,
-`🪓 Split` or `📝 Reword` while the line counts a 🔴, a 🟠 or a 🧪. `👌 Fixed
+`🪓 Split`, `📝 Reword` or `📭 Missing description` while the line counts a
+🔴, a 🟠 or a 🧪. `👌 Fixed
 later` is the one call that carries one, the one its named commit fixes. A
 single-commit CR still has a two-row table. The sections and the
 ending's section calls are the only summaries allowed in a CR: no prose
@@ -839,8 +845,8 @@ new commit on this branch, once I ask for it - by name, or by handing the
 CR over to be fixed, as "To do" says which.
 
 **A problem the branch already fixes is not bycatch.** Its fix is part of
-the commit that carries it - a commit of its own, or a `Bycatch:` line in
-another commit's message, the bycatch rule in `commits.md` - and
+the commit that carries it - a commit of its own, or a fix another commit
+carries along, which that commit's message names - and
 is reviewed in that commit's findings. It never gets a row, and "fixed" is
 never a call - both bycatch calls are work still to do. A row the branch fixes
 in part keeps only the part still open, worded as though the fixed part
@@ -946,7 +952,8 @@ fixed or asked.
 - **A fix that needs a history rewrite is never a row.** A reword, a
   squash or a split of a commit below HEAD, or a rebase onto a moved
   base, stays where the review already says it: the commit's call -
-  📝 Reword, 🔀 Squash into, 🪓 Split - and its finding. The CR recommends
+  📝 Reword, 📭 Missing description, 🔀 Squash into, 🪓 Split - and its
+  finding. The CR recommends
   it and never asks me about it: a rewrite starts only on my words. That
   a branch is behind its base is no finding; when it matters, it is one
   line of fact in the overview.
@@ -1010,7 +1017,7 @@ included.
 - **No severity inflation.** If you cannot write the concrete failure scenario, it is not a 🔴 BUG - downgrade it. Dressing a nit up as a bug wastes my time and destroys my trust in every other tag in the review.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG**:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED)** and state exactly what you couldn't check.
-- **✅ Ship it, 🪓 Split and 📝 Reword need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the assessment, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
+- **✅ Ship it, 🪓 Split, 📝 Reword and 📭 Missing description need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the assessment, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
   **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. A run is left to me only when its proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. What the claim becomes depends on what you found when you traced it:
   - **You traced it and found nothing wrong**: a **🧪 UNTESTED** finding. It names the claim and the command that would prove it, and gives the commit `🧪 Needs test` until it is run; once I accept it untested, the call reads `🧪 Needs test (accepted untested)`.
   - **You have a doubt you can name**: a **🟠 RISK (UNVERIFIED)**. It names the doubt, the claim and the command that would settle it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past.
@@ -1028,7 +1035,7 @@ included.
   session handed the CR runs it.
 - **State confidence when you're unsure**, as an Evidence level from `assessment.md` and what backs it: "🟠 RISK (CONFIDENT)" vs "🟠 RISK (50-50 - couldn't reproduce)". Never hide uncertainty behind vague wording, and never let low confidence silently turn a 🟠 into a 🟡.
 - **Where the borderline cases land:**
-  - Weak/vague commit message → 🟡. Commit message making a false claim about behavior → 🟡 too, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commit calls says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
+  - Commit message making a claim the diff does not back, or leaving out a behaviour change the diff makes → 🟡, the code works; the commit's call is 📝 Reword, and the Fix 🟡⚪ line names the new message. Nothing under the subject line → 🟡, and the call is 📭 Missing description. A message the code disagrees with is coloured by which side is wrong - the 📝 Reword row of the commit calls says how - and when you cannot tell, the doubt is a 🟠 on the commit. Docs that now lie about behaviour → 🟡, unless the lie makes someone do harm, which is a 🟠 as a silent failure.
   - Missing log, or wrong log level → 🟡. Metric defined but never called, or called on only some code paths → 🟠 (blind in prod).
   - Redundant comment, YAML whitespace/blank lines, ordering, style preference → ⚪. Genuinely misleading name or a DRY violation someone will trip over → 🟡.
   - A name that holds more than its words say, is named for a cause instead of a meaning, or kept its name after its meaning changed (see "A name means one thing, literally" in `clean-code.md`) → 🟡. A reader already acting on the literal word and doing the wrong thing → 🔴 for that reader, with the rename as the fix. A label (enum, metric label value, status word) whose words are false for some case that produces it → 🟡.
@@ -1092,13 +1099,14 @@ What each colour means in a doc:
 
 ### What to Review (inspect in this order - but report by severity, never in this order)
 
-This is the checklist order for *looking*, not for *writing the review*. Commit messages are first to inspect and nearly last to report - a lowercase-subject nit never appears above an IndexError.
+This is the checklist order for *looking*, not for *writing the review*. Commit messages are first to inspect and nearly last to report - a false message never appears above an IndexError.
 
 Each category below has a **default severity** - deviate only with a stated reason.
 
-1. **Commit Messages & Descriptions** [default: 🟡; a false claim about behavior is 🟡 too, and makes the commit's call 📝 Reword]
-   - **The full standard is in `commits.md` — read it before judging a commit message.** Subject line rules, body structure, accuracy checks and format all live there.
-   - The accuracy checks are the ones that make a message false: does the message match what the code actually does, are there false claims, is the explanation backwards or misleading, does it mention all significant files changed?
+1. **Commit Messages & Descriptions** [default: 🟡; a message that does not hold makes the commit's call 📝 Reword, one with nothing under its subject 📭 Missing description]
+   - **A message is read as it is written and judged only on whether it holds.** No format is expected of it - not a subject form, a set of sections, a footer or a length - so how it is laid out is never a finding.
+   - **Every claim is found in the diff**: each thing the message says the commit does, each old and new value it names, each commit a footer says it fixes. A claim with no line behind it, or one about work this commit does not do, does not hold.
+   - **Every behaviour change in the diff is in the message**: a change of behaviour the message leaves out, a fix carried along that it never names, does not hold either. A file the message does not name is no finding when what the file's change does is said.
 
 2. **Critical Bugs** [default: 🔴 if you can show the failure, 🟠 if you can only name the trigger condition]
    - Will this break production?
@@ -1328,16 +1336,16 @@ One commit's review, as it sits under `## In detail`:
 ```
 ### C1 · Commit 1 of 4: perf(validator): Reduce validation time by 50%
 
-FINDINGS: 🔴 1 · 🟠 1 · 🟡 3 · ⚪ 1
+FINDINGS: 🔴 1 · 🟠 1 · 🟡 2
 
 - **Call:** 🔧 Needs change (crashes on an empty pod list) (⛔ Hard blocker: code)
 - **Commit:** **Evidence:** CONFIDENT · **Size:** small · **Difficulty:** easy
 - **Fix 🔴🟠:** guard the empty list, call `record_failure()` on timeout · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
-- **Fix 🟡⚪:** reword the subject and body · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
+- **Fix 🟡:** a message that names the swap and the key change, and drops the 50% · **Evidence:** VERIFIED · **Size:** small · **Difficulty:** super easy
 - **Why Yes?**
   - **1.** every lookup drops from O(n) to O(1)
 - **Why Not?**
-  - none beyond the findings above (checked: hashY keeps the key format)
+  - none beyond the findings above (checked: every caller builds the key the same way)
 
 #### MUST HAVE — 🔴🟠, blocks the merge
 
@@ -1360,25 +1368,18 @@ Fix: [show fix]
 
 #### NICE TO HAVE — 🟡⚪
 
-##### 🟡 QUALITY: subject makes a claim the diff can't back
-"Reduce validation time by 50%" is an outcome, and nothing in the body shows
-where 50% comes from. Fails "If applied, this commit will... reduce validation
-time" (awkward). Should be: "use hashY instead of hashX for lookups" - and the
-50% goes in the body with the 100ms → 50ms numbers behind it.
+##### 🟡 QUALITY: the message claims a 50% speed-up nothing backs
+"Reduce validation time by 50%": the diff swaps hashX for hashY and nothing
+in it, or in the message, measures the time. The claim goes, or comes back
+with the measurement behind it.
 
-##### 🟡 QUALITY: body missing the WHY
-Doesn't say: hashX did O(n) iteration → CPU spikes; hashY is O(1).
-
-##### 🟡 QUALITY: past tense in body
-"Changed from hashX to hashY" → "Replaces hashX with hashY".
-
-##### ⚪ NIT: subject capitalized
-"Reduce" → "reduce".
+##### 🟡 QUALITY: the message leaves out that lookups now key on the pod's uid
+`validator/hash.py:61` builds the key from `pod.uid`, where it used `pod.name`:
+a behaviour change a reader of the message never learns about.
 
 ##### ✅ Correct:
-- **1.** Type is right: perf
-- **2.** Has scope: (validator)
-- **3.** The hashY swap itself is correct - the algorithm change is sound
+- **1.** The message's "lookups go through hashY" holds: the diff swaps hashX for hashY
+- **2.** The hashY swap itself is correct - the algorithm change is sound
 ```
 
 And when it's clean, the FINDINGS line says so plainly - don't make a pile of nits look like danger:
