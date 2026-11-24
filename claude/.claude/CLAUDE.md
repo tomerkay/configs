@@ -22,6 +22,19 @@ name what each kind adds; the procedure itself is this one:
    covers, a full CR with every section it gives otherwise. The diff
    stands in for the commit; a Full Assessment on its own is not a
    review.
+   **Each review runs in a fresh agent**, never in the session that staged
+   the change: it is told to load the review standard first and no
+   writing standard, that it wrote none of the change, and **which review
+   to write, by its name** - "a doc review" or "a CR", picked by the line
+   above - since the standard writes a doc review only when asked for one
+   by that name. It is handed the base and staged copies, the diff - made
+   after the last edit - the commit messages and, from the second round
+   on, the previous round's review file, and **the spec: every decision I
+   made on the change, each written out as a goal the change must meet**,
+   in my own words where I gave them. It gets nothing else of the
+   session: none of its reasoning, and no hint of where to look. The
+   review standard's exemption for this repo spares the session its
+   question; it never keeps the review in the session.
    **Then fix and review again, up to three rounds**, each on the staged
    copy: fix every MUST HAVE finding, every bycatch row whose call is 🔧 Add
    fix, and every NICE TO HAVE finding and ⏸ Leave for now bycatch row in a
@@ -264,6 +277,18 @@ you write or edit one:
 
 - **It points at nothing outside itself** - no CLAUDE.md, no other skill, no
   path on my machine. Its own `references/` and `hooks/` are fine.
+- **It names no other skill, anywhere**: not in its description, its body,
+  its references, its hooks' comments or its test labels - not as a
+  pointer, not as the owner of a job, not as a sibling "handed out
+  together". A name assumes the other skill is installed and carries its
+  rules in by the back door. Another skill's job is described by its role -
+  "a skill that sets the standards code is written to" - and a rule this
+  skill needs is written into it, or into a file shared by symlink. Its own
+  `name:` line, a hook naming its own skill, and the frontmatter a file
+  lent by symlink keeps from its owner are the only names. The case that
+  set it: a code skill that said "the CR standard lives in the review
+  skill" by name, which no review checked, since the rule above reads as a
+  ban on paths alone.
 - **A file two skills need is shared by symlink**, as `tkay-writing-mds`
   says for any catalog. For mine, the sync's `cp` follows the link and
   publishes a real copy into each skill, which it rebuilds on every run,

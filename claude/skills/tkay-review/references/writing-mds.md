@@ -1,6 +1,6 @@
 ---
 name: tkay-writing-mds
-description: Standards for the markdown files that live in a repo or a skill - any CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md and the check commands it owns, the shape of a README, which copy of a skill to edit, how to write one and how two skills share code. Use before creating or editing any of them, including a doc touched on the way through a code change.
+description: Standards for the markdown files that live in a repo or a skill - any CLAUDE.md, a README, a design doc, a SKILL.md. Covers where a fact goes (code, skill, CLAUDE.md or README) and the tiebreak, the ban on a doc restating a value or pasting code, what a pointer may target and the one line that may repeat, the two jobs of a CLAUDE.md and the check commands it owns, the shape of a README, which copy of a skill to edit, how to write one and how two skills share code. Use before creating or editing any of them, including a doc touched on the way through a code change. It asks before writing a doc in a session that reviewed one or loaded a standard for reviewing docs, and before a doc review in a session that wrote the doc or loaded a standard for writing docs.
 ---
 
 # Writing markdown files
@@ -12,6 +12,14 @@ any file.**
 
 **Every line is human readable**, as `references/human-readable.md` says:
 read it before the first line too.
+
+**A doc and its review stay in separate sessions**: read
+`references/separate-sessions.md` before the first line of a doc, and
+whenever a doc review is asked for in this session. It says when writing a
+doc stops for a question because this session reviewed one or loaded a
+standard for reviewing docs, and when a doc
+review does because this session wrote the doc or has this skill loaded,
+whatever skill writes the review.
 
 ## Where a fact goes
 

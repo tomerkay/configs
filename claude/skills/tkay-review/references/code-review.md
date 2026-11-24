@@ -1,15 +1,17 @@
 # Code Review Standards
 
 `clean-code.md`, `security.md`, `commits.md`, `assessment.md`,
-`severity.md` and `bycatch.md` sit beside this file in `references/`; this
+`severity.md`, `bycatch.md`, `writing-mds.md` and
+`copied-stale-and-personal.md` sit beside this file in `references/`; this
 skill's SKILL.md says what each is for.
 `assessment.md` gives the frame every assessment in a CR is written in - the
 Call, the Profile, Evidence, Size and Difficulty, Why Yes and Why Not; "The
 calls and Profiles of a CR" below adds what only a review judges.
 
-**Read `clean-code.md`, `security.md` and `severity.md` before the first
-finding.** The first two define clean code, and `severity.md` how bad a
-departure is; this file says how to report one.
+**Read `severity.md` before the first finding, and `clean-code.md` and
+`security.md` too in every review but a doc review.** The last two define
+clean code, and `severity.md` how bad a departure is; this file says how
+to report one.
 
 ## How I Want Code Reviews Done
 
@@ -62,22 +64,33 @@ branch and whatever it was given:**
 1. `# Overview` - what the branch does; see "The overview".
 2. `# Changes` - one entry per thing the branch does, judged as it lands;
    see "The changes".
-3. `# Goals`, `# Contract`, `# Readiness`, `# Incidents` - whether the
-   branch delivers what its spec asked for; see "The spec tables".
-4. `# Design` and `# Implementation` - every rule of `clean-code.md`, held
+3. `# Goals` - whether the branch delivers the outcomes its spec asked
+   for; see "The spec tables".
+4. `# Contract`, `# Readiness`, `# Incidents` - whether it keeps the
+   promises its spec makes for the running software; see "The spec
+   tables". *Judges running code.*
+5. `# Design` and `# Implementation` - every rule of `clean-code.md`, held
    against the branch at the level its break lives; see "The Design and
-   Implementation tables".
-5. `# Commits` - `## In short`, each commit in one line, then `## In
+   Implementation tables". *Judges running code.*
+6. `# Commits` - `## In short`, each commit in one line, then `## In
    detail`, each commit's review; see "The commits".
-6. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
+7. `# 🎣 Bycatch` - what the review turned up on the way; see "The bycatch
    table".
-7. `# To do` - every piece of work the CR asks for, in `## Before it merges`
+8. `# To do` - every piece of work the CR asks for, in `## Before it merges`
    and `## Optional`; see "To do".
-8. `# Summary` - the section calls, the branch call and the CR's file;
+9. `# Summary` - the section calls, the branch call and the CR's file;
    see "The ending".
 
 A CR that checks the fixes of an earlier one adds `# Was it fixed` right
 after the overview; see "Was it fixed?".
+
+**A section tagged *judges running code* is one the doc review leaves
+out**, as `doc-review.md` says. A new section is tagged here when what it
+judges exists only in software that runs - an API, a running system, the
+code's structure - and an untagged one is in the doc review too.
+
+**Every CR also checks the docs in its change**, as "Docs in the change"
+says: a change with no markdown has nothing for those checks to find.
 
 **The sections above `# Commits` judge the branch as a whole, never one
 commit.** Each of their rows is about the branch at HEAD, and its **Work**
@@ -107,9 +120,9 @@ Design row, **IM** an Implementation row, **C** a commit, **B** a bycatch row, *
 Each is bold and counts from 1 in its section; **B** goes on from the
 session's count of bycatch.
 
-A CR in the session that wrote the code opens with the ⚠️ line this
-skill's `SKILL.md` gives, above everything else, and every CR closes as
-"The ending" says.
+A CR written here anyway, after the question `separate-sessions.md` asks,
+opens with the ⚠️ line it gives, above everything else, and every CR
+closes as "The ending" says.
 
 ### The views: CR, CR Digest, CR Brief and CR Summary
 
@@ -1031,6 +1044,51 @@ included.
       - **Does it pin something no other test does?** A test of nothing the component promises, or of a promise another test already pins → 🟡, with the fix "delete it" - the other test, when the spec names this one.
 - **Still report the nits.** NICE TO HAVE ≠ "don't mention". Put them below the divider where they can't be mistaken for real problems.
 - **🟠 is not a wish list.** If everything is 🟠, the colour means nothing and I'll start ignoring it. Be willing to write 🟡 and stand behind it.
+
+### Docs in the change — every CR
+
+**Every markdown file the change touches that instructs or documents - a
+`CLAUDE.md`, a README, a design doc, a `SKILL.md`, a skill's reference - is
+held to `writing-mds.md` and `copied-stale-and-personal.md`, beside this
+file.** Its findings go on the commit that carries the line, as any other
+finding does.
+
+**The reviewer reads a doc's diff against the whole file it lands in, and
+against every file that speaks of the same thing, never the conversation
+that produced it.** A doc is read by people and sessions that were not
+there. A line that only makes sense to someone who was is a finding.
+
+Each check is run before the first finding, and the review names the
+command or the read that ran it:
+
+1. **Each fact sits in its one home**, by the homes `writing-mds.md` gives,
+   and reads there as that kind of file should.
+2. **Nothing copied, nothing stale, nothing personal**: the rules of
+   `copied-stale-and-personal.md`, asked of every line the diff adds.
+3. **Every place that names what the diff renames, moves or removes is
+   changed with it**: searched across the repo, and across the whole
+   catalog for a skill.
+4. **Every pointer the diff adds or touches lands**: the file exists, and
+   so does the name inside it.
+5. **No rule is stated twice, and none contradicts another**: the rules
+   beside it in the file, and the ones on the same topic in every file that
+   loads with it.
+6. **A command or an example a reader would run is run or rendered**, as a
+   commit's runtime claims are.
+7. **A skill in a catalog whose skills stand alone names no other skill**:
+   searched across every file of the skill the diff touches - description,
+   body, references, hook comments and test labels - for the name of every
+   other skill in the catalog. Its own name is the one allowed, and so is
+   the frontmatter of a file another skill lends it by symlink.
+
+What each colour means in a doc:
+
+| Tag | In a doc |
+|-----|----------|
+| 🔴 **BUG** | A reader who follows it does the wrong thing, in a case you can state: a command that fails or hits the wrong target as written, two rules that cannot both be kept. |
+| 🟠 **RISK** | The trigger for harm can be named: a pointer that lands nowhere, a rule that leaves open a case it claims to cover, a thing still named the old way where a reader acts on the name, something personal in a tracked file. |
+| 🟡 **QUALITY** | It reads right and costs upkeep: a rule or a value written twice, a value that goes stale, a fact in the wrong home, a line for nobody. |
+| ⚪ **NIT** | Wording, ordering, formatting. |
 
 ### What to Review (inspect in this order - but report by severity, never in this order)
 

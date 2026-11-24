@@ -1,7 +1,8 @@
 # Plan review
 
-A plan review judges a plan - a shape plan or a full plan - before anything
-is built on it: whether to
+A plan review - also called a design review, a DR or a plan CR - judges a
+plan - a shape plan or a full plan - before anything is built on it:
+whether to
 start, fix the plan first, run an experiment first, or go back to design. It
 is the plan's version of a code review, modelled on the design reviews of
 mature projects - a reviewer who did not write the design, a fixed list of

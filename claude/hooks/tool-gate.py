@@ -1066,6 +1066,13 @@ def classify_pip(args):
     return WRITE
 
 
+# Every global option uv takes a value for, typed before the subcommand or after it: the
+# ones `uv --help` lists and the hidden ones uv still reads.
+UV_GLOBAL_VALUE_FLAGS = ("--cache-dir", "--color", "--allow-insecure-host", "--directory",
+                         "--project", "--config-file", "--python-preference", "--python-fetch",
+                         "--preview-features")
+
+
 # Every option `uv run` takes a value for, written as a separate word: the ones
 # `uv run --help` lists and the hidden ones uv still reads.
 UV_RUN_VALUE_FLAGS = (
@@ -1076,10 +1083,9 @@ UV_RUN_VALUE_FLAGS = (
     "--upgrade-group", "--resolution", "--prerelease", "--prerelease-package", "--fork-strategy",
     "--exclude-newer", "--exclude-newer-package", "--no-sources-package", "--reinstall-package",
     "--link-mode", "-C", "--config-setting", "--config-settings-package",
-    "--no-build-isolation-package", "--no-build-package", "--no-binary-package", "--cache-dir",
-    "--refresh-package", "-p", "--python", "--color", "--allow-insecure-host", "--directory",
-    "--project", "--config-file", "--config-settings", "--max-recursion-depth",
-    "--python-preference", "--python-fetch", "--preview-features")
+    "--no-build-isolation-package", "--no-build-package", "--no-binary-package",
+    "--refresh-package", "-p", "--python", "--config-settings", "--max-recursion-depth",
+) + UV_GLOBAL_VALUE_FLAGS
 
 
 UV_RUN_SHORT_VALUE_FLAGS = "".join(o[1] for o in UV_RUN_VALUE_FLAGS if not o.startswith("--"))
@@ -1094,9 +1100,24 @@ def uv_short_flags(word):
     return word[1:], False
 
 
+def uv_subcommand(args):
+    """The index in uv's arguments of its subcommand, past uv's own global options, or None
+    when there is none."""
+    i = 0
+    while i < len(args) and args[i].startswith("-"):
+        i += 2 if args[i] in UV_GLOBAL_VALUE_FLAGS else 1
+    return i if i < len(args) else None
+
+
+def uv_runs(args):
+    """True when uv's subcommand is `run`."""
+    i = uv_subcommand(args)
+    return i is not None and args[i] == "run"
+
+
 def uv_run_options(args):
     """uv run's own options, the words between `run` and the command it runs."""
-    rest = args[args.index("run") + 1:]
+    rest = args[uv_subcommand(args) + 1:]
     i = 0
     while i < len(rest) and rest[i].startswith("-"):
         a = rest[i]
@@ -1109,7 +1130,7 @@ def uv_run_options(args):
 
 def uv_run_tail(args):
     """The command `uv run` runs, with uv's own options removed."""
-    return args[args.index("run") + 1 + len(uv_run_options(args)):]
+    return args[uv_subcommand(args) + 1 + len(uv_run_options(args)):]
 
 
 def uv_runs_module(args):
@@ -1120,15 +1141,17 @@ def uv_runs_module(args):
 
 
 def classify_uv(args):
-    pos = positionals(args)
-    if not pos or has_flag(args, "--version", "-V"):
+    i = uv_subcommand(args)
+    # Only uv's own options ahead of the subcommand ask for its version: after it, the
+    # words are the subcommand's, and after `run` the command's it runs.
+    if i is None or has_flag(args[:i], "--version", "-V"):
         return READ
-    sub = pos[0]
+    sub = args[i]
     if sub == "run":
         tail = uv_run_tail(args)
         return classify_words(tail) if tail else WRITE
     if sub == "pip":
-        return classify_pip(args[args.index("pip") + 1:])
+        return classify_pip(args[i + 1:])
     if sub in ("tree", "version", "help", "self") or (sub == "lock" and has_flag(args, "--check")):
         return READ
     return WRITE
@@ -2345,6 +2368,16 @@ def expand_home(word):
     return os.path.expanduser(word) if word == "~" or word.startswith("~/") else word
 
 
+def uv_run_invocations(prog, args):
+    """prog and args, then, for a `uv run`, every invocation of the command it runs."""
+    yield prog, args
+    if prog == "uv" and uv_runs(args):
+        tail = uv_run_tail(args)
+        if tail:
+            for inner_prog, inner_args in invocations_in(tail):
+                yield from uv_run_invocations(inner_prog, inner_args)
+
+
 def invocations(command):
     """Every program invocation in a command, nested ones included, as (program, args)."""
     for prog, args, _ in invocations_with_moves(command):
@@ -2407,7 +2440,7 @@ def runs_opaque_code(words):
     if prog in INTERPRETERS:
         return True
     if prog == "uv":
-        return pos[:1] == ["run"]
+        return uv_runs(args)
     if prog == "go":
         return positionals(go_without_dir(args))[:1] == ["run"]
     if prog == "cargo":
@@ -2527,7 +2560,7 @@ def test_run_of(prog, args):
     """The runner and its arguments when the command is a test run, by itself or through
     python -m or uv run, or None."""
     pos = positionals(args)
-    if prog == "uv" and pos[:1] == ["run"]:
+    if prog == "uv" and uv_runs(args):
         tail = uv_run_tail(args)
         return test_run_of(program_of(tail), tail[1:]) if tail else None
     if PYTHON_RE.fullmatch(prog) and args[:2] == ["-m", "pytest"]:
@@ -2643,15 +2676,43 @@ def helm_repo_writes_outside_repos(here, args):
                for f in ("--repository-config", "--repository-cache") if f in seen)
 
 
-def uv_run_command(words):
-    """The command a `uv run` runs, through every `uv run` the words start with, or the words
-    as they are: uv runs it as the segment's own command, so its writes are that command's."""
-    while words and program_of(words) == "uv" and positionals(words[1:])[:1] == ["run"]:
+def uv_directory(words):
+    """The directory uv's --directory moves to before it runs anything, as typed, or None.
+    The last one given wins, before the subcommand or among `uv run`'s options."""
+    words = strip_prefix(words)
+    if not words or program_of(words) != "uv":
+        return None
+    args = words[1:]
+    i = uv_subcommand(args)
+    options = args if i is None else args[:i]
+    if i is not None and args[i] == "run":
+        options = options + uv_run_options(args)
+    value = None
+    for k, a in enumerate(options):
+        if a == "--directory" and k + 1 < len(options):
+            value = options[k + 1]
+        elif a.startswith("--directory="):
+            value = a.split("=", 1)[1]
+    return value
+
+
+def uv_here(here, words):
+    """The directory a uv command runs in: here, moved by its --directory, or None when
+    only the shell knows it."""
+    directory = uv_directory(words)
+    return here if directory is None else resolved_dir(here, directory)
+
+
+def uv_run_command(here, words):
+    """Where and what a `uv run` runs, through every `uv run` the words start with, or here
+    and the words as they are: uv runs it as the segment's own command, in the directory
+    its --directory names, so its writes are that command's, from there."""
+    while words and program_of(words) == "uv" and uv_runs(words[1:]):
         tail = strip_prefix(uv_run_tail(words[1:]))
         if not tail:
             break
-        words = tail
-    return words
+        here, words = uv_here(here, words), tail
+    return here, words
 
 
 def gate_blockers(command, cwd, run_time_dir=None):
@@ -2668,7 +2729,9 @@ def gate_blockers(command, cwd, run_time_dir=None):
     run_time_dir, when given, stands for the directory a `cd` moves to when only the shell
     knows it.
     """
-    blockers, here = [], cwd
+    # base is the shell's working directory; here is where the segment's command runs,
+    # which uv's --directory can move.
+    blockers, base = [], cwd
     for line in command_lines(command):
         try:
             segments, targets, apart, target_at = parse_line(line)
@@ -2686,17 +2749,17 @@ def gate_blockers(command, cwd, run_time_dir=None):
             # segment itself moves nothing for them.
             blockers.extend(["tee", t] for t in targets_of.pop(index, ())
                             if t not in HARMLESS_TARGETS
-                            and not inside_gate_scratch(path_from(here, t)))
+                            and not inside_gate_scratch(path_from(base, t)))
             stripped = strip_prefix(words)
-            child = stripped != uv_run_command(stripped) or bool(
-                CHILD_WRAPPERS & set(words[:len(words) - len(stripped)]))
-            words = uv_run_command(stripped)
+            wrappers = set(words[:len(words) - len(stripped)])
+            here, words = uv_run_command(base, stripped)
+            child = words != stripped or bool(CHILD_WRAPPERS & wrappers)
             if not words or program_of(words) in LOOP_HEADERS:
                 continue
             prog, args = program_of(words), words[1:]
             if prog in CHDIR_PROGRAMS:
                 if not child:
-                    here = (cd_target(here, prog, args) or run_time_dir) if moves else None
+                    base = (cd_target(base, prog, args) or run_time_dir) if moves else None
                 continue
             level = classify_program(prog, args)
             if level == READ:
@@ -2790,7 +2853,7 @@ def gate_blockers(command, cwd, run_time_dir=None):
         # A redirect with no command of its own opens where the line ends.
         blockers.extend(["tee", t] for ts in targets_of.values() for t in ts
                         if t not in HARMLESS_TARGETS
-                        and not inside_gate_scratch(path_from(here, t)))
+                        and not inside_gate_scratch(path_from(base, t)))
     return blockers
 
 
@@ -3311,10 +3374,10 @@ PYTHON_VALUE_LONG_FLAGS = {"--check-hash-based-pycs"}
 
 def python_run(args):
     """What a Python invocation runs, past Python's own flags: ("script", <path>), or
-    ("module", <name>) for -m without -I or -P, which loads it from the working directory
-    first. None for -c, a script read from standard input, a module run with -I or -P, or
-    nothing."""
-    safe_path = False
+    ("module", <name>, <letters>) for -m, with the letters among I, P and E given before
+    it, which decide where Python looks for the module. None for -c, a script read from
+    standard input, or nothing."""
+    letters = set()
     i = 0
     while i < len(args):
         a = args[i]
@@ -3332,9 +3395,9 @@ def python_run(args):
                 return None
             if ch == "m":
                 name = a[j + 1:] or (args[i + 1] if i + 1 < len(args) else "")
-                return ("module", name) if name and not safe_path else None
-            if ch in "IP":
-                safe_path = True
+                return ("module", name, frozenset(letters)) if name else None
+            if ch in "IPE":
+                letters.add(ch)
             if ch in "WX":
                 i += 1 if a[j + 1:] else 2
                 break
@@ -3362,7 +3425,7 @@ def script_of(words):
         return pos[0] if pos else None
     if PYTHON_RE.fullmatch(prog):
         return python_script(args)
-    if prog == "uv" and positionals(args)[:1] == ["run"]:
+    if prog == "uv" and uv_runs(args):
         tail = uv_run_tail(args)
         if tail and tail[0].endswith(".py"):
             return tail[0]
@@ -3371,29 +3434,91 @@ def script_of(words):
 
 
 def module_of(words):
-    """The module a Python invocation runs with -m where the working directory comes first
-    on its import path, or None."""
+    """The module a Python invocation runs with -m, with the letters among I, P and E given
+    before it, or None."""
     words = strip_prefix(words)
     if not words:
         return None
     prog, args = program_of(words), words[1:]
     if PYTHON_RE.fullmatch(prog):
         run = python_run(args)
-        return run[1] if run and run[0] == "module" else None
-    if prog == "uv" and positionals(args)[:1] == ["run"]:
+        return run[1:] if run and run[0] == "module" else None
+    if prog == "uv" and uv_runs(args):
         tail = uv_run_tail(args)
         if tail and uv_runs_module(args):
-            return tail[0]
+            return tail[0], frozenset()
         return module_of(tail) if tail else None
     return None
 
 
-def uv_interpreter_of(words):
-    """The file `uv run` is given as its interpreter with -p or --python, which uv runs to
-    query it, or None when none is given."""
-    words = strip_prefix(words)
-    if not words or program_of(words) != "uv" or positionals(words[1:])[:1] != ["run"]:
+# The environment variables the scans read, followed through export and unset.
+TRACKED_ENV = ("PYTHONPATH",)
+
+
+def prefix_assignments(segment):
+    """The NAME=value words ahead of the program, through every `uv run` layer, in order."""
+    words = strip_prefix(segment)
+    found = segment[:len(segment) - len(words)]
+    while words and program_of(words) == "uv" and uv_runs(words[1:]):
+        raw = uv_run_tail(words[1:])
+        words = strip_prefix(raw)
+        found = found + raw[:len(raw) - len(words)]
+    return [w for w in found if ENV_ASSIGN_RE.match(w)]
+
+
+def env_value(name, segment, exported):
+    """The value the program a segment runs sees for name: the last assignment ahead of it,
+    else what an earlier segment exported, else None."""
+    value = exported.get(name)
+    for w in prefix_assignments(segment):
+        if w.startswith(name + "="):
+            value = w.split("=", 1)[1]
+    return value
+
+
+def track_exports(words, shell_vars, exported):
+    """Follow a bare assignment, an export or an unset of a tracked name. True when the
+    segment was one of them, which runs no program to scan."""
+    if not words:
+        return True
+    prog = program_of(words)
+    if prog not in ("export", "unset"):
+        return False
+    for w in words[1:]:
+        name, _, value = w.partition("=")
+        if name not in TRACKED_ENV:
+            continue
+        if prog == "unset":
+            exported.pop(name, None)
+            shell_vars.pop(name, None)
+        elif "=" in w:
+            exported[name] = value
+        elif name in shell_vars:
+            exported[name] = shell_vars[name]
+    return True
+
+
+def import_roots(here, segment, letters, exported):
+    """The directories Python searches for a -m module before its own library, as
+    (shown, path) pairs, path None when only the shell knows it: the working directory
+    unless -I or -P, then each PYTHONPATH entry the program sees unless -I or -E."""
+    roots = [] if letters & {"I", "P"} else [("", here)]
+    value = None if letters & {"I", "E"} else env_value("PYTHONPATH", segment, exported)
+    if value is not None:
+        roots = roots[:1] + [(e, resolved_dir(here, e) if e else here)
+                             for e in value.split(":")]
+    return roots
+
+
+def uv_interpreter_of(segment):
+    """The file `uv run` is given as its interpreter with -p or --python, or by a UV_PYTHON
+    assignment ahead of it, which uv takes as --python, or None when none is given. uv runs
+    it to query it. The option wins over the assignment, as it does in uv."""
+    words = strip_prefix(segment)
+    if not words or program_of(words) != "uv" or not uv_runs(words[1:]):
         return None
+    assigned = [w.split("=", 1)[1] for w in segment[:len(segment) - len(words)]
+                if w.startswith("UV_PYTHON=")]
     options = uv_run_options(words[1:])
     for i, a in enumerate(options):
         nxt = options[i + 1] if i + 1 < len(options) else ""
@@ -3407,7 +3532,7 @@ def uv_interpreter_of(words):
         else:
             continue
         return value or None
-    return None
+    return assigned[-1] if assigned and assigned[-1] else None
 
 
 def uv_interpreter_file(here, value):
@@ -3436,20 +3561,21 @@ def listed(found):
     return "; ".join(found[:5]) + ("; ..." if len(found) > 5 else "")
 
 
-def module_decisions(here, name):
-    """One ask when `python -m <name>` would load a file from the working directory whose
+def module_decisions(roots, name):
+    """One ask when `python -m <name>` would load a file from one of the import roots whose
     text holds a command that needs words."""
-    if "$" in name or "/" in name or "" in name.split("."):
+    if "$" in name or "/" in name or "" in name.split(".") or not roots:
         return []
-    if here is None:
+    if any(path is None for _, path in roots):
         return [(ASK, f"runs module {name} from a directory known only at run time, so the "
                       "file it loads from there could not be checked for commands that "
                       "change live or remote state")]
-    found = [f"{rel}:{line}" for rel in module_files(name)
-             for line in script_lines_needing_words(os.path.join(here, rel))]
+    found = [f"{os.path.join(shown, rel)}:{line}" for shown, path in roots
+             for rel in module_files(name)
+             for line in script_lines_needing_words(os.path.join(path, rel))]
     if not found:
         return []
-    return [(ASK, f"runs module {name}, whose file in the working directory holds commands "
+    return [(ASK, f"runs module {name}, whose file on its import path holds commands "
                   f"that change live or remote state - {listed(found)}. One prompt covers "
                   "the whole run; no words needed")]
 
@@ -3491,15 +3617,19 @@ def own_cli_copy(path, words, script):
     return tail == ["--selftest"] or (len(tail) == 1 and not tail[0].startswith("-"))
 
 
-def script_decisions(command, cwd):
+def script_decisions(command, cwd, exported=None):
     """One ask per script the command runs whose text holds a command that needs words.
 
     The working directory follows every `cd` in the command, as for commits; a script
     whose path is built at run time cannot be read, so it is not scanned. A relative script
-    run where the directory is unknown asks, since its text could hold anything.
+    run where the directory is unknown asks, since its text could hold anything. exported
+    holds the tracked variables the shell running the command already exports.
     """
     out = []
     here = cwd
+    # What an export reaches is taken for the whole command, a subshell's included, which
+    # can only add an ask.
+    exported, shell_vars = dict(exported or {}), {}
     for line in command_lines(command):
         try:
             segments, _, apart, _ = parse_line(line)
@@ -3510,13 +3640,40 @@ def script_decisions(command, cwd):
             if words and program_of(words) in CHDIR_PROGRAMS:
                 here = cd_target(here, program_of(words), words[1:]) if moves else None
                 continue
+            if not words:
+                shell_vars.update(w.split("=", 1) for w in segment if ENV_ASSIGN_RE.match(w))
+            if track_exports(words, shell_vars, exported):
+                continue
+            # A shell's -c body runs as commands of its own, in a shell of its own, so its
+            # scripts and modules are scanned like the line's, with the variables it is
+            # handed, and its cd moves nothing here.
+            inner_at, inner = uv_run_command(here, words)
+            if inner and program_of(inner) in ("bash", "sh", "zsh", "dash"):
+                body = shell_body(inner[1:])
+                if body is not None:
+                    handed = dict(exported)
+                    for w in prefix_assignments(segment):
+                        name, _, value = w.partition("=")
+                        if name in TRACKED_ENV:
+                            handed[name] = value
+                    out.extend(script_decisions(body, inner_at, handed))
+            # uv's --directory moves where the segment's files are found, not the shell: the
+            # command uv runs is found from every --directory down to it, and the interpreter
+            # uv queries from the outer uv's own.
+            ran_at, _ = uv_run_command(here, words)
+            at = uv_here(here, words)
             module = module_of(words)
             if module:
-                out.extend(module_decisions(here, module))
-            interpreter = uv_interpreter_of(words)
-            for script in (script_of(words), interpreter and uv_interpreter_file(here, interpreter)):
-                if script:
-                    out.extend(script_file_decisions(here, words, script))
+                name, letters = module
+                out.extend(module_decisions(import_roots(ran_at, segment, letters, exported),
+                                            name))
+            script = script_of(words)
+            if script:
+                out.extend(script_file_decisions(ran_at, words, script))
+            interpreter = uv_interpreter_of(segment)
+            interpreter_file = interpreter and uv_interpreter_file(at, interpreter)
+            if interpreter_file:
+                out.extend(script_file_decisions(at, words, interpreter_file))
     return out
 
 
@@ -3596,7 +3753,8 @@ def decide_bash(tool_input, gate_open, cwd, named):
         out.append((DENY, RM_CHAINED_REASON))
     if changes_env_file(command):
         out.append((ASK, ENV_WRITE_REASON))
-    for prog, args in invocations(command):
+    for prog, args in (inner for outer in invocations(command)
+                       for inner in uv_run_invocations(*outer)):
         out.extend(pin_decisions(prog, args))
         # Not a pin decision: gate_blockers passes a command a pin decision asks about,
         # which would turn the closed gate's deny into an ask.
@@ -4847,6 +5005,12 @@ def selftest():
         ("python3 -m unittest", RUNS_CODE),
         ("uv run pytest -q", RUNS_CODE),
         ("uv run --group dev pytest", RUNS_CODE),
+        ("uv --color never run pytest", RUNS_CODE),
+        ("uv --cache-dir c tree", READ),
+        ("uv run sed -i s/a/b/ f --version", WRITE),
+        ("uv sync -V", WRITE),
+        ("uv --version", READ),
+        ("uv -q -V", READ),
         ("python3 /x/run.py", RUNS_CODE),
         ("python3 -c 'print(1)'", RUNS_CODE),
         ("perl -e 'print 1'", RUNS_CODE),
@@ -5114,6 +5278,13 @@ def selftest():
             ("Bash", {"command": f"uv run -q uv run touch {on_main}/x"}, DENY),
             ("Bash", {"command": f"uv run cd {scratch_dir} && touch x"}, DENY),
             ("Bash", {"command": f"env cd {scratch_dir}; touch x"}, DENY),
+            ("Bash", {"command": f"cd {scratch_dir} && uv run --directory {on_main} "
+                                 "sed -i '' s/a/b/ README.md"}, DENY),
+            ("Bash", {"command": f"cd {on_main} && uv --directory {scratch_dir} run "
+                                 "sed -i '' 's/a b/c/' f.md"}, None),
+            ("Bash", {"command": "uv --color never run kubectl delete pod p -n Y"}, DENY),
+            ("Bash", {"command": f"uv --color never run sed -i '' s/a/b/ {on_main}/README.md"},
+             DENY),
             ("Bash", {"command": f"uv run sed -i '' 's/a b/c/' {scratch_dir}/f.md"}, None),
             ("Bash", {"command": f"uv run python3 {not_repo}/tool.py"}, None),
             ("Bash", {"command": f"{not_repo}/tool.sh"}, None),
@@ -5194,7 +5365,7 @@ def selftest():
         ]
         # python -m loads a module from the working directory first, unless -I or -P.
         for rel in ("evilmod.py", "evilpkg/__main__.py", "initpkg/__init__.py",
-                    "initpkg/sub.py", "readmod.py", "evilenv/bin/python"):
+                    "initpkg/sub.py", "readmod.py", "evilenv/bin/python", "pyp/evilpp.py"):
             os.makedirs(os.path.dirname(os.path.join(not_repo, rel)), exist_ok=True)
             with open(os.path.join(not_repo, rel), "w") as f:
                 f.write(scripts["read.sh" if rel in ("initpkg/sub.py", "readmod.py")
@@ -5229,6 +5400,38 @@ def selftest():
             ("uv run -qp ./cleanup.py", ASK),
             ("uv run --python-preference only-system python3 cleanup.py", ASK),
             ("uv run --max-recursion-depth 9 -m evilmod", ASK),
+            ("uv --color never run python3 cleanup.py", ASK),
+            ("uv --cache-dir c run -m evilmod", ASK),
+            ("uv --preview-features x run python3 cleanup.py", ASK),
+            ("uv -q --project p run -p ./cleanup.py", ASK),
+            ("UV_PYTHON=./cleanup.py uv run pytest", ASK),
+            ("env UV_PYTHON=evilenv uv run pytest", ASK),
+            ("UV_PYTHON=./cleanup.py uv run -p 3.12 pytest", None),
+            ("UV_PYTHON=3.12 uv run -m readmod", None),
+            ("PYTHONPATH=pyp python3 -m evilpp", ASK),
+            ("env PYTHONPATH=x:pyp python3 -P -m evilpp", ASK),
+            ("PYTHONPATH=pyp uv run -m evilpp", ASK),
+            ("PYTHONPATH=$D python3 -m readmod", ASK),
+            ("PYTHONPATH=pyp python3 -E -m evilpp", None),
+            ("PYTHONPATH=pyp python3 -I -m evilpp", None),
+            ("python3 -m evilpp", None),
+            ("uv run env PYTHONPATH=pyp python3 -m evilpp", ASK),
+            ("export PYTHONPATH=pyp; python3 -m evilpp", ASK),
+            ("PYTHONPATH=pyp; export PYTHONPATH; python3 -m evilpp", ASK),
+            ("export PYTHONPATH=pyp; unset PYTHONPATH; python3 -m evilpp", None),
+            ("uv run --directory pyp -m evilpp", ASK),
+            ("uv --directory=pyp run python3 evilpp.py", ASK),
+            ("uv --directory $D run python3 x.py", ASK),
+            ("uv run --directory pyp python3 cleanup.py", None),
+            ("uv run uv run --directory pyp python3 evilpp.py", ASK),
+            ("bash -c 'python3 cleanup.py'", ASK),
+            ("sh -c 'cd pyp && python3 -m evilpp'", ASK),
+            ("uv run bash -c 'python3 -m evilmod'", ASK),
+            ("bash -c 'cd pyp' && python3 cleanup.py", ASK),
+            ("bash -c 'python3 -m readmod'", None),
+            ("uv run -p ./cleanup.py bash -c 'true'", ASK),
+            ("PYTHONPATH=pyp bash -c 'python3 -m evilpp'", ASK),
+            ("export PYTHONPATH=pyp; bash -c 'python3 -m evilpp'", ASK),
             (f"cd {root} && python3 -m plain.evilmod", ASK),
             ("python3 -I -m evilmod", None),
             ("python3 -Pm evilmod", None),

@@ -376,7 +376,7 @@ action of that kind.**
 |---|---|
 | the first reply of every session, whatever it is about - its hooks check every reply from then on | `tkay-replies` |
 | a code review / CR / "review my branch, my PR, my commits", a CR I ask for on an MR or PR link, or a CR Digest, a CR Brief or a CR Summary - and only when I ask for one in those words | `tkay-review` |
-| a plan review of a shape plan or a full plan - only when I ask for one in those words | `tkay-review` |
+| a plan review of a shape plan or a full plan - also a design review, a DR or a plan CR - only when I ask for one in those words | `tkay-review` |
 | a doc review of a change to markdown docs - only when I ask for one in those words | `tkay-review` |
 | write or change code, a chart, a dashboard or config - the first line of it | `tkay-code` |
 | any `glab` call - reading a GitLab MR, its review threads or its CI, or uploading a file | `tkay-mr` |
@@ -396,10 +396,16 @@ action of that kind.**
 
 `tkay-code` and `tkay-review` then route to their own reference file for the
 specific task - read the one it names before writing a single finding or
-commit message. `tkay-review` says why the two belong in separate sessions,
-and stops with a ⚠️ question before a CR in a session that wrote the code,
-or code in a session that wrote a CR, except in a session editing the
-skills.
+commit message. `tkay-code`, `tkay-review`, `tkay-writing-plans` and
+`tkay-writing-mds` each carry the rule that keeps the work and its review
+in separate sessions, and stop with a ⚠️ question before a review in a
+session that wrote the work or loaded a standard for writing it, and
+before work in a session that wrote a review or loaded a standard for
+reviewing it, except in a session editing the skills. In a session that
+wrote the work or loaded a standard for writing it, that question comes
+before `tkay-review` is invoked, and it is invoked only on "here": a
+fresh-agent pick leaves it unloaded here, so the review rules never enter
+the session that fixes the findings.
 
 **If you are unsure whether a row applies, invoke the skill.** Loading one I did
 not need costs seconds. Skipping one costs me a bad review, a false commit

@@ -1,6 +1,6 @@
 ---
 name: tkay-code
-description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to fix what a code review found; to commit, amend or write a commit message; to name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable. A code review is the tkay-review skill's, never this one's.
+description: Standards for writing code - the clean-code rules for every line, commit messages and commit boundaries, and where dev versus production deployment material lives in a repo. Use whenever about to write or change code, a chart, a dashboard or config; to fix what a code review found; to commit, amend or write a commit message; to name a git branch; to write or move an installer, a topology file or values, or decide what goes under dev/ versus deploy/; or when unsure whether a comment, mechanism, default or config key is acceptable. It never reviews code, and asks before writing code in a session that reviewed code or loaded a standard for reviewing it, and before a code review in a session that wrote the code or loaded a standard for writing it.
 ---
 
 # Code standards
@@ -19,6 +19,7 @@ task-specific standards.
 | Writing or moving deploy tooling, a topology file or values — anything that decides what lives under `dev/` versus `deploy/` | `references/deploy-layout.md` — before creating or moving the file |
 | Writing or changing any code, a chart, a dashboard or config, or unsure whether a comment, mechanism, default or config key is acceptable | `references/clean-code.md` and `references/security.md` — **read both in full before the first line** |
 | Writing any line into a repo - code, a chart, config, a doc, a test - that could carry a copy, a specific value or a person's setup | `references/copied-stale-and-personal.md` |
+| Writing code, or a CR asked for, in a session that may already hold the other | `references/separate-sessions.md` |
 
 **If you are unsure whether a row applies, read it.** Loading a reference I did
 not need costs seconds. Skipping one costs me a bad review or a false commit
@@ -46,18 +47,18 @@ them, and I interrupt when the design is wrong.
 change needs a plan**: say so in place of the responsibilities, name the
 choice, and wait for my answer before any code.
 
-## A code review is another skill, and another session
+## Code and its review stay in separate sessions
 
-**This skill writes code; it never reviews it.** The CR standard lives in
-the `tkay-review` skill, handed out together with this one, which carries
-`references/clean-code.md` and `references/commits.md` too. The two belong in separate sessions:
-code written with the review rubric in context is written to the rubric,
-and a review by the code's author is not independent. When asked for a CR in
-a session that has this skill loaded, load the review skill anyway; it asks
-whether to review here before it starts, as it asks before any code is
-written in a session that wrote a CR. When the review skill is not
-installed, say that the CR standard is a skill this session does not have,
+**This skill writes code; it never reviews it.** Its rules are not a review
+standard: with none installed, say that this session has no review standard,
 and review nothing by this skill's rules.
+
+**Read `references/separate-sessions.md` before the first line of code, and
+whenever a CR is asked for in this session.** It says when writing code
+stops for a question because this session reviewed code or loaded a
+standard for reviewing it, and when a CR does
+because this session wrote the code or has this skill loaded, whatever
+skill writes the review.
 
 ## The repo's conventions win
 

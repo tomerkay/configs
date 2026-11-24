@@ -15,7 +15,7 @@ frame `frame_checks.py` holds, and on top:
 - a Better proposal's call outranks its proposal's, and an Equivalent's matches it, both
   compared on the bare call, so a reason or a badge beside either changes nothing.
 
-A CR's blocks are tkay-review's own hook's, so no block is checked twice.
+A CR's blocks are left to the review skill's own hook, so no block is checked twice.
 
 A blocked reply is returned once: on the retry `stop_hook_active` is set and the hook stays
 quiet, so it can never hold the session in a loop. A failure exits 1, which Claude Code
@@ -202,12 +202,11 @@ def selftest():
         ("old uppercase call", full.replace("✅ Do it", "✅ DO IT"), True),
         ("an unknown call", full.replace("✅ Do it", "✅ Approve it"), True),
         ("emoji before Why Yes", full.replace("- **Why Yes?**", "- 👍 **Why Yes?**"), True),
-        ("a CR's block is tkay-review's", commit.replace("✅ Ship it",
-                                                       "✅ Ship it · **Evidence:** CONFIDENT"),
-         False),
-        ("a CR's Close call is tkay-review's",
+        ("a CR's block is the review hook's",
+         commit.replace("✅ Ship it", "✅ Ship it · **Evidence:** CONFIDENT"), False),
+        ("a CR's Close call is the review hook's",
          commit.replace("✅ Ship it", "⚖️ Close call · **Evidence:** CONFIDENT"), False),
-        ("a CR's Needs test block is tkay-review's",
+        ("a CR's Needs test block is the review hook's",
          commit.replace("✅ Ship it", "🧪 Needs test (accepted untested) (🙌 Stops harm)"), False),
         ("broken shape inside a code fence is an example",
          "```\n- **Call:** ✅ Do it · **Evidence:** LIKELY\n```\n", False),

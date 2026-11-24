@@ -4,8 +4,8 @@
 It owns the assessment blocks a CR call opens - a commit's, a bycatch's, a plan's
 call - and checks them for the frame `frame_checks.py` holds: a known call in its
 emoji-and-word shape, no Evidence on the call, no retired field or badge, no emoji
-before Why Yes or Why Not. Every other block is the assessment hook of tkay-replies', so no
-block is checked twice.
+before Why Yes or Why Not. Every other block is left to the reply skill's assessment hook,
+so no block is checked twice.
 
 It also checks every table of a CR - Goals, Contract, Readiness, Incidents, Design,
 Implementation, In short, Bycatch, the two of To do, Was it fixed and Summary - and of a plan
@@ -152,7 +152,7 @@ def selftest():
          "- **Call:** ❌ Back to design (the architecture)\n", False),
         ("an Evidence on a plan's call",
          commit.replace("✅ Ship it", "✅ Build it · **Evidence:** CONFIDENT"), True),
-        ("a change's block is tkay-replies'", change, False),
+        ("a change's block is the reply hook's", change, False),
         ("plain text", "no assessment here\n", False),
         ("the In short table in shape", f"# Commits\n\n## In short\n\n{commits_table}", False),
         ("the In short table with made-up columns",
