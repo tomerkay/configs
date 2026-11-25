@@ -615,8 +615,9 @@ judged:
   A branch that does one thing gets one bullet, still numbered. The
   bullets judge nothing: the calls are the sections'.
 - **Given** names what the CR was handed besides the branch: a plan, a
-  ticket, a request or hand-off file, an MR link, one per line. It is the
-  one place the CR names its spec.
+  ticket, a request or hand-off file, an MR link, a test record or a goal
+  run's report, one per line. It is the one place the CR names its
+  spec, and what it read recorded runs from.
 
 ### The changes — after the overview, every CR
 
@@ -718,8 +719,9 @@ claim", and `# Incidents` "Incident", with a column after it, "The spec
 says", holding the status the spec claims.
 
 - **How we know** - what showed the call: a test the review ran, a run, a
-  read of the code at HEAD. A dash when nothing on the branch could be
-  checked.
+  read of the code at HEAD, or a run read from the test record or CI,
+  named as read from there. A dash when nothing on
+  the branch could be checked.
 - **Work** - where the work lives, as "The CR's sections" says.
 - **Call** - one of the spec-row calls of "The calls and Profiles of a CR".
 - **Blocker** - what the row holds, as "Hard and soft merge blockers"
@@ -1118,7 +1120,7 @@ included.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG**:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED)** and state exactly what you couldn't check.
 - **✅ Ship it, 🪓 Split, 📝 Reword and 📭 Missing description need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the assessment, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
-  **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. A run is left to me only when its proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. What the claim becomes depends on what you found when you traced it:
+  **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **A run the writer, a goal run or CI already passed on the exact code under review is read, never run again**: `test-record.md` says when a recorded run counts, and which runs no writer makes, so the review still runs them itself. A run is left to me only when its proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. What the claim becomes depends on what you found when you traced it:
   - **You traced it and found nothing wrong**: a **🧪 UNTESTED** finding. It names the claim and the command that would prove it, and gives the commit `🧪 Needs test` until it is run; once I accept it untested, the call reads `🧪 Needs test (accepted untested)`.
   - **You have a doubt you can name**: a **🟠 RISK (UNVERIFIED)**. It names the doubt, the claim and the command that would settle it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past.
 
@@ -1292,7 +1294,7 @@ and everything below it, so a fresh read has nothing new to find. Carry
 its findings over, with one line naming the review they come from, and
 spend the effort on what changed: the CR does only the work the earlier
 reviews do not already answer, so the more they share with the branch,
-the less it reads. Compare `git rev-parse <sha>^{tree} <sha>~1^{tree}`
+the less it reads. Compare `git rev-parse '<sha>^{tree}' '<sha>~1^{tree}'`
 for each commit with the same for the commit in its place in the earlier
 CR's In short table.
 

@@ -20,6 +20,7 @@ task-specific standards.
 | Writing or changing any code, a chart, a dashboard or config, or unsure whether a comment, mechanism, default or config key is acceptable | `references/clean-code.md` and `references/security.md` — **read both in full before the first line** |
 | Writing any line into a repo - code, a chart, config, a doc, a test - that could carry a copy, a specific value or a person's setup | `references/copied-stale-and-personal.md` |
 | Writing code, or a CR asked for, in a session that may already hold the other | `references/separate-sessions.md` |
+| Running a test on code you wrote, or handing that code to a review | `references/test-record.md` — **before the first test run** |
 
 **If you are unsure whether a row applies, read it.** Loading a reference I did
 not need costs seconds. Skipping one costs me a bad review or a false commit

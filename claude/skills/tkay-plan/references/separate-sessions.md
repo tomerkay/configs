@@ -89,9 +89,12 @@ never puts the review rules into this session.
 - **A fresh agent** is a subagent the session starts for that review alone,
   never one that inherits the session's context. It is told to load a
   review standard first and no writing standard, and that it wrote none of
-  what it reviews. It gets the repo, what to review and the spec the
-  request names, and nothing of the session's history: none of its
-  reasoning, and no review the session wrote. A repeat review also gets the
+  what it reviews. It gets the repo, what to review, the spec the
+  request names, the plan the session wrote the work from and the
+  session's record of the tests it ran on that work - the plan and the
+  record by their paths, when the session has them - and nothing of the
+  session's history: none of its reasoning, and no review the session
+  wrote. A repeat review also gets the
   file of an earlier review a fresh agent wrote. The agent writes the
   review and its file, and the session shows me that review in chat, whole
   and unchanged. The session has written no review, so the review carries

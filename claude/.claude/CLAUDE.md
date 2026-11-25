@@ -33,10 +33,14 @@ name what each kind adds; the procedure itself is this one:
    commit by that name in place of a SHA; from the second round on, it is
    also handed the previous round's review file. It is handed **the spec:
    every decision I made on the change, each written out as a goal the
-   change must meet**, in my own words where I gave them. It gets nothing
-   else of the session: none of its reasoning, and no hint of where to look. The
-   review standard's exemption for this repo spares the session its
-   question; it never keeps the review in the session.
+   change must meet**, in my own words where I gave them, and **the record
+   of every test run on the staged copies** - a hook's selftest and the
+   cases the change is about - kept as the `tkay-code` standard's
+   `test-record.md` says, each entry naming the staged copies it read by
+   the hash of their content. It gets nothing else of the session: none
+   of its reasoning, and no hint of where to look. The review standard's
+   exemption for this repo spares the session its question; it never
+   keeps the review in the session.
    **Then fix and review again, up to three rounds, but only while the
    review holds a MUST HAVE still open**: a 🔴 or 🟠 finding on a staged
    commit, or a goal or promise the review calls ⏳ Not reached, ❌ Missed

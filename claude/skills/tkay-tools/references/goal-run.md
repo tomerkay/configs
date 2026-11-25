@@ -86,10 +86,12 @@ and the goal's checker both read it first.
 7. **A fresh subagent reads the written goal** before it is handed over,
    with the repo and nothing of the session's reasoning: the suite list
    against the inventory, each command against the checkout and branch
-   it must act on, and the stop condition against what each phase is
-   for. It also writes the last-reply line for every way the goal lets a
-   suite end, and an end with no line the checker would accept is a hole
-   in the goal. What it finds is fixed in the goal, or put to me.
+   it must act on, the stop condition against what each phase is for,
+   and every subagent prompt for the lines that say nobody can answer
+   it and which stop it does not answer. It also writes the last-reply
+   line for every way the goal lets a suite end, and an end with no line
+   the checker would accept is a hole in the goal. What it finds is
+   fixed in the goal, or put to me.
 
 **A nightly goal is written only once nothing is left that would stop it
 reaching its end without me.** Before writing it, look for every such
@@ -188,6 +190,11 @@ harness's cap on a `/goal` condition.
   the goal was handed over, in the repo's checkout, by the code skill's
   standards and the repo's conventions.
   After each commit, build and test the packages it touched.
+- **Every test the run makes goes in its test record**, kept where
+  `test-record.md` places it: each build and test after a commit, each
+  suite and each rerun, its log opening with the tree it ran on. Each
+  CR reads its runs from there, never running one again that passed on
+  the code it reviews.
 - **The branch never changes during the run.** The run proposes no
   switch, makes none, and creates no branch, even when it comes to think
   the work belongs elsewhere: it says why in the report's "Decided while
@@ -202,15 +209,45 @@ harness's cap on a `/goal` condition.
   out `unwatched-goal.md`, with any route step 2 added.
 - **Every decision made without asking goes in one list**, with the commit
   that carries it. The work's goal file says where the list lives.
+- **No subagent the run starts can ask me anything, and its prompt says
+  so.** The goal writes into every subagent prompt that nobody can
+  answer it, and that this holds over any rule of a skill it loads that
+  says to stop and ask: where it would stop, it takes the answer it
+  would recommend, carries on, and opens what it returns with an
+  "Assumed" list - each question it would have asked, the answer it
+  took, and what the other answer would change. The prompt also says
+  which stop it does not answer, one that guards a choice no revert
+  can undo: it leaves that step undone, carries on with what does not
+  depend on it, and lists the step under "Assumed" as waiting. So a
+  skill that gains a question later needs no change to the goal.
+  - **Each assumption is a choice made without asking.** A nightly goal
+    lets it stand and puts it in the list of decisions made without
+    asking, with the other answer and the subagent's work that rests on
+    it; a step listed as waiting goes in the report as waiting on me. A
+    live goal asks me about each, a step listed as waiting included,
+    and when my answer differs from what the subagent did it starts
+    the subagent again with my answer in its prompt.
+  - **A subagent that returns a question in place of its work is started
+    again with the question answered in its prompt** - in a nightly
+    goal the answer it recommends, or the one the run would pick when
+    it recommends none, either one an assumption like any other, and in
+    a live one mine. A question that guards a choice no revert can
+    undo gets no answer in a nightly goal: the subagent is started
+    again told to leave that step undone, and the step goes in the
+    report as waiting on me. A subagent is never retried unchanged,
+    which asks the same question again. One that asks a question its
+    prompt already answers, or asks again about a step it was told to
+    leave undone, is not started again: its work goes in the report as
+    waiting on me, and the run carries on.
 - **Every CR is a fresh subagent spawned for that CR alone.** Where a CR
   runs is never asked, in a live goal either: the goal has picked the
   fresh subagent. It invokes the review skill first, gets the repo path,
   the whole branch - from where
   it forks off the default branch to HEAD, so its call judges what would
   merge - the list of decisions made without asking, to check each
-  against the code around it, and nothing of the session's reasoning,
-  and is told it wrote none of that code and has not loaded the code
-  skill; it returns the path of its CR file. **The first CR of each cycle
+  against the code around it, the path of the run's test record, and
+  nothing of the session's reasoning, and is told it wrote none of that
+  code and has not loaded the code skill; it returns the path of its CR file. **The first CR of each cycle
   is fresh**: it is handed no earlier CR file, so every cycle gets an
   independent read. **The rounds within a cycle build on it**: each later
   CR in the cycle is also handed the cycle's previous CR file and told to
@@ -293,7 +330,9 @@ harness's cap on a `/goal` condition.
   reviews them. When the third cycle's suites phase made commits, a final
   CR reviews HEAD and fixes nothing: what it finds goes in the report as
   waiting on me. A CR or a suite that cannot run - no CR file, a suite
-  that will not start - is retried once with nothing changed; a suite then
+  that will not start - is retried once with nothing changed, but for a
+  CR subagent that returned a question, which is started again as the
+  rule on subagents above says; a suite then
   gets a route that starts it on the branch with no prompt, and only when
   none exists waits on me, with the exact command for me to run, and the
   run moves on.
@@ -351,21 +390,23 @@ harness's cap on a `/goal` condition.
     says so in one line.
   - **Decided while running** holds every choice the run made alone,
     numbered D<n>: a 🙋 it took, with the options it passed over and the
-    range of commits that rests on it, and every gap decided as the code
-    around it would decide it, each with its commit. On a plan, they are
+    range of commits that rests on it, every gap decided as the code
+    around it would decide it, each with its commit, and every answer a
+    subagent assumed, with the other answer and the work that rests on
+    it. On a plan, they are
     the plan's "Decided while executing", in plain words.
   - **Suites** gives each suite's result on the branch: passed, failing
     only as its baseline does, failed, or waiting on me, and a suite that
-    passed only on a rerun says so. A
-    failed suite says which failures are the branch's and which its
+    passed only on a rerun says so, each with the tree it ran on, as
+    its entry in the test record names it. A failed suite says which failures are the branch's and which its
     baseline already has, and names the baseline's commit.
   - **Left running** lists every resource the run started that is still
     up, each with the command that removes it; with none, it says so in
     one line.
   - **Files** lists every file the run made or was given, each with what
     it is and its full path: the goal file, the plan or the request, every
-    CR file by cycle and round, every suite's log by suite and cycle. Only
-    files that exist are listed.
+    CR file by cycle and round, the test record, every suite's log by
+    suite and cycle. Only files that exist are listed.
   - **The final CR**, in full, as its file holds it, below the line: the
     run's last CR comes after its last fix, so it is copied once, when the
     run stops, and the report answers why the branch is or is not ready
