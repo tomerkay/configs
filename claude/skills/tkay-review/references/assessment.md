@@ -225,8 +225,8 @@ three its row already held:
   no call carries it.
   Each level is defined by what backs it:
   - **VERIFIED** - you ran it or tested the exact behaviour.
-  - **CONFIDENT** - not run, but you traced every step in the code or the
-    docs.
+  - **CONFIDENT** - not run, but you traced every step in the code, the
+    docs or the source it rests on.
   - **LIKELY** - one unchecked inference says it holds.
   - **50-50** - more than one unchecked inference, and they do not settle
     it.

@@ -1,5 +1,5 @@
 ---
-name: tkay-writing-plans
+name: tkay-plan
 description: The shape for a plan document - problem first, a design grounded in a known architecture, one section per commit, reference material below a divider - and what to stop for while implementing one. Use when asked for a plan, a shape plan, a design doc or an implementation write-up, to update, re-check or keep alive one, when implementing an agreed plan, and when asked for a goal on a plan file. A plan is brainstormed first - talked through, nothing built - becomes a shape plan in chat when one is asked for in those words, and a document only when a full plan is asked for in those words. It asks before writing a plan in a session that reviewed one or loaded a standard for reviewing plans, and before a plan review in a session that wrote the plan or loaded a standard for writing plans.
 ---
 

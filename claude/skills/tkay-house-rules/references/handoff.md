@@ -39,7 +39,9 @@ leave my machine carrying files I did not ask for and do not know exist.
 **Nothing inside the session's handoff directory is deleted file by file: it
 stays until the work is over**, because a handoff waits on me and a
 permission policy may prompt on every `rm`. Never offer to clear it
-unprompted - not mid-task, not when the work looks finished. Only when I
+unprompted - not mid-task, not when the work looks finished. An offer to
+check whether we are done, made once everything is closed, is not that
+offer: the cleanup still waits for the check itself. Only when I
 ask whether we are done, what is left over, or whether I can exit - in
 whatever words - say what your fork's subdirectory holds, and every file
 of yours left outside it, and give me both ways to delete: you run the

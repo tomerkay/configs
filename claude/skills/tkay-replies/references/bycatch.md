@@ -2,7 +2,7 @@
 
 **Something found on the way that does not bear on the work in hand - a
 bug, a stale doc, a misleading rule, a tool that got a call wrong, in any
-repo or tool - is bycatch, and every find is a row of the session's
+repo, document or tool - is bycatch, and every find is a row of the session's
 bycatch file.** Three things it never is:
 
 - **A blocker**: what stops the work in hand is part of the task, raised
@@ -15,8 +15,8 @@ bycatch file.** Three things it never is:
   under a bycatch heading.
 
 **Bycatch is how a session leaves the next one faster and better.** Ask
-it of every snag the session hit, in the repo and in the setup it runs
-on - its instructions, skills and hooks - not only of a bug in the code:
+it of every snag the session hit, in the work and in the setup it runs
+on - its instructions, skills and hooks - not only of a defect in the work:
 a rule that sent it the wrong way, a fact it had to dig up, a tool or a
 hook that cost a retry. Each snag whose fix would spare the next session
 the same one is a row.
@@ -101,14 +101,14 @@ Two rows per item, under its heading:
   - **⏸ Leave for now** - not in this work, with the reason in a few words:
     out of scope, another owner's file, not worth the cost today.
 - **The second row**: the Bycatch Profile is the problem as it sits in the
-  code - the Evidence that it is real as described, how much it touches,
+  work - the Evidence that it is real as described, how much it touches,
   how hard it is to understand - and the Fix Profile under Findings is the
   fix, as `severity.md` gives it. The cell under the call stays empty,
   since a call carries no Evidence; its `#` cell stays empty, which is what
   makes it read as part of the row above.
 
 **Bycatch is a finding, so what has no colour gets no row.** Something with
-nothing to fix in the code - a folder a tool left behind, state the harness
+nothing to fix in the work - a folder a tool left behind, state the harness
 keeps for itself, a leftover the session made, a change going live, such as
 a running session still holding a hook it loaded before a commit removed
 it - is no defect. It is named in a line of prose if at all, never as a

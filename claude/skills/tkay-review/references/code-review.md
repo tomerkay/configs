@@ -1,7 +1,7 @@
 # Code Review Standards
 
 `clean-code.md`, `security.md`, `commit-boundaries.md`, `assessment.md`,
-`severity.md`, `bycatch.md`, `writing-mds.md` and
+`severity.md`, `bycatch.md`, `docs.md` and
 `copied-stale-and-personal.md` sit beside this file in `references/`; this
 skill's SKILL.md says what each is for.
 `assessment.md` gives the frame every assessment in a CR is written in - the
@@ -33,12 +33,15 @@ commit judged against the one before it, and nobody judging what lands.
   that lives in no single commit - two commits that pass alone and break
   together, a change no later commit finishes - is still a finding. It goes in
   the review of the commit that should carry the fix, so that commit's call
-  blocks.
+  blocks. One that lives between two repos is a seam finding instead, as
+  "One CR per repo, and a shared part across them" says.
 - **The commit calls never read greener than the outcome.** If the branch
   at HEAD is broken, at least one row of the In short table is none of
   `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword`,
   `📭 Missing description` and `🔀 Squash into`: a fix that HEAD does not
-  hold is no fix.
+  hold is no fix. A break at a seam is the exception: it holds the repo
+  through its change entry, and the commits keep the calls their own
+  findings give them.
 - **Squash when it makes the outcome clearer.** When reading the commits apart
   hides what the branch does - steps that only make sense together, a commit
   that is broken until a later one lands, a split that leaves the reader to
@@ -47,14 +50,105 @@ commit judged against the one before it, and nobody judging what lands.
   easier to understand or to bisect, not by existing. The review recommends
   every squash and split; the rewrite itself waits for my word.
 
-## One CR per repo
+## One CR per repo, and a shared part across them
 
 **A CR over more than one repo is one CR per repo, one after the other,
-never interleaved.** Each repo gets its own sections under a heading
-that names the repo, its own branch line, and its own numbering, so
-"<repo> row 2" names one row and no row carries a repo tag. One line
-above the first repo says whether the branches merge independently or in
-which order. A CR Digest over several repos is split the same way.
+never interleaved, below a shared part that judges what lies between
+them.** Each repo's CR is a full CR - every section of "The CR's
+sections", its own title, its own numbering and its own file - so
+"<repo> row 2" names one row and no row carries a repo tag.
+
+**The shared part judges the seams**: what one repo reads that another
+writes - an API, a flag, a values key, a metric name. Neither repo's CR
+sees a seam whole, so a break there shows in neither. The shared part
+comes first, in a file of its own, and holds these sections, in this
+order:
+
+- **1.** **Its title and `# Overview`**: `# Across repo <repo> branch
+  <branch>, repo <repo> branch <branch> CR`, every repo in it, then what
+  the change does across the repos and its Given line, as "The overview"
+  gives them.
+- **2.** **`# Seams`**: one **SM** row per promise between two repos,
+  checked from both sides. Only a pair of repos that touch gets rows.
+
+  ```
+  | # | Between | The promise | How we know | Work | Call | Blocker |
+  |---|---|---|---|---|---|---|
+  | **SM1** | <repo> and <repo> | <what one reads that the other writes> | <the read or run on both sides> | <repo> **C2**, <repo> **C1** | ✅ Met | - |
+  ```
+
+- **3.** **`# Version mismatch`**: one **VM** row per seam and side that
+  can run new while the other side still runs old - during a rollout, and
+  during a rollback.
+
+  ```
+  | # | The mix | How we know | Work | Call | Blocker |
+  |---|---|---|---|---|---|
+  | **VM1** | **SM1**, new <repo>, old <repo>, rollout | <the read or run> | **SF1** | ❌ Missed (<what breaks>) | ⛔ Hard: code |
+  ```
+
+- **4.** **`# Order`**: two lines - **Merge:** the order the branches
+  merge in, or that they merge independently; **Deploy:** the order they
+  go live in, which can differ from the merge order.
+- **5.** **`# Seam findings`**: every finding that lives between two
+  repos rather than in one, worst colour first, each under `### SF<n> ·
+  🔴 BUG between <repo> and <repo>: <what breaks>`, its colour tag as a
+  commit's finding gives it, with the file and line on each
+  side, how it fails, the fix written out and its Fix Profile, as a
+  commit's finding gives them. A seam finding lives here once and is
+  never also a finding on a commit. With none, it is one line: "No seam
+  findings."
+
+Then the same `# To do` and `# Summary` as a repo's CR, with three
+differences:
+
+- **To do holds every repo's To do rows**, in the order to do them across
+  the repos, so each seam finding's work comes in once, through the row
+  that repeats it in the repo that makes the fix. Each Where cell names
+  the repo and its row, `<repo> **TD2**`, and the seam finding when the
+  row repeats one: `<repo> **TD3** (**SF1**)`. A seam finding fixed in
+  two repos is a row in each.
+- **The Summary has one row per repo after the shared sections' rows**,
+  its Section cell the repo's name, its Calls cell the repo's branch call
+  and its Blocker cell that call's blocker.
+- **`**Overall call:**` stands in for the branch call**: one of the branch
+  calls, following from every repo's branch call and the shared sections'
+  rows as a branch call follows from its sections, the worst deciding.
+
+**The rows and calls of the shared part are a CR's.** **SM** and **VM**
+rows take the calls of a row of a spec table, and their Work cell names
+each commit as `<repo> **C2**`, or the seam finding that carries the fix.
+A row not met holds the overall call as it would a branch call.
+
+**When the repos share no seam**, the shared part is its title, `#
+Order` and `# Summary`: the sections between judge a seam, and there is
+none.
+
+**Each repo's CR says it is part of a larger one**, so read on its own it
+never passes for the whole picture. A line under its title names the
+rest:
+
+```
+**Part of:** a CR across <the other repos>; merges <independently | after <repo>>; shared part: <its file's full path>
+```
+
+Its To do repeats every seam finding whose fix is made in that repo, with
+**SF<n> (shared part)** as its Where cell. **SF1** goes on the Work line
+of the change entry the fix lands in, beside its commits, and from there
+counts exactly as the same finding on one of those commits would: it
+moves the entry's call, carries the blocker badge that finding would
+carry, and its To do row goes in the table that finding's row would.
+
+When a seam finding that would move a call lands in no change the branch
+makes, the repo's CR gets an entry for it, `• **CH<n>** <what the fix
+adds>` with `**Work:** not built: <what the fix adds>, **SF1**`, and that
+entry takes the call.
+
+**A CR Digest, a CR Brief and a CR Summary over several repos are split
+the same way**: the Digest keeps the shared part whole, the Brief keeps
+its overview, To do and Summary, and the Summary view its Summary. A
+repeat CR keeps the numbers of the **SM**, **VM** and **SF** rows as it
+keeps a bycatch row's.
 
 ## The CR's sections
 
@@ -117,7 +211,9 @@ row and nothing else: **CH** a change, **G** a goal, **A** an API row,
 **IV** a constraint or invariant, **SE**, **HA** and **OP** a security,
 high-availability and operability claim, **IN** an incident, **DS** a
 Design row, **IM** an Implementation row, **C** a commit, **B** a bycatch row, **TD** a To do row,
-**SC** a row of the section calls the CR ends with.
+**SC** a row of the section calls the CR ends with, and in the shared part
+of a CR over several repos **SM** a seam, **VM** a version mismatch and
+**SF** a seam finding.
 Each is bold and counts from 1 in its section; **B** goes on from the
 session's count of bycatch.
 
@@ -556,7 +652,10 @@ never folded into one entry where a weak part hides behind a strong one.
   it works once every commit it lives in is in, how much it touches and
   how hard it is to get right. A commit's Profile judges the commit alone,
   and what a fix costs is in the commit's row.
-- **The call follows the commits it names.** `✅ Keep it` only when every
+- **The call follows the commits and the seam findings it names**: a seam
+  finding on its Work line counts as a finding on one of its commits, as
+  "One CR per repo, and a shared part across them" says. `✅ Keep it`
+  only when every
   one of them is `✅ Ship it`, `👌 Fixed later`, `🪓 Split`, `📝 Reword`,
   `📭 Missing description` or `🔀 Squash into`; `🧪 Needs test` when one or more is `🧪 Needs test` and
   the rest are among those, naming the run; `🙋 Needs your call` when one
@@ -633,7 +732,8 @@ says", holding the status the spec claims.
   not belong: ✂️ Carve out or ❌ Drop it.
 - **A row that does not hold is also a finding**: ❌ Missed and ❌ Breaks
   callers are a 🔴 or 🟠 on the commit that should carry the fix, so its
-  call blocks. One under commits of nothing but `✅ Ship it` means the
+  call blocks. An **SM** or **VM** row's finding is its seam finding
+  instead. One under commits of nothing but `✅ Ship it` means the
   commits are missing that finding. An incident the spec calls Solved,
   whose mechanism the branch does not hold, is ❌ Missed.
 - **A row not met holds the branch.** ⏳ Not reached makes the branch's call
@@ -1056,7 +1156,7 @@ included.
 
 **Every markdown file the change touches that instructs or documents - a
 `CLAUDE.md`, a README, a design doc, a `SKILL.md`, a skill's reference - is
-held to `writing-mds.md` and `copied-stale-and-personal.md`, beside this
+held to `docs.md` and `copied-stale-and-personal.md`, beside this
 file.** Its findings go on the commit that carries the line, as any other
 finding does.
 
@@ -1068,7 +1168,7 @@ there. A line that only makes sense to someone who was is a finding.
 Each check is run before the first finding, and the review names the
 command or the read that ran it:
 
-1. **Each fact sits in its one home**, by the homes `writing-mds.md` gives,
+1. **Each fact sits in its one home**, by the homes `docs.md` gives,
    and reads there as that kind of file should.
 2. **Nothing copied, nothing stale, nothing personal**: the rules of
    `copied-stale-and-personal.md`, asked of every line the diff adds.
@@ -1308,7 +1408,7 @@ earlier CR's To do, each row with what became of it.
 - **When reviewing a commit, check HEAD state to verify later commits didn't break it**
 - **When methods/functions/metrics are removed, verify they're not called in HEAD**
 - **Read and understand new code logic** - don't just hunt for bugs, analyze whether the logic makes sense (see "Logical correctness of new code" in the checklist above)
-- **Lay the CR out in the sections of "The CR's sections"**, the overview first and To do last, every section present, and one CR per repo
+- **Lay the CR out in the sections of "The CR's sections"**, the overview first and To do last, every section present, and one CR per repo, below a shared part when it spans several
 - **Open with the FINDINGS line and the Full Assessment, colour every finding (🔴/🟠/🟡/⚪) or mark it 🧪 UNTESTED, and split MUST HAVE from NICE TO HAVE with the divider** (see the colour section above)
 - **For every 🔴, write the concrete failure scenario**: what input/state, what goes wrong, at which `file:line`
 - **Say it out loud when a section is empty** - I need to hear it, not deduce it (exact wording in "Mandatory output shape per commit" above)

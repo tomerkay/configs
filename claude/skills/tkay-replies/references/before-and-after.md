@@ -14,14 +14,14 @@ fence - never text to copy in.
 
 **A diff, and every block that quotes a markdown file, is wrapped in four
 backticks, always**, whether or not a fence line shows in it, and in more
-when it holds a fence of four. A fence closes on the first line with at
-least as many backticks as the one that opened it, and the fence line
-inside such a block - a diff's context line, the closing line of an
-example - is the one a look over the block misses, so the kind of block
-decides the fence, never a search for the line. Any other block whose
-content holds a fence line takes a fence longer than that line. A fence
-that closes early flips every fence after it, and the rest of the reply
-renders as raw code.
+when it holds a four-backtick fence line. A fence closes on the first line
+with at least as many backticks as the one that opened it, and the fence
+line inside such a block - a fence line in a diff's context, the closing
+line of an example - is the one a look over the block misses, so the kind
+of block decides the fence, never a search for the line. Any other block
+whose content holds a fence line takes a fence longer than that line. A
+fence that closes early flips every fence after it, and the rest of the
+reply renders as raw code.
 
 The case that taught it: a diff of a markdown file whose context held the
 closing line of an example.

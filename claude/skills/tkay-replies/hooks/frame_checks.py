@@ -11,7 +11,9 @@ import json
 import re
 import sys
 
-FENCE_RE = re.compile(r"^\s*(```|~~~)")
+FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+# A block may open on a list item's marker line, as "1. ```bash".
+ITEM_FENCE_RE = re.compile(r"^\s*(?:[-*+]|\d{1,9}[.)]) +(`{3,}|~{3,})(.*)$")
 # The variation selector after ⚖, 🗑 and ⏸ is optional: both spellings render as the same
 # symbol.
 CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Strongly don't|❌ Don't)"
@@ -39,14 +41,22 @@ OLD_WHY_RE = re.compile(r"^\s*- \S+ \*\*Why (Yes|Not)\?\*\*")
 
 
 def prose_lines(text):
+    """The lines outside code blocks; a block closes only on a bare fence at least as long as
+    its opener, of the same character, so a fence line it holds stays inside it."""
     lines = []
-    in_fence = False
+    opener = None
     for line in text.splitlines():
-        if FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if not in_fence:
-            lines.append(line)
+        match = FENCE_RE.match(line)
+        if opener is None:
+            start = match or ITEM_FENCE_RE.match(line)
+            # A backtick fence's info string holds no backtick, so "```x```" is inline code.
+            if start and not (start.group(1)[0] == "`" and "`" in start.group(2)):
+                opener = start.group(1)
+            else:
+                lines.append(line)
+        elif (match and match.group(1)[0] == opener[0] and len(match.group(1)) >= len(opener)
+              and not match.group(2).strip()):
+            opener = None
     return lines
 
 

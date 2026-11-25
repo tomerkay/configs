@@ -34,6 +34,16 @@ to see it, or ask whether we are done while anything is still open. While we
 are still talking about the same item - a follow-up, a
 clarification, another round on it - the reply has no tree.
 
+**The reply that closes the last open item ends with one plain line,
+"Are we done?"**, the question I would otherwise ask myself: a yes runs
+the check exactly as if I had asked it, so it saves a round, and it shows
+the check to someone who does not know it exists. A plain line, never a
+❓: the reply stops for nothing. It is the reply's last line, below its
+TL;DR and any steps to run. A reply that asks a ❓ leaves it to the next
+reply that asks none, since that question is still open. It comes once
+each time the tree empties,
+and a session with no tree gets none.
+
 **When I ask whether we are done, the answer is checked, never given from
 memory**: every proposal or question with no answer, every step staged or
 waiting on me, every drawback I have not answered, every change left

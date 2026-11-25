@@ -384,20 +384,20 @@ action of that kind.**
 | write an MR or PR title or description | `tkay-mr` |
 | name a git branch | `tkay-code` |
 | take screenshots of UI work - the first one of them | `tkay-mr` |
-| create or edit any `CLAUDE.md` - this global one included - a README, a design doc or a `SKILL.md`, including one you touch on the way through a code change | `tkay-writing-mds` |
-| a plan - brainstormed by default, a shape plan or a full plan only when I say SHAPE PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-writing-plans` |
-| a goal on a plan file - "give me a goal on <path>.md", nightly only when I say "nightly goal" | `tkay-writing-plans` |
-| a goal that builds something and names no plan file - "give me a goal for <what to build>", nightly only when I say "nightly goal" | `tkay-tool-use` |
-| `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
-| take down / drain / remove everything I own in a namespace | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
-| create a cell, or move a node into or out of one | `tkay-cluster-ops`, plus `atero-skills:cluster-ops` |
+| create or edit any `CLAUDE.md` - this global one included - a README, a design doc or a `SKILL.md`, including one you touch on the way through a code change | `tkay-docs` |
+| a plan - brainstormed by default, a shape plan or a full plan only when I say SHAPE PLAN or FULL PLAN in those words - a design doc or an implementation write-up | `tkay-plan` |
+| a goal on a plan file - "give me a goal on <path>.md", nightly only when I say "nightly goal" | `tkay-plan` |
+| a goal that builds something and names no plan file - "give me a goal for <what to build>", nightly only when I say "nightly goal" | `tkay-tools` |
+| `helm install`/`upgrade` on an existing release, or a field-manager conflict | `tkay-cluster`, plus `atero-skills:cluster-ops` |
+| take down / drain / remove everything I own in a namespace | `tkay-cluster`, plus `atero-skills:cluster-ops` |
+| create a cell, or move a node into or out of one | `tkay-cluster`, plus `atero-skills:cluster-ops` |
 | build, edit, fetch or publish a Grafana dashboard, panel or template variable | `atero-skills:grafana-dashboards`, plus `dashboarding` when building or debugging the JSON |
 | investigate a fired alert | `atero-skills:investigate-alert` |
 
 `tkay-code` and `tkay-review` then route to their own reference file for the
 specific task - read the one it names before writing a single finding or
-commit message. `tkay-code`, `tkay-review`, `tkay-writing-plans` and
-`tkay-writing-mds` each carry the rule that keeps the work and its review
+commit message. `tkay-code`, `tkay-review`, `tkay-plan` and
+`tkay-docs` each carry the rule that keeps the work and its review
 in separate sessions, and stop with a ⚠️ question before a review in a
 session that wrote the work or loaded a standard for writing it, and
 before work in a session that wrote a review or loaded a standard for
@@ -438,10 +438,15 @@ session reads it before the first edit, as it loads a skill before the
 first action of its kind.
 
 **"Update my Claude setup" means this file, `~/.claude/personal/` and the
-`tkay-*` skills.** When I say it, in whatever words, the change goes into
-this file, a file under `personal/` or the `tkay-*` skill that owns the
-topic: pick the home by the tests of `~/.claude/.claude/CLAUDE.md`, and
-say which in one line.
+`tkay-*` skills, and a rule goes into a skill whenever one may hold it.**
+When I ask to add a rule or a fact to my setup, in whatever words, or you
+propose one yourself, pick the home by the tests of
+`~/.claude/.claude/CLAUDE.md` and say which in one line: a fact about me in
+`personal/`; the `tkay-*` skill that owns the topic when those tests let it
+hold the rule; else a dedicated new skill when the rule is one another
+engineer could install on its own, put to me as a ❓ proposal of its own;
+else this file, for what every session needs before any skill loads or
+what those tests keep here.
 
 The `atero-skills` plugin is edited in `~/repos/atero-skills/.claude/skills/`,
 never in the plugin cache.
@@ -492,28 +497,28 @@ every line written in every session:
 
 # Know what only I can run, before you start
 
-@~/.claude/skills/tkay-tool-use/references/protections.md
+@~/.claude/skills/tkay-tools/references/protections.md
 
 # Every file you write goes under ~/.cache/claude-handoff
 
-@~/.claude/skills/tkay-tool-use/references/scratch-files.md
+@~/.claude/skills/tkay-tools/references/scratch-files.md
 
-# Tool use is the `tkay-tool-use` skill's
+# Tool use is the `tkay-tools` skill's
 
 Reads that run without asking, long runs, what a session leaves running,
 background watchers, JSON into jq, a path preferred to a `cd`, waiting
-under a `/goal` and git the sandbox blocks are the `tkay-tool-use` skill's,
+under a `/goal` and git the sandbox blocks are the `tkay-tools` skill's,
 which owns them:
 
-@~/.claude/skills/tkay-tool-use/references/reads.md
-@~/.claude/skills/tkay-tool-use/references/long-runs.md
-@~/.claude/skills/tkay-tool-use/references/left-running.md
-@~/.claude/skills/tkay-tool-use/references/watchers.md
-@~/.claude/skills/tkay-tool-use/references/jq.md
-@~/.claude/skills/tkay-tool-use/references/working-directory.md
-@~/.claude/skills/tkay-tool-use/references/goals.md
-@~/.claude/skills/tkay-tool-use/references/unwatched-goal.md
-@~/.claude/skills/tkay-tool-use/references/git-in-sandbox.md
+@~/.claude/skills/tkay-tools/references/reads.md
+@~/.claude/skills/tkay-tools/references/long-runs.md
+@~/.claude/skills/tkay-tools/references/left-running.md
+@~/.claude/skills/tkay-tools/references/watchers.md
+@~/.claude/skills/tkay-tools/references/jq.md
+@~/.claude/skills/tkay-tools/references/working-directory.md
+@~/.claude/skills/tkay-tools/references/goals.md
+@~/.claude/skills/tkay-tools/references/unwatched-goal.md
+@~/.claude/skills/tkay-tools/references/git-in-sandbox.md
 
 What the gate adds: **a goal that needs the gate opened** gets a suggested
 line with `LFG!` in it.
@@ -608,17 +613,17 @@ here.
 
 # Always pin the context and the namespace
 
-Every cluster command pins both, as the `tkay-cluster-ops` skill says:
+Every cluster command pins both, as the `tkay-cluster` skill says:
 
-@~/.claude/skills/tkay-cluster-ops/references/pinning.md
+@~/.claude/skills/tkay-cluster/references/pinning.md
 
 # My workloads run in my cell, not someone else's - and what a cell is
 
-@~/.claude/skills/tkay-cluster-ops/references/cells.md
+@~/.claude/skills/tkay-cluster/references/cells.md
 
 # Investigations run without asking - every read, every time
 
-Every read runs without asking, as `tkay-tool-use`'s `reads.md` says.
+Every read runs without asking, as `tkay-tools`'s `reads.md` says.
 **A change needs my words** - see "Some commands need my words and the
 prompt, every time" - or, for a repo, the gate; stopping to ask about a
 read is the same bug as printing the refusal line for one. The TL;DR into

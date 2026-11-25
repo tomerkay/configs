@@ -8,6 +8,8 @@ hooks:
           command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/question-shape.py"'
         - type: command
           command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/assessment-shape.py"'
+        - type: command
+          command: 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/fence-shape.py"'
 ---
 
 # Reply shapes
@@ -15,6 +17,11 @@ hooks:
 How a reply to me in chat is laid out, so I can answer any part of it by its
 number and see at a glance where it stops for me. Each shape is in its own
 reference; they refer to each other by file name.
+
+**The shapes are generic, not about code.** They hold for a reply about any
+work - writing, research, planning, operations, code - and assume no
+codebase, so someone who never writes code uses them as they are. An example
+drawn from code illustrates a rule and never narrows it.
 
 | When the reply | Read |
 |---|---|
@@ -34,9 +41,9 @@ reference; they refer to each other by file name.
 **Read the reference before the reply that needs it.** Never answer from
 memory of a reference you have not read this session.
 
-The hooks in this skill's frontmatter check every reply's ❓ lines and
-assessments once the skill is loaded, and send a reply back once when one
-breaks its shape.
+The hooks in this skill's frontmatter check every reply's ❓ lines,
+assessments and code fences once the skill is loaded, and send a reply
+back once when one breaks its shape.
 
 **A reply sent back is corrected, never repeated.** A hook runs when the
 reply ends, so the reply it objects to is already on my screen. The next
@@ -53,6 +60,11 @@ point a hook sent back:
    - **Why Not?**
      - **1.** a cheap fix made at night can bring a bug of its own
 ```
+
+**A broken fence is the one exception**: every line after it rendered as
+raw text, so I never read them. The correction says in one line that a
+fence broke, then prints everything from the broken block to the end of
+the reply again, each block fenced longer than any fence line it holds.
 
 These shapes are for replies in chat only - never a commit message, a chat
 post or a file, whose own conventions hold. The one exception is

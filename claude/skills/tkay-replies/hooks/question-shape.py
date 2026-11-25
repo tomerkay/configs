@@ -20,7 +20,6 @@ import sys
 sys.dont_write_bytecode = True
 import frame_checks as frame  # noqa: E402
 
-FENCE_RE = re.compile(r"^\s*(```|~~~)")
 # The number is bold by the rules, but a plain one must still be checked: matching only one
 # spelling leaves every ❓ in the other unchecked.
 QUESTION_NUMBER = r"(?:\*\*Q\d+\*\*|Q\d+)"
@@ -29,21 +28,9 @@ WARNING_RE = re.compile(rf"^\s*❓ {QUESTION_NUMBER} ⚠️? ")
 TAGGED_RE = re.compile(rf"^\s*❓ {QUESTION_NUMBER} (⚠️? )?\*\*.+?\*\* \[")
 
 
-def prose_lines(text):
-    lines = []
-    in_fence = False
-    for line in text.splitlines():
-        if FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if not in_fence:
-            lines.append(line)
-    return lines
-
-
 def problems(text):
     found = []
-    for line in prose_lines(text):
+    for line in frame.prose_lines(text):
         head = line.strip()[:60]
         if WARNING_RE.match(line):
             found.append(f"{head}... carries a ⚠️; a risk goes in the judgement under it")
@@ -87,6 +74,10 @@ def selftest():
         ("indented ❓ line", "   ❓ Q2 ⚠️ **X**: ok?\n", True),
         ("broken shape inside a code fence is an example",
          "```\n❓ Q1 ⚠️ **X** [✅ DO IT]: ok?\n```\n", False),
+        ("a fence line inside a longer fence keeps the block closed to the prose after it",
+         "````\n```\n````\n❓ Q1 ⚠️ **X**: ok?\n", True),
+        ("a block opened on a list item's line ends at its closing line",
+         "1. ```bash\n   ls\n   ```\n❓ Q1 ⚠️ **X**: ok?\n", True),
     ]
     ok = True
     for name, text, expect_block in cases:

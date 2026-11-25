@@ -164,14 +164,13 @@ taught it, a goal that sent itself to a new session:
   it will not catch and what it decides without me.
 
 **The reply says in one line what the goal builds and ends with the goal
-file's full path.** The `/goal` line opens with the nightly or live
-sentence, names the plan or the request and the goal file for the run to
-read first, and states the stop condition in full - each of the three
-states a suite may end in, the waiting one for any recorded reason - as
-things the conversation will show: the goal's checker reads only the
-conversation - it never opens a file - so a stop it cannot see there is
-one it cannot judge. The line stays under the harness's cap on a `/goal`
-condition.
+file's full path.** The `/goal` line names the plan or the request and
+the goal file for the run to read first, and states the stop condition in
+full - each of the three states a suite may end in, the waiting one for
+any recorded reason - as things the conversation will show: the goal's
+checker reads only the conversation - it never opens a file - so a stop
+it cannot see there is one it cannot judge. The line stays under the
+harness's cap on a `/goal` condition.
 
 ## What the run does
 

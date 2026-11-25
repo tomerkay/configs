@@ -95,12 +95,21 @@ name what each kind adds; the procedure itself is this one:
    sandbox off - it denies these paths, and gpg cannot sign inside it. Never
    hand me the `cp` to paste while that route is open: the question is the
    safeguard, and a paste is the same install with a round trip added.
-   **Compare the live file with the base first.** When they differ - another
-   session changed it since - the `cp` would overwrite that change, and the
-   commit's diff would no longer be the reviewed one: install nothing, copy
-   the live file in as the new base, beside the old one, and stage the edits
-   again on it. **The edits move onto the new base with `git -C <this
-   session's handoff directory> merge-file <staged copy> <old base> <new
+   **Compare the live file with the base first, in the same command as its
+   `cp`** - every file's `cmp -s <base> <live file>` chained with `&&`,
+   then every `cp <staged copy> <live file>`, each path written out
+   absolute, never with `~`, so one
+   difference stops every copy and another session's change can land only
+   in the moment between a file's compare and its copy. For a file the
+   change adds, `test ! -e <live file>` stands in for its `cmp`, and
+   `/dev/null` for its old base in the merge below. `-s` prints nothing,
+   so on a non-zero exit compare each file again on its own to find the
+   one that moved. When they differ - another session changed it since -
+   the `cp` would overwrite that change, and the commit's diff would no
+   longer be the reviewed one: install nothing, copy the live file in as
+   the new base, beside the old one, and stage the edits again on it.
+   **The edits move onto the new base with `git -C <this session's
+   handoff directory> merge-file <staged copy> <old base> <new
    base>`**, which writes the merge into the staged copy. A non-zero exit up
    to 127 is the number of conflicts: make the edit again by hand on the new
    base's text in place of each marked block. An exit above 127 is an error,
@@ -170,10 +179,10 @@ every new shell, this session's included - so a broken one is live the moment
 it is saved. It goes through "A staged change, installed on one question",
 and two things are its own:
 
-- **The install and the commit are one command**: the `cp` over the live
-  file, then `sync-configs.sh --no-push -m "<message>" <file>...`, so no
-  scheduled run commits the change first. Pushing is left to the next
-  scheduled run.
+- **The install and the commit are one command**: the compare and the
+  `cp` of step 4, then `sync-configs.sh --no-push -m "<message>" <file>...`,
+  chained with `&&`, so no scheduled run commits the change first.
+  Pushing is left to the next scheduled run.
 - **A refused run names the other home files with a pending change.** Each
   gets its own reason from me before this one is committed, never folded into
   this message.
@@ -269,9 +278,11 @@ of its own:
   has one, and put every case the change is about through the copy before
   the live file is touched. Time it there too, as "A hook is small and
   fast" says.
-- **Install it in one `cp`**, passed by the `cp` allow rule in
-  `settings.json`, then run the same tests against the live file before the
-  commit.
+- **Install it in one `cp`**, behind step 4's compare, then run the same
+  tests against the live file before the commit. No allow rule passes a
+  hook's install: a wildcard rule matched copies out of the hooks
+  directory too, so each install goes to my permission prompt, which
+  shows the exact command.
 - **A failure in the live tests is undone with `git -C ~/.claude restore
   <file>` before anything else**; when the broken hook denies that, print it
   for me as a `! <command>` and stop.
@@ -322,7 +333,7 @@ you write or edit one:
   set it: a code skill that said "the CR standard lives in the review
   skill" by name, which no review checked, since the rule above reads as a
   ban on paths alone.
-- **A file two skills need is shared by symlink**, as `tkay-writing-mds`
+- **A file two skills need is shared by symlink**, as `tkay-docs`
   says for any catalog. For mine, the sync's `cp` follows the link and
   publishes a real copy into each skill, which it rebuilds on every run,
   so the copies never drift. Two skills' hooks never check the
@@ -336,9 +347,9 @@ you write or edit one:
   depends on is written into it. A copy of a rule from a CLAUDE.md of mine
   is the price of standalone; keep it to what that skill actually needs.
 - **Knowledge specific to my workplace, Crusoe and its Atero site, stays
-  in `tkay-cluster-ops`, the root `CLAUDE.md` and `personal/`** - its
+  in `tkay-cluster`, the root `CLAUDE.md` and `personal/`** - its
   clusters, cells, backoffice, charts and repos: what an operation on a
-  cluster or a cell needs goes in `tkay-cluster-ops`, everything else in
+  cluster or a cell needs goes in `tkay-cluster`, everything else in
   the root `CLAUDE.md` or `personal/`. Every other `tkay-*` skill works
   for an engineer anywhere, `tkay-house-rules` included; an example taken
   from my work that names no Crusoe or Atero system is fine.

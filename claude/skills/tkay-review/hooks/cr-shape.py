@@ -8,7 +8,8 @@ before Why Yes or Why Not. Every other block is left to the reply skill's assess
 so no block is checked twice.
 
 It also checks every table of a CR - Goals, Contract, Readiness, Incidents, Design,
-Implementation, In short, Bycatch, the two of To do, Was it fixed and Summary - and of a plan
+Implementation, In short, Bycatch, the two of To do, Was it fixed, Summary, and the Seams and
+Version mismatch of the shared part of a CR over several repos - and of a plan
 review, which shares them but for its own In short and its Before it is built: each opens
 with the header row the standard gives, and each row is numbered with its table's letters, or
 is the Profile row under one in the tables that have one.
@@ -31,7 +32,8 @@ SHAPE = ("the commit's assessment as list items: **Call:** with the call alone, 
          "**Commit:** Profile with Evidence, Size and Difficulty; and each table with the "
          "standard's header row")
 
-# A heading of any level, so a CR split by repo, whose sections sit one level down, is held too.
+# A heading of any level, so a table under a sub-heading - To do's two, or a CR nested in a
+# reply - is held too.
 # Each table: its header row, the letters its rows are numbered with, and whether a row may
 # be the unnumbered Profile row under the one above it.
 TABLES = {
@@ -49,11 +51,14 @@ TABLES = {
     "Optional": ("| # | What to do | Where | Who | Fix Profile |", "TD", False),
     "Was it fixed": ("| # | What was to do | Where | Now |", "TD", False),
     "Summary": ("| # | Section | Calls | Blocker |", "SC", False),
+    "Seams": ("| # | Between | The promise | How we know | Work | Call | Blocker |", "SM", False),
+    "Version mismatch": ("| # | The mix | How we know | Work | Call | Blocker |", "VM", False),
 }
 # Headings other replies use too: a table under one is held only when it opens the way a CR's
 # does.
 CR_ONLY = {"Summary": "| # | Section | Calls |", "Design": "| # | Rule |",
-           "Implementation": "| # | Rule |"}
+           "Implementation": "| # | Rule |", "Seams": "| # | Between |",
+           "Version mismatch": "| # | The mix |"}
 # A heading a plan review shares with a CR, holding a table of its own there: either shape
 # passes, and its own letters number its rows.
 PLAN_REVIEW_TABLES = {
@@ -251,13 +256,39 @@ def selftest():
         ("an empty section's line is no table", "# Incidents\n\nThe spec states no incidents.\n",
          False),
         ("the bycatch table in shape", f"# 🎣 Bycatch\n\n{bycatch_table}", False),
-        ("a CR split by repo keeps the tables a level down",
+        ("a CR nested a level down keeps its tables",
          f"## 🎣 Bycatch\n\n{bycatch_table}", False),
         ("the bycatch table with made-up columns",
          "# 🎣 Bycatch\n\n| # | What | Where |\n|---|---|---|\n| **B1** | a folder | x |\n", True),
         ("a bycatch row numbered without its B",
          f"# 🎣 Bycatch\n\n{bycatch_table}| **2** | a doc | 🟡 1 | ⏸ Leave for now |\n", True),
         ("no bycatch, no table", "# 🎣 Bycatch\n\nNo bycatch.\n", False),
+        ("the seams table in shape",
+         "# Seams\n\n| # | Between | The promise | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|---|\n"
+         "| **SM1** | a and b | a flag | read | a **C2** | ✅ Met | - |\n", False),
+        ("a seams row numbered as a contract row",
+         "# Seams\n\n| # | Between | The promise | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|---|\n"
+         "| **A1** | a and b | a flag | read | a **C2** | ✅ Met | - |\n", True),
+        ("a seams table without its Between column",
+         "# Seams\n\n| # | Between | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **SM1** | a flag | read | a **C2** | ✅ Met | - |\n", True),
+        ("the version mismatch table in shape",
+         "# Version mismatch\n\n| # | The mix | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| **VM1** | **SM1**, new a, old b, rollout | read | **SF1** | ❌ Missed (x) | "
+         "⛔ Hard: code |\n", False),
+        ("a version mismatch row with no number",
+         "# Version mismatch\n\n| # | The mix | How we know | Work | Call | Blocker |\n"
+         "|---|---|---|---|---|---|\n"
+         "| | new a, old b, rollout | read | **SF1** | ✅ Met | - |\n", True),
+        ("a Seams table that is not a CR's is left alone",
+         "## Seams\n\n| # | Fabric | Width |\n|---|---|---|\n| 1 | linen | 2 cm |\n", False),
+        ("a Version mismatch table that is not a CR's is left alone",
+         "## Version mismatch\n\n| # | Library | Pinned |\n|---|---|---|\n"
+         "| 1 | numpy | 1.26 |\n", False),
         ("a table inside a fence is an example",
          "```\n# 🎣 Bycatch\n\n| # | What | Where |\n```\n", False),
     ]

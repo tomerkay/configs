@@ -42,7 +42,7 @@ skill's own `references/` so it works installed alone:
 | `references/severity.md` | the four colours a finding carries, and the Fix Profile |
 | `references/bycatch.md` | the bycatch table, its calls, and which session rows it carries |
 | `references/plan-shape.md` | a plan review only: the shape it holds a plan to |
-| `references/writing-mds.md` | where a fact goes and how a doc points, for the docs in any change |
+| `references/docs.md` | where a fact goes and how a doc points, for the docs in any change |
 | `references/copied-stale-and-personal.md` | the rules asked of every line a change adds to a doc |
 | `references/questions.md` | when a reference above names it: how a proposal or a question that stops a reply is written |
 | `references/issue-tree.md` | when a reference above names it: the closing a session gives once nothing is open |
@@ -83,7 +83,8 @@ a scratch directory that outlives the session, never in the repo under
 review. The file is `cr-<n>.md`, the next free number in that directory,
 so no CR overwrites another: the review after a round of fixes is a new
 CR and a new file, and so is a CR Digest, a CR Brief or a CR Summary. A
-CR over several repos is one file per repo. Each CR in chat ends, under its To
+CR over several repos is one file per repo and one for the shared part,
+which is numbered first, so each repo's CR can name it. Each CR in chat ends, under its To
 do, with the ending `references/code-review.md` gives, whose last line
 names its file by its full path:
 

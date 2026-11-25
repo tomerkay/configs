@@ -8,7 +8,8 @@ run, a `! <command>` suggestion, a config or YAML snippet, a query, a commit
 message, a chat message, a value to paste into a UI. If I am going to select it
 with the mouse and paste it somewhere else, it is bracketed.
 
-The exact shape, fence included:
+The exact shape, fence included - a block that quotes a markdown file, or
+a diff, takes the four-backtick fence `before-and-after.md` gives:
 
 ````
 ================================
