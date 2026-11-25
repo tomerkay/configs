@@ -617,7 +617,9 @@ judged:
 - **Given** names what the CR was handed besides the branch: a plan, a
   ticket, a request or hand-off file, an MR link, a test record or a goal
   run's report, one per line. It is the one place the CR names its
-  spec, and what it read recorded runs from.
+  spec, and what it read recorded runs from. Whether it runs tests, and
+  what it was not handed, are asked before the review starts, as
+  `test-record.md` says.
 
 ### The changes — after the overview, every CR
 
@@ -1120,11 +1122,11 @@ included.
 - **No severity deflation.** Never bury a 🔴 inside a nit list and never soften it ("might be worth considering..."). If it's broken, the first words are "🔴 **BUG**:".
 - **Verify before tagging 🔴.** Read the code path, grep the callers, check HEAD. If you couldn't verify, tag it **🔴 BUG (UNVERIFIED)** and state exactly what you couldn't check.
 - **✅ Ship it, 🪓 Split, 📝 Reword and 📭 Missing description need executed evidence, not reasoning.** Every runtime claim a commit's correctness rests on - a path resolving, a command working, a permission rule firing, a script running from another directory - is proven by running or rendering it before the assessment, and the review names the command that proved it. "The docs say so" is a reason to expect it works, not proof that it does. A command that changes state is proven by its dry run or render, or handed to me to run - never run to prove it.
-  **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **A run the writer, a goal run or CI already passed on the exact code under review is read, never run again**: `test-record.md` says when a recorded run counts, and which runs no writer makes, so the review still runs them itself. A run is left to me only when its proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. What the claim becomes depends on what you found when you traced it:
+  **Every test you can run yourself is run before the assessment, as `assessment.md` says - without asking and without reporting it as a finding - unless the CR was told to read the code only, as `test-record.md` says: then it runs nothing - no test, build, render or dry run, wherever this standard orders one - and each claim that needs a run is a 🧪 UNTESTED finding, or a 🟠 RISK (UNVERIFIED) when the review has a doubt it can name, as below.** A local command, a render, a dry run, a script run from a scratch directory, a read against something already reachable: run it, and the review names the command and what it showed. **A run the writer, a goal run or CI already passed on the exact code under review is read, never run again**: `test-record.md` says when a recorded run counts, and which runs no writer makes, so the review still runs them itself unless it was told to read the code only. A run is left to me only when its proof genuinely needs me: something only I can supply (a cluster, a machine, a credential, a setting), a command that would change state with no dry run, or a test long or costly enough that it is worth my decision. What the claim becomes depends on what you found when you traced it:
   - **You traced it and found nothing wrong**: a **🧪 UNTESTED** finding. It names the claim and the command that would prove it, and gives the commit `🧪 Needs test` until it is run; once I accept it untested, the call reads `🧪 Needs test (accepted untested)`.
   - **You have a doubt you can name**: a **🟠 RISK (UNVERIFIED)**. It names the doubt, the claim and the command that would settle it, and blocks ✅ Ship it until it is run or I accept it as untested - and accepting it changes no colour: it stays a 🟠 I chose to merge past.
 
-  A 🧪 or an UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
+  In a CR that runs tests, a 🧪 or an UNVERIFIED finding for a test you could have run in seconds is a review you did not finish.
   Every 🧪 and every UNVERIFIED finding carries three lines, so I can decide whether the test is worth running or the claim is safe to accept untested:
   - **Cost** - moderate or hard, and what it needs: the command, how long it takes, and what I have to supply or what it would change.
   - **Sure without it** - an Evidence level from `assessment.md` and the reason: which parts of the claim are already proven and what rests on reasoning alone.
@@ -1312,12 +1314,13 @@ section is rewritten only where the call moved.
   review's file under the same line.
 - **The same HEAD tree is a recut, never a review.** When HEAD's tree is
   the tree of the tip the earlier review judged (`git rev-parse
-  HEAD^{tree}`), the branch's code is what was reviewed, however its
+  'HEAD^{tree}'`), the branch's code is what was reviewed, however its
   commits were reworded, split, squashed or reordered. No code is read
   again: each code finding is carried to the commit that now holds its
   line, and each new commit gets only what a recut can break - its
   message against its diff, its one-thing boundary, and one build-and-test
-  run, since a split can leave a commit in the middle that does not build.
+  run unless it was told to read the code only, since a split can leave a
+  commit in the middle that does not build.
 - **The same SHA keeps its findings.**
 - **A new SHA over the same trees changed only commit messages** - a reword
   of it or of a commit below it, a rebase that moved nothing else. Its code
@@ -1325,8 +1328,9 @@ section is rewritten only where the call moved.
   findings and call follow the new message.
 - **A new tree is a new commit, once HEAD's tree has changed too**: an
   amend that changed content, a fixup folded into it or below it, a rebase
-  onto a moved base. It gets a full review, tests included, even when its
-  own diff reads the same as before.
+  onto a moved base. It gets a full review, tests included unless it was
+  told to read the code only, even when its own diff reads the same as
+  before.
 - **Otherwise the interdiff is what is read.** `git range-diff <old
   base>..<old tip> <new base>..<new tip>` pairs the two versions commit
   by commit: a commit it marks unchanged keeps its review, one whose

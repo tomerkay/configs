@@ -15,13 +15,16 @@ or under the line that asks me whether to make it. When I ask for an
 assessment by name, give the Full Assessment of anything, proposed or
 not, or the One-line Assessment when I ask for that.
 
-**Two proposals are bare ❓ lines with no assessment under them:**
+**Three proposals are bare ❓ lines with no assessment under them:**
 
 - **The offer to delete what a session left to clean up**, as
   `issue-tree.md` says: it has nothing to weigh.
 - **A post or an upload to Slack or GitLab** - a message, a thread reply,
   an MR comment, a file. Its text or its file is shown above the line,
   and I judge it by reading that; an assessment only restates it.
+- **The offer to stop what the session started and left running, in the
+  reply that answers whether we are done**, as `issue-tree.md` says: I
+  know better than any assessment whether my next step needs it.
 
 The case that taught the second, a draft reply to a colleague's thread:
 
@@ -39,8 +42,8 @@ wording:
 
 - **A proposal** - my yes makes a change: a file, a commit, a command, a
   message. "Is that the line you want?" and "keep it this way?" are
-  proposals. It carries its Full Assessment, unless it is one of the two
-  bare lines above.
+  proposals. It carries its Full Assessment, unless it is one of the
+  three bare lines above.
 - **A question** - my yes changes nothing: a fact you need, or which of two
   readings of my words I meant. It carries no assessment, even when you
   lean one way.

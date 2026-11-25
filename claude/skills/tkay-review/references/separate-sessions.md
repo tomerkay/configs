@@ -90,18 +90,26 @@ never puts the review rules into this session.
   never one that inherits the session's context. It is told to load a
   review standard first and no writing standard, and that it wrote none of
   what it reviews. It gets the repo, what to review, the spec the
-  request names, the plan the session wrote the work from and the
-  session's record of the tests it ran on that work - the plan and the
-  record by their paths, when the session has them - and nothing of the
-  session's history: none of its reasoning, and no review the session
-  wrote. A repeat review also gets the
-  file of an earlier review a fresh agent wrote. The agent writes the
-  review and its file, and the session shows me that review in chat, whole
-  and unchanged. The session has written no review, so the review carries
-  no ⚠️ line, and work asked for after it asks nothing - unless the
-  session opened a review skill before it asked, which is loading a review
-  standard. A session that cannot start a subagent leaves this pick out
-  of the question.
+  request names, the plan the session wrote the work from, the
+  session's record of the tests it ran on that work, and the answers to
+  the questions asked before a CR: whether it runs tests, and whether
+  there is a plan. The plan and the record go by their paths, when the
+  session has them. It gets nothing of the session's history: none of
+  its reasoning, and no review the session wrote. A repeat review also
+  gets the file of an earlier review a fresh agent wrote. The agent
+  writes the review and its file, and the session shows me that review
+  in chat, whole and unchanged. A question the agent hands back in place
+  of its review is put to me as any question of the session's own is,
+  and my answer goes back to the same agent, which carries on with what
+  it has read. A review a goal run starts is never relayed this way:
+  its prompt says nobody can answer it, so where it would stop it
+  takes the answer it would recommend and lists it as assumed, and a
+  question it sends back anyway is the goal's to settle, never one
+  this rule puts to me. The session has written no review, so
+  the review carries no ⚠️ line, and work asked for after it asks
+  nothing - unless the session opened a review skill before it asked,
+  which is loading a review standard. A session that cannot start a
+  subagent leaves this pick out of the question.
 - **A fresh session** leaves every file as it is and writes no review.
 
 **The work's question is a yes or no**: a yes lets the work go on, and a no

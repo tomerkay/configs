@@ -27,3 +27,6 @@ answer goes into the goal as a "settled: <decision>" clause.
 - **Every other gap is decided as the code around it would decide it.** The
   list of decisions made without asking is a "Decided while running"
   section of the report.
+- **Every CR subagent also gets the request and its settled clauses**, as
+  the spec it checks the branch against, the way a goal on a plan hands
+  its CRs the plan.

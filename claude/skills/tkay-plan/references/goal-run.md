@@ -89,9 +89,9 @@ and the goal's checker both read it first.
    it must act on, the stop condition against what each phase is for,
    and every subagent prompt for the lines that say nobody can answer
    it and which stop it does not answer. It also writes the last-reply
-   line for every way the goal lets a suite end, and an end with no line
-   the checker would accept is a hole in the goal. What it finds is
-   fixed in the goal, or put to me.
+   line for every way the goal lets a suite or the last CR end, and an
+   end with no line the checker would accept is a hole in the goal. What
+   it finds is fixed in the goal, or put to me.
 
 **A nightly goal is written only once nothing is left that would stop it
 reaching its end without me.** Before writing it, look for every such
@@ -169,7 +169,8 @@ taught it, a goal that sent itself to a new session:
 file's full path.** The `/goal` line names the plan or the request and
 the goal file for the run to read first, and states the stop condition in
 full - each of the three states a suite may end in, the waiting one for
-any recorded reason - as things the conversation will show: the goal's
+any recorded reason, and the last CR's two ends, its call or its review
+waiting on me - as things the conversation will show: the goal's
 checker reads only the conversation - it never opens a file - so a stop
 it cannot see there is one it cannot judge. The line stays under the
 harness's cap on a `/goal` condition.
@@ -225,20 +226,23 @@ harness's cap on a `/goal` condition.
     asking, with the other answer and the subagent's work that rests on
     it; a step listed as waiting goes in the report as waiting on me. A
     live goal asks me about each, a step listed as waiting included,
-    and when my answer differs from what the subagent did it starts
-    the subagent again with my answer in its prompt.
-  - **A subagent that returns a question in place of its work is started
-    again with the question answered in its prompt** - in a nightly
+    and when my answer differs from what the subagent did it sends my
+    answer to that subagent, which redoes the work that rests on it.
+  - **A subagent that returns a question in place of its work is sent
+    the answer, and carries on with what it has read** - in a nightly
     goal the answer it recommends, or the one the run would pick when
     it recommends none, either one an assumption like any other, and in
     a live one mine. A question that guards a choice no revert can
-    undo gets no answer in a nightly goal: the subagent is started
-    again told to leave that step undone, and the step goes in the
-    report as waiting on me. A subagent is never retried unchanged,
-    which asks the same question again. One that asks a question its
-    prompt already answers, or asks again about a step it was told to
-    leave undone, is not started again: its work goes in the report as
+    undo gets no answer in a nightly goal: the subagent is told to
+    leave that step undone, and the step goes in the report as waiting
+    on me. A subagent is never retried unchanged, which asks the same
+    question again. One that asks a question its prompt or an earlier
+    answer already settles, or asks again about a step it was told to
+    leave undone, is not answered again: its work goes in the report as
     waiting on me, and the run carries on.
+  - **Only when an answer, or the word to leave a step undone, cannot
+    reach the subagent** - it is gone, or the send fails - is a new one
+    started, with that answer or that word written into its prompt.
 - **Every CR is a fresh subagent spawned for that CR alone.** Where a CR
   runs is never asked, in a live goal either: the goal has picked the
   fresh subagent. It invokes the review skill first, gets the repo path,
@@ -247,8 +251,10 @@ harness's cap on a `/goal` condition.
   merge - the list of decisions made without asking, to check each
   against the code around it, the path of the run's test record, and
   nothing of the session's reasoning, and is told it wrote none of that
-  code and has not loaded the code skill; it returns the path of its CR file. **The first CR of each cycle
-  is fresh**: it is handed no earlier CR file, so every cycle gets an
+  code and has not loaded the code skill, and whether it runs tests: it
+  does, unless I asked for a goal whose CRs only read the code, which
+  the goal's "What it does" list then says. It returns the path of its
+  CR file. **The first CR of each cycle is fresh**: it is handed no earlier CR file, so every cycle gets an
   independent read. **The rounds within a cycle build on it**: each later
   CR in the cycle is also handed the cycle's previous CR file and told to
   start from it as the review skill's repeat CR says, and when HEAD is
@@ -331,11 +337,15 @@ harness's cap on a `/goal` condition.
   CR reviews HEAD and fixes nothing: what it finds goes in the report as
   waiting on me. A CR or a suite that cannot run - no CR file, a suite
   that will not start - is retried once with nothing changed, but for a
-  CR subagent that returned a question, which is started again as the
-  rule on subagents above says; a suite then
-  gets a route that starts it on the branch with no prompt, and only when
-  none exists waits on me, with the exact command for me to run, and the
-  run moves on.
+  CR subagent that returned a question, which is answered as the rule
+  on subagents above says. A CR that still cannot run goes on
+  unreviewed: the cycle carries on without it, and that cycle's review
+  goes in "Needs you" with why it failed and the request that starts it
+  again: a CR of the branch, handed the last CR file that ran. A later
+  CR that runs reads the whole branch and closes that item. A suite that
+  still cannot run gets a route that starts it on
+  the branch with no prompt, and only when none exists waits on me, with
+  the exact command for me to run, and the run moves on.
 - **Nothing the run starts is left running without my knowing**, as
   `left-running.md` says for every session. When the run ends, what is
   still up goes in the report, each with its removal command: a live
@@ -351,7 +361,7 @@ harness's cap on a `/goal` condition.
   ```
   # Goal run: <the plan file, or the request in a few words>
 
-  <the final CR's branch call> - <how far the work got, in one sentence>
+  <the final CR's branch call, or "Not reviewed"> - <how far the work got, in one sentence>
   <the branch> · <N> commits · ran <how long> · <how the run stopped>
 
   ## Needs you
@@ -375,12 +385,14 @@ harness's cap on a `/goal` condition.
 
   ---
 
-  <the final CR, in full>
+  <the final CR, in full - or the last CR that ran, under the line naming the commits it never read>
   ```
 
   - **The two lines under the title answer "can I merge?"**: the final
-    CR's branch call, how far the work got, and whether the run stopped
-    on its own or after its third cycle.
+    CR's branch call - or "Not reviewed" when the last CR could not run,
+    so the commits since the last CR that did run have been read by no
+    review - how far the work got, and whether the run stopped on its own
+    or after its third cycle.
   - **Needs you** holds every item waiting on me, in the order to act,
     each numbered N<n> with its scenario, options and recommendation, and
     ending with the reply that settles it; one that is a row of the final
@@ -410,11 +422,14 @@ harness's cap on a `/goal` condition.
   - **The final CR**, in full, as its file holds it, below the line: the
     run's last CR comes after its last fix, so it is copied once, when the
     run stops, and the report answers why the branch is or is not ready
-    without a second file.
+    without a second file. When the last CR could not run, the line is
+    followed by the last CR that did, under a line naming the commits it
+    never read, or, when none ran, a line saying no CR ran.
 - **It stops** when a cycle's suites phase made no commits, or when the
   third cycle and its final CR are done. Either way the report shows
   every piece of work done or stopped for a recorded reason, the last CR
-  blocking nothing but what waits on me, and every suite and every run a
+  blocking nothing but what waits on me - or, when it could not run, its
+  review waiting on me in "Needs you" - and every suite and every run a
   finding asks for in one of three states: passing on the branch - at
   HEAD, or at a commit since which nothing touched its code - failing
   only where its baseline fails the same way, or waiting on me for a
@@ -423,7 +438,8 @@ harness's cap on a `/goal` condition.
   shows it holds - each suite, the commit it passed at and the log line
   that shows it ran on the branch, and for a suite failing as its
   baseline does, each such test with the branch's failure line beside the
-  baseline's; the last CR's call; the cycle count - then the report's
+  baseline's; the last CR's call, or that it could not run and why; the
+  cycle count - then the report's
   full path.**
   It is written only once the stop holds, and the checker judges the
   `/goal` line against it.

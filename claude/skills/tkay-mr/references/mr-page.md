@@ -4,10 +4,6 @@
 the format here.** See "The repo's conventions win" in `SKILL.md`. Keep the
 spirit below inside its sections.
 
-**Pushing the branch and opening the MR are mine.** Never offer or suggest
-either. Never run a push; open the MR only when I ask for it in so many
-words. A title and a description are written only when I ask for one.
-
 **The title and the description are one piece of work.** A request for
 either one is a request for both. Write them together, and write them to the
 MR together. They are two parts of one summary for the same reader, so a
@@ -78,8 +74,8 @@ is checked first.** Before writing or updating them, compare the branch's
 remote tip with local HEAD - `git ls-remote origin refs/heads/<branch>`
 against `git rev-parse HEAD`. When they differ, the MR still shows the old
 commits, and text written now describes work it does not have: stop and
-tell me the remote is behind HEAD. The push is mine, so it is not offered
-or asked about. Nothing is written until the remote tip matches HEAD.
+tell me the remote is behind HEAD. Nothing is written until the remote
+tip matches HEAD.
 
 My request for a title or a description is the ask `references/gitlab.md`
 requires before a write to the MR, so do not ask again: show me both texts

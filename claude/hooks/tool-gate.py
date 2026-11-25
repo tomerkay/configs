@@ -35,16 +35,17 @@ every state: history below HEAD is rewritten only on the user's words, while ame
 HEAD is free. A new worktree - `git worktree add` or the EnterWorktree tool - asks, since
 it is made only on the user's words; before `LFG!` the gate denies one in a repo.
 
-An `rm` whose every path is a literal under the scratch root is dropped from the command
+An `rm` whose every path is a literal under the scratch root is denied, alone or chained,
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
 and no allow rule outranks an ask rule, while scratch is per session and left behind
-anyway, so the delete costs a prompt and buys nothing. An `rm` that names a scratch path
-alongside anything outside the scratch root is forced to prompt instead, so that
-`rm -rf /private/tmp/claude/x ~/repos` or `rm -rf /private/tmp/claude/../..` never
-passes as scratch cleanup. A write under /tmp is denied in every state, since a file there
-can vanish mid-session, unless it lands in a path the user's message named, as
-scratch-paths.py records it: the session's handoff directory holds what is written. A
-path a command assigns to a variable in its first statement, unquoted and absolute, is
+anyway, so the delete costs a prompt and buys nothing. The hook never changes a command,
+only the description's rating, since a second hook's change to the input replaces the
+first's whole. An `rm` that names a scratch path alongside anything outside the scratch
+root is not scratch cleanup, so `rm -rf /private/tmp/claude/x ~/repos` or
+`rm -rf /private/tmp/claude/../..` is left to the other rules and the prompt. A write
+under /tmp is denied in every state, since a file there can vanish mid-session, unless
+it lands in a path the user's message named, as scratch-paths.py records it: the
+session's handoff directory holds what is written. A path a command assigns to a variable in its first statement, unquoted and absolute, is
 read in place of every `$NAME` after it, so `D=/abs && mkdir -p $D` is judged on the
 path; any other word the shell builds at run time holds the gate, since it cannot tell
 where the write lands.
@@ -2223,10 +2224,6 @@ def changes_env_file(command):
 
 
 TOP_LEVEL_SEPARATORS = ("&&", "||", ";", "|", "&", "\n")
-RM_SEGMENT_RE = re.compile(r"^\s*rm\s+(.*\S)\s*$")
-BLOCK_WORDS = {"if", "then", "elif", "else", "fi", "for", "while", "until", "do", "done",
-               "case", "esac", "in", "select", "function", "{", "}"}
-REDIRECT_WORD_RE = re.compile(r"^\d*>{1,2}&?\S*$")
 # Anything the shell would expand into a path this script cannot see: variables, command
 # substitution, the home directory, brace expansion.
 UNRESOLVABLE_CHARS = set("$`~{")
@@ -2344,71 +2341,21 @@ def heredoc_bodies_end(command, i, delimiters):
     return min(i - 1, len(command))
 
 
-def first_word(text):
-    match = re.match(r"\s*(\S+)", text)
-    return match.group(1) if match else ""
-
-
-def scratch_rm_args(args_text):
-    """True when `rm <args_text>` names only literal paths inside the session scratch root."""
-    if UNRESOLVABLE_CHARS & set(args_text):
-        return False
-    try:
-        words = shlex.split(args_text, comments=True)
-    except ValueError:
-        return False
-    paths = rm_paths([w for w in words if not REDIRECT_WORD_RE.match(w)])
-    return bool(paths) and all(inside_scratch(p) for p in paths)
-
-
-def strip_scratch_rm(command):
-    """The command without its scratch-only `rm` segments, and how many were dropped.
-
-    A command that is nothing but scratch cleanup is returned unchanged: the prompt is
-    the lesser surprise next to a Bash call that runs nothing.
-    """
-    spans, seps = top_level_segments(command)
-    # parts alternates segment text and the separator after it; a dropped piece is None.
-    parts = []
-    for (a, b), sep in zip(spans, seps):
-        parts.extend((command[a:b], sep))
-    dropped = 0
-    for k, (a, b) in enumerate(spans):
-        match = RM_SEGMENT_RE.match(command[a:b])
-        before = seps[k - 1] if k else ""
-        after = seps[k]
-        # A piped rm, a backgrounded one, or one whose failure branch would fall to the
-        # previous command, is not cleanup to drop.
-        if not match or before in ("|", "&") or after in ("|", "||", "&"):
+def scratch_rm_count(command):
+    """How many rm invocations in the command, nested ones included, delete only literal
+    paths inside the harness scratch root."""
+    count = 0
+    for prog, args in invocations(command):
+        if prog != "rm" or UNRESOLVABLE_CHARS & set("".join(args)):
             continue
-        # GOTCHA: a block needs a body, so `then rm ...; fi` with the rm gone is a syntax
-        # error. An rm next to a block keyword stays.
-        neighbours = (command[slice(*spans[j])] for j in (k - 1, k + 1) if 0 <= j < len(spans))
-        if any(first_word(text) in BLOCK_WORDS for text in neighbours):
-            continue
-        if not scratch_rm_args(match.group(1)):
-            continue
-        dropped += 1
-        # Take the separator before the rm when one is still there, else the one after,
-        # so a chain of dropped segments never leaves a dangling `&&`.
-        if before in (";", "&&", "||") and parts[2 * k - 1] is not None:
-            parts[2 * k - 1] = parts[2 * k] = None
-            if parts[2 * k - 2] is not None:
-                parts[2 * k - 2] = parts[2 * k - 2].rstrip(" \t")
-        else:
-            parts[2 * k] = parts[2 * k + 1] = None
-            if 2 * k + 2 < len(parts) and parts[2 * k + 2] is not None:
-                parts[2 * k + 2] = parts[2 * k + 2].lstrip(" \t")
-    stripped = "".join(p for p in parts if p is not None).rstrip("\n \t")
-    if not dropped or not stripped:
-        return command, 0
-    return stripped, dropped
+        paths = rm_paths(args)
+        count += bool(paths) and all(inside_scratch(p) for p in paths)
+    return count
 
 
-def stripped_bash_input(tool_input):
-    """The Bash tool input with scratch-only `rm` segments dropped, and how many were."""
-    command, dropped = strip_scratch_rm(tool_input["command"])
-    return dict(tool_input, command=command), dropped
+SCRATCH_RM_REASON = ("the harness scratch under /tmp/claude is per session and left behind "
+                     "anyway: drop the rm and run the rest, since an rm here only raises the "
+                     "org policy's prompt")
 
 
 # ----- gate decisions -----------------------------------------------------------------
@@ -4004,9 +3951,13 @@ def decide_bash(tool_input, gate_open, cwd, named):
     if not isinstance(command, str):
         raise ValueError("Bash call without a command string")
     command = with_assigned_path(command)
-    out = [(DENY, TMP_WRITE_REASON)] if writes_unnamed_tmp(command, named) else []
-    if rm_chained(command):
+    out = []
+    if scratch_rm_count(command):
+        out.append((DENY, SCRATCH_RM_REASON))
+    elif rm_chained(command):
         out.append((DENY, RM_CHAINED_REASON))
+    if writes_unnamed_tmp(command, named):
+        out.append((DENY, TMP_WRITE_REASON))
     if changes_env_file(command):
         out.append((ASK, ENV_WRITE_REASON))
     for prog, args in (inner for outer in invocations(command)
@@ -4125,18 +4076,13 @@ def hook_output(payload):
             raise ValueError("tool_input missing")
         bash = tool_name == "Bash" and isinstance(tool_input.get("command"), str)
         description = LABEL_RE.sub("", tool_input.get("description") or "").strip()
-        dropped = 0
-        if bash:
-            tool_input, dropped = stripped_bash_input(tool_input)
         session_id = payload.get("session_id")
         decision = decide(tool_name, tool_input, gate_is_open(session_id), payload.get("cwd"),
                           named_scratch_paths(session_id))
         # A prompt the hook raises itself always carries the rating; auto mode only reviews
         # what the hook leaves to it.
         asks = bool(decision) and decision[0] == ASK
-        if bash and (dropped or asks or payload.get("permission_mode") != AUTO_MODE):
-            if dropped:
-                description = f"{description} (scratch rm dropped)".strip()
+        if bash and (asks or payload.get("permission_mode") != AUTO_MODE):
             updated = dict(tool_input)
             rating = classify_command(tool_input["command"])
             updated["description"] = f"{rating} · {description}" if description else rating
@@ -4158,19 +4104,15 @@ def main():
 # ----- CLI ----------------------------------------------------------------------------
 
 def describe(tool_name, tool_input, gate_open):
-    note = ""
-    if tool_name == "Bash":
-        tool_input, dropped = stripped_bash_input(tool_input)
-        note = "  (scratch rm dropped)" if dropped else ""
     decision = decide(tool_name, tool_input, gate_open)
     gate_decision = f"{decision[0]}: {decision[1]}" if decision else "-"
     if tool_name == "Bash":
-        return f"{classify_command(tool_input['command'])}  {gate_decision}{note}"
+        return f"{classify_command(tool_input['command'])}  {gate_decision}"
     return gate_decision
 
 
 def selftest():
-    global GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS
+    global GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS, SCRATCH_ROOTS, SCRATCH_PREFIXES
     home = os.path.expanduser("~")
     # A directory under a repo root, standing in for a repo the gate guards.
     rx = os.path.join(REPO_ROOTS[0], "x")
@@ -4312,7 +4254,7 @@ def selftest():
         (False, "Bash", "uv sync", DENY),
         (False, "Bash", f"touch {scratch}x", DENY),
         (True, "Bash", f"touch {scratch}x", DENY),
-        (False, "Bash", f"rm {scratch}x", None),
+        (False, "Bash", f"rm {scratch}x", DENY),
         (False, "Bash", f"echo hi > {scratch}x", DENY),
         (True, "Bash", "echo hi > /tmp/claude/x 2>/dev/null", DENY),
         (True, "Bash", f"git show HEAD | tee {scratch}x", DENY),
@@ -4417,7 +4359,7 @@ def selftest():
         (False, "Bash", "ssh -O exit git@gitlab.com", DENY),
         (False, "Bash", f"touch {scratch}../x", DENY),
         (True, "Bash", f"rm -rf {scratch}x {home}/.cache/x", ASK),
-        (True, "Bash", f"rm -rf {scratch}x", None),
+        (True, "Bash", f"rm -rf {scratch}x", DENY),
         (True, "Bash", "make test; rm /x/a", DENY),
         (True, "Bash", "cd /x && rm a", None),
         (True, "Bash", "rm /x/a; rm /x/b", None),
@@ -5056,6 +4998,12 @@ def selftest():
         ({"tool_name": "Bash", "session_id": "s"}, DENY),
         ({"tool_name": "Write", "session_id": "s", "tool_input": None}, DENY),
         ({"tool_name": "Read", "session_id": "s", "tool_input": {"file_path": "/x"}}, None),
+        # An rm of only harness scratch is denied, alone or chained, before the org's rm
+        # prompt; the count cases below pin that one also naming another path is not.
+        ({"tool_name": "Bash", "session_id": "s",
+          "tool_input": {"command": "rm -rf /tmp/claude/build"}}, DENY),
+        ({"tool_name": "Bash", "session_id": "s",
+          "tool_input": {"command": "ls && rm -rf /private/tmp/claude/build"}}, DENY),
     ]
     for payload, expected in payload_cases:
         result = hook_output(payload)
@@ -5065,62 +5013,63 @@ def selftest():
         print(f"{'ok  ' if ok else 'FAIL'} payload {payload} -> {got}"
               + ("" if ok else f" (want {expected})"))
     s = SCRATCH_ROOTS[0]
-    strip_cases = [
-        # (command, expected command after the strip)
-        (f"go list ./... > {s}deps.txt; grep x {s}deps.txt; rm -f {s}deps.txt",
-         f"go list ./... > {s}deps.txt; grep x {s}deps.txt"),
-        (f"rm -rf {s}build && make test", "make test"),
-        (f"rm -rf /tmp/claude/build; make test", "make test"),
-        (f"make test && rm -rf {s}build 2>/dev/null", "make test"),
-        (f"a; rm -- {s}x {s}y; b", "a; b"),
-        (f"rm -f {s}x", f"rm -f {s}x"),
-        (f"a && rm {s}x || echo failed", f"a && rm {s}x || echo failed"),
-        (f"a | rm {s}x", f"a | rm {s}x"),
-        ("a; rm -f $TMPDIR/x", "a; rm -f $TMPDIR/x"),
-        (f"a; rm -rf {s}x ~/repos", f"a; rm -rf {s}x ~/repos"),
-        (f"a; rm -rf {s}../../etc", f"a; rm -rf {s}../../etc"),
-        (f"a; rm -rf {s}{{x,../..}}", f"a; rm -rf {s}{{x,../..}}"),
-        (f"a; rm -rf {s}x /tmp/y", f"a; rm -rf {s}x /tmp/y"),
-        (f"a; rm -rf {s}x\nb", "a\nb"),
-        (f"a\nrm -rf {s}x\nb", "a\nb"),
-        (f"a; rm -rf {s}x 2>&1", "a"),
-        ("a; rm -rf /", "a; rm -rf /"),
-        ("a; rmdir x", "a; rmdir x"),
-        # Quoted text and substitutions are opaque: an rm inside them is someone's argument.
-        (f"python3 gate.py 'a; rm -rf {s}x'", f"python3 gate.py 'a; rm -rf {s}x'"),
-        (f'bash -c "make; rm -rf {s}x"', f'bash -c "make; rm -rf {s}x"'),
-        (f"git commit -m 'drop; rm -rf {s}x'", f"git commit -m 'drop; rm -rf {s}x'"),
-        (f"(cd y && rm -rf {s}x)", f"(cd y && rm -rf {s}x)"),
-        (f"echo $(rm -rf {s}x)", f"echo $(rm -rf {s}x)"),
-        (f"a; rm -rf {s}x &", f"a; rm -rf {s}x &"),
-        (f"a; rm -rf {s}x # done", "a"),
-        (f"cat <<'EOF' > {s}f\nrm -rf {s}x\nEOF", f"cat <<'EOF' > {s}f\nrm -rf {s}x\nEOF"),
-        (f"cat <<EOF > {s}f\nhello\nEOF\nrm -rf {s}f", f"cat <<EOF > {s}f\nhello\nEOF"),
-        (f"cat <<-EOF > {s}f\n\thello\n\tEOF\nrm -rf {s}f", f"cat <<-EOF > {s}f\n\thello\n\tEOF"),
-        (f"cat <<< 'rm -rf {s}x'", f"cat <<< 'rm -rf {s}x'"),
-        (f"cat <<EOF\nrm -rf {s}x", f"cat <<EOF\nrm -rf {s}x"),
-        # A chain of dropped segments must not leave a dangling separator.
-        (f"rm -rf {s}a && rm -rf {s}b && make", "make"),
-        (f"a; rm -rf {s}x; rm -rf {s}y", "a"),
-        (f"make \\\n  test; rm -rf {s}x", "make \\\n  test"),
-        (f"sleep 1 &\nrm -rf {s}x", "sleep 1 &"),
-        # A block keeps its body.
-        (f"if true; then\n  rm -rf {s}x\nfi", f"if true; then\n  rm -rf {s}x\nfi"),
-        (f"for i in 1; do rm -rf {s}x; done", f"for i in 1; do rm -rf {s}x; done"),
-        (f"if true; then\n  make\n  rm -rf {s}x\nfi", f"if true; then\n  make\n  rm -rf {s}x\nfi"),
+    count_cases = [
+        # (command, whether it holds an rm of only harness scratch, which is denied)
+        (f"go list ./... > {s}deps.txt; grep x {s}deps.txt; rm -f {s}deps.txt", True),
+        (f"rm -rf {s}build && make test", True),
+        ("rm -rf /tmp/claude/build; make test", True),
+        (f"make test && rm -rf {s}build 2>/dev/null", True),
+        (f"a; rm -- {s}x {s}y; b", True),
+        (f"rm -f {s}x", True),
+        (f"a && rm {s}x || echo failed", True),
+        (f"a | rm {s}x", True),
+        (f"a; rm -rf {s}x\nb", True),
+        (f"a; rm -rf {s}x 2>&1", True),
+        (f"a; rm -rf {s}x # done", True),
+        (f"a; rm -rf {s}x &", True),
+        (f"(cd y && rm -rf {s}x)", True),
+        (f"echo $(rm -rf {s}x)", True),
+        (f'bash -c "make; rm -rf {s}x"', True),
+        (f"cat <<EOF > {s}f\nhello\nEOF\nrm -rf {s}f", True),
+        (f"rm -rf {s}a && rm -rf {s}b && make", True),
+        (f"make \\\n  test; rm -rf {s}x", True),
+        (f"sleep 1 &\nrm -rf {s}x", True),
+        (f"if true; then\n  rm -rf {s}x\nfi", True),
+        (f"for i in 1; do rm -rf {s}x; done", True),
+        (f"rm -rf {s}x || true", True),
+        (f"rm -rf {s}x 2>/dev/null || true", True),
+        (f"{{ rm -rf {s}x; }}", True),
+        (f"(rm -rf {s}x)", True),
+        (f"rm -rf {s}x > /dev/null 2>&1", True),
+        (f"time rm -rf {s}x", True),
+        # Anything outside the scratch root, or a path only the shell resolves, is not
+        # scratch cleanup.
+        ("a; rm -f $TMPDIR/x", False),
+        (f"a; rm -rf {s}x ~/repos", False),
+        (f"a; rm -rf {s}../../etc", False),
+        (f"a; rm -rf {s}{{x,../..}}", False),
+        (f"a; rm -rf {s}x /tmp/y", False),
+        ("a; rm -rf /", False),
+        ("a; rmdir x", False),
+        # Quoted text is someone's argument, not an rm.
+        (f"python3 gate.py 'a; rm -rf {s}x'", False),
+        (f"git commit -m 'drop; rm -rf {s}x'", False),
+        (f"cat <<'EOF' > {s}f\nrm -rf {s}x\nEOF", False),
+        (f"cat <<< 'rm -rf {s}x'", False),
+        (f"cat <<EOF\nrm -rf {s}x", False),
     ]
-    for command, expected in strip_cases:
-        got, _ = strip_scratch_rm(command)
+    for command, expected in count_cases:
+        got = bool(scratch_rm_count(command))
         ok = got == expected
         failures += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} strip {command!r} -> {got!r}"
-              + ("" if ok else f" (want {expected!r})"))
+        print(f"{'ok  ' if ok else 'FAIL'} scratch rm {command!r} -> {got}"
+              + ("" if ok else f" (want {expected})"))
     rewrite_cases = [
         # (permission mode, command, whether the hook changes the call's input)
         ("default", "ls", True),
         (None, "ls", True),
         ("auto", "ls", False),
-        ("auto", f"rm -rf {s}build && ls", True),
+        ("auto", f"rm -rf {s}build && ls", False),
         ("auto", "kubectl delete pod x --context c -n n", True),
     ]
     for mode, command, expected in rewrite_cases:
@@ -5407,7 +5356,8 @@ def selftest():
             DEFAULT_BRANCH_EXEMPT = saved_exempt
         # The gate holds repo changes only: the throwaway repos stand in for real ones, and
         # the scratch roots narrow to one directory so the repos sit outside them.
-        saved_roots = GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS
+        saved_roots = (GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS, SCRATCH_ROOTS,
+                       SCRATCH_PREFIXES)
         scratch_dir = os.path.join(root, "scratch")
         os.makedirs(scratch_dir)
         with open(os.path.join(scratch_dir, "p.diff"), "w") as f:
@@ -5424,6 +5374,7 @@ def selftest():
         GATE_SCRATCH_ROOTS = (os.path.realpath(scratch_dir) + "/",)
         REPO_ROOTS = (os.path.realpath(root) + "/",)
         TMP_ROOT = os.path.realpath(root) + "/harness/"
+        SCRATCH_PREFIXES = SCRATCH_ROOTS = (TMP_ROOT + "claude/",)
         gate_cases = [
             # (tool, input, expected decision with the gate closed), run from on_main
             ("Bash", {"command": "python3 -c 'print(1)'"}, None),
@@ -5654,7 +5605,8 @@ def selftest():
             failures += not ok
             print(f"{'ok  ' if ok else 'FAIL'} gate EnterWorktree, gate open -> {got}")
         finally:
-            GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS = saved_roots
+            (GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS, SCRATCH_ROOTS,
+             SCRATCH_PREFIXES) = saved_roots
         # A script whose text holds a command that needs words asks once, in every state.
         scripts = {
             "deploy.sh": "#!/bin/sh\nhelm upgrade r ./c --kube-context X -n Y\n",
@@ -5860,7 +5812,7 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} named {tool} {tool_input} -> {got}"
               + ("" if ok else f" (want {expected})"))
-    total = (len(cases) + len(payload_cases) + len(strip_cases) + len(label_cases)
+    total = (len(cases) + len(payload_cases) + len(count_cases) + len(label_cases)
              + len(branch_cases) + len(script_cases) + len(gate_cases) + len(named_cases) + 1)
     print(f"\n{total - failures}/{total} passed")
     return failures == 0

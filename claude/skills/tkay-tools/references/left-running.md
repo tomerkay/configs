@@ -15,5 +15,30 @@ switches it back.
   still up**, each with its removal command, and again when I ask whether
   we are done. Name only what the session started, never what was there
   before it.
+- **In a reply, each one still up opens with a ⚠️** - what is running and
+  the command you would run to stop it - never a plain item in a list or
+  a summary, where it reads as one more thing done and gets skimmed
+  past. A report a run writes to a file keeps its own shape.
+- **When I ask whether we are done, one still up makes the answer no**,
+  until it is stopped or I say to leave it. The reply says no on a ⚠️
+  line for each one, naming what is still running, and ends by asking
+  whether to stop each; on my yes, you run the stop command. Once each is
+  stopped or I say to leave it, the answer is yes, and the session's
+  summary names each one left, behind its ⚠️, as still running, left up
+  by me. The case that taught it, a session whose tests had started a
+  local VM:
+
+  ```
+  ❌ Yes, you can exit now.
+     Here's a short summary of the session:
+     - 5. Colima is still running from the tests; colima stop stops it.
+  ✅ ⚠️ No - Colima is still running from the tests (`colima stop`).
+     ...
+     Stop Colima?
+     (I say to leave it)
+     Yes, you can exit now.
+     Here's a short summary of the session:
+     - 5. ⚠️ Colima is still running from the tests, left up by you.
+  ```
 - **Remove none of them by yourself**: ask me first. What is still up may
   be what my next step needs.

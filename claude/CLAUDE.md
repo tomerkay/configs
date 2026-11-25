@@ -575,15 +575,15 @@ is owned by someone different:
    - **The gate:** denies a change to a git repo before `LFG!`.
    - **Every state, whatever the gate:** denies an unpinned cluster
      command, a push, a commit on the default branch of a repo not worked
-     on it by design, a write under `/tmp` that I did not name, and an
-     `rm` chained with other work.
+     on it by design, a write under `/tmp` that I did not name, an `rm`
+     chained with other work, and an `rm` of the harness scratch under
+     `/tmp/claude`, which is per session and left behind anyway - denied
+     before the policy can prompt on it.
    - **The words rule:** asks for every command in "Some commands need my
      words and the prompt, every time".
 
-   It says nothing for a read, and it can add a deny or an ask. The one
-   prompt it removes is a chained `rm` of the harness scratch under
-   `/tmp/claude`: it drops that `rm` from the command, so nothing is left
-   for the policy to prompt on.
+   It says nothing for a read, and it can add a deny or an ask; it never
+   changes a command, only its description's rating.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
    permission mode takes over" after `LFG!` means.

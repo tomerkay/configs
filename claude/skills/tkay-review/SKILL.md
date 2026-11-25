@@ -34,7 +34,7 @@ skill's own `references/` so it works installed alone:
 | `references/separate-sessions.md` | when a review stops for a question because this session wrote the work or loaded a standard for writing it, and when work stops because it wrote a review or loaded a standard for reviewing it |
 | `references/clean-code.md` | every review but a doc review: what clean code is - every code finding is a departure from it |
 | `references/security.md` | every review but a doc review: the security questions every code change is asked |
-| `references/test-record.md` | every review but a doc review: which recorded runs a review reads instead of running again, and which it still runs itself |
+| `references/test-record.md` | every review but a doc review: the questions asked before a CR starts, which recorded runs a review reads instead of running again, and which it still runs itself |
 | `references/assessment.md` | the frame every assessment in a CR is written in |
 | `references/commit-boundaries.md` | how a branch is cut into commits, which a CR judges each commit's boundaries by |
 | `references/answers.md` | how an answer, a finding included, is held to the truth |

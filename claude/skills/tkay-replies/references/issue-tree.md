@@ -75,8 +75,39 @@ question a later one replaced.
   what changed and where it landed - a recap for a person, not a report: no
   file dumps, no command output, no findings given again, one line each.
 
+**Something the session started and left up - a VM, a container, a
+port-forward - makes the answer no**, until it is stopped or I say to
+leave it. A background run still going is open work, as the check above
+says, and never one of these. While one is up, the reply that answers
+whether we are done takes none of the three steps yet: its top is a
+⚠️ line for each - "⚠️ No - <what> is still running (`<the command that
+stops it>`)." - right under the tree when anything else is still open.
+It shows the bycatch file under the last of them, and ends by asking
+whether to stop each: a ❓ line for each, with no assessment
+under it, as `assessment.md` says. On my yes, run the stop command.
+Once each is stopped or I say to leave it, the closing takes its step,
+and the summary names each one left as still running, left up by me,
+its bullet opening with a ⚠️ - never a plain bullet, where it reads as
+one more thing done. The case that taught it, a session whose tests had
+started a local VM:
+
+```
+❌ Yes, you can exit now.
+   Here's a short summary of the session:
+   - 5. Colima is still running from the tests; colima stop stops it.
+✅ ⚠️ No - Colima is still running from the tests (`colima stop`).
+   # 🎣 Bycatch
+   ...
+   ❓ Q9 Stop Colima: stop it now?
+   (I say to leave it)
+   Yes, you can exit now.
+   ...
+   - 5. ⚠️ Colima is still running from the tests, left up by you.
+```
+
 **The reply that answers whether we are done always shows the bycatch
-file**, whichever step it takes, right under its opening line: the
+file**, whichever step it takes, right under its opening line, or under
+the last ⚠️ line of a reply that says no for what is still running: the
 `# 🎣 Bycatch` heading and both subheadings, each with its table or
 "None." when it is empty. A session with no bycatch file shows the same
 heading and subheadings, with "None." under both. The case that taught
