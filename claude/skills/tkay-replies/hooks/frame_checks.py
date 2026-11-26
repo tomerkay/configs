@@ -20,7 +20,7 @@ CHANGE_CALL = r"(💪✅ Strongly do it|✅ Do it|⚖️? Close call|❌❌ Stro
 CR_CALL = (r"(✅ Ship it|👌 Fixed later|🔧 Needs change|🪓 Split|📝 Reword|📭 Missing description"
            r"|🔀 Squash into"
            r"|🗑️? Drop|✅ Merge it|🔧 Merge after fixes|✂️? Split first|⚖️? Close call|❌ Don't merge"
-           r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|⏸️? Leave for now"
+           r"|✅ Keep it|🔧 Needs fixes|✂️? Carve out|❌ Drop it|🔧 Add fix|🧪 Run it|⏸️? Leave for now"
            r"|🧪 Needs test|🧪 Merge after tests|⏳ Finish the work first"
            r"|🙋 Needs your call|🙋 Merge after your call"
            r"|✅ Build it|🔧 Build after fixes|🧪 Build after a spike|❌ Back to design)")

@@ -273,7 +273,7 @@ A wall of findings where I can't tell the colours apart is a useless review, how
 The four colours, the bar each one sets and how one is picked are
 `severity.md`'s, beside this file.
 
-**🧪 UNTESTED is a finding with no colour: the code is not in doubt, only unproven.** It marks a claim the commit rests on that you traced and found sound, but that only a run you cannot make yourself proves - "Rules that keep the tags honest" says which runs. It is neither MUST HAVE nor NICE TO HAVE: it asks for a run, never a code change, so it gets a section of its own and a call of its own, `🧪 Needs test`. A doubt you can name - a condition under which the code might fail, which you could not check - is never 🧪: it is a 🟠 RISK (UNVERIFIED), because the doubt is about the code.
+**🧪 UNTESTED, the finding with no colour, is `severity.md`'s**, with its `Test 🧪` Profile. In a CR it marks a claim the commit rests on, and the check is a run you cannot make yourself - "Rules that keep the tags honest" says which runs. It is neither MUST HAVE nor NICE TO HAVE: it asks for a run, never a code change, so it gets a section of its own and a call of its own, `🧪 Needs test`. The 🟠 a doubt you can name gets instead is headed 🟠 RISK (UNVERIFIED).
 
 ```
 ##### 🧪 UNTESTED: <the claim only a run proves>
@@ -311,9 +311,8 @@ I merge past on my word keeps the call below ✅ Merge it, named as waved.
   Profile per fix, as `severity.md` gives it: the blocking fix is what
   unblocks the merge, the clean-up fix what is left to my judgement. A
   bycatch row's Profiles are `bycatch.md`'s. A commit with a 🧪 UNTESTED
-  finding adds a `Test 🧪` Profile after them: the run in a few words, with
-  the Evidence the claim would have once the run passes and the Size and
-  Difficulty of making it.
+  finding adds the `Test 🧪` Profile `severity.md` gives after them, its
+  check the run.
 
 ```
 - **Call:** 🔧 Needs change (hangs on timeout) (⛔ Hard blocker: code)
@@ -952,7 +951,7 @@ CR over to be fixed, as "To do" says which.
 the commit that carries it - a commit of its own, or a fix another commit
 carries along, which that commit's message names - and
 is reviewed in that commit's findings. It never gets a row, and "fixed" is
-never a call - both bycatch calls are work still to do. A row the branch fixes
+never a call - every bycatch call is work still to do. A row the branch fixes
 in part keeps only the part still open, worded as though the fixed part
 was never there. A repeat CR drops a row the branch has fixed since; the
 rows left keep their numbers.
@@ -1020,20 +1019,24 @@ as a contradiction.
   its fix's Evidence is at least LIKELY, its Difficulty easy or super
   easy and its Size medium or less; a 🙋 Your call row, "fix it now or
   leave it?", for every other - a large or hard one is always mine;
-- **6.** every ⏸ Leave for now row whose fix is cheap.
+  and every bycatch row whose call is 🧪 Run it, as item 3 gives the run
+  of a 🧪 finding;
+- **6.** every ⏸ Leave for now row whose fix is cheap, and every ⏸ Leave
+  for now 🧪 row whose check is cheap, as a 🧪 Run row.
 
 **A fix is cheap when its Fix Profile reads super easy, or small and easy,
 and its Evidence is at least CONFIDENT.** A NICE TO HAVE or ⏸ Leave for
 now fix the review only believes would work - LIKELY or below - is not
 cheap, however small: fixing it untried is the new bug the fix scope
 exists to avoid. A 🔧 Add fix has the bar of item 5, since the reviewer
-already recommends it.
+already recommends it. **A check is cheap when its `Test 🧪` Profile reads
+super easy, or small and easy, and it needs nothing only I have.**
 
 Anything optional beyond that - a 🟡 whose fix is medium, hard or not
 CONFIDENT, a ⏸ Leave for now that is not cheap - stays in its own
 section: not fixed, not asked about, and fixed only when I ask for it. A
-🔧 Add fix is never left that way: the reviewer recommends it, so it is
-fixed or asked.
+🔧 Add fix or a 🧪 Run it is never left that way: the reviewer recommends
+it, so it is fixed, run or asked.
 
 - **#** - **TD1**, **TD2** down both tables in one count: within each,
   🙋 rows first, since a decision holds things up more than a known fix.

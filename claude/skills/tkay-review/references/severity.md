@@ -1,7 +1,8 @@
 # The four colours
 
 **Every finding and every bycatch row carries one colour, with its exact
-emoji and word**, so I can tell at a glance whether something is broken or
+emoji and word, or the 🧪 below for a claim that is sound but
+unproven**, so I can tell at a glance whether something is broken or
 merely imperfect:
 
 | Tag | Meaning | Bar to qualify |
@@ -21,6 +22,21 @@ log, a missing pin - that hazard is the 🟠.
 **Never pick 🟡 to dodge an argument.** If you're unsure whether it is a
 hazard, it's 🟠 and you say you're unsure. 🟡 is a claim that shipping
 without it is safe - own it.
+
+## 🧪 UNTESTED, the finding with no colour
+
+**🧪 UNTESTED marks a claim that is not in doubt, only unproven**: you
+traced it and found it sound, but only a check you cannot make yourself
+proves it - a run, a measurement, a test on real data. It has no colour,
+since nothing in it is wrong or at risk, and it asks for the check, never
+a fix. A doubt you can name - a condition under which it might fail, which
+you could not check - is never 🧪: it is a 🟠 RISK, because the doubt is
+about the work.
+
+**In place of a Fix Profile it carries a `Test 🧪` Profile**, in the frame
+of `assessment.md`: the check in a few words, then the Evidence the claim
+would have once the check passes, and the Size and Difficulty of making
+it.
 
 ## The Fix Profile
 

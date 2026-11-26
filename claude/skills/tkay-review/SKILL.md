@@ -40,7 +40,7 @@ skill's own `references/` so it works installed alone:
 | `references/answers.md` | how an answer, a finding included, is held to the truth |
 | `references/human-readable.md` | the plain words every line of a review is written in |
 | `references/numbered-lists.md` | how every list and table in a CR is numbered |
-| `references/severity.md` | the four colours a finding carries, and the Fix Profile |
+| `references/severity.md` | the four colours a finding carries, the 🧪 UNTESTED mark, and the Fix and Test 🧪 Profiles |
 | `references/bycatch.md` | the bycatch table, its calls, and which session rows it carries |
 | `references/plan-shape.md` | a plan review only: the shape it holds a plan to |
 | `references/docs.md` | where a fact goes and how a doc points, for the docs in any change |

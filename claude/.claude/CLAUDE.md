@@ -46,10 +46,11 @@ name what each kind adds; the procedure itself is this one:
    commit, or a goal or promise the review calls ⏳ Not reached, ❌ Missed
    or ❌ Breaks callers - never a bycatch row, and not one a later staged
    commit already fixed: a fixed finding is not open, whatever its colour.
-   A MUST HAVE or a bycatch fix the review leaves as 🙋 Your call is put to
-   me as a ❓ of its own, and the round waits: it stages the option I pick,
-   never one it picks itself. Such a round fixes every MUST HAVE still
-   open, every bycatch row whose call is 🔧 Add fix, and every NICE TO HAVE
+   A MUST HAVE, a bycatch fix or a bycatch run the review leaves as 🙋 Your
+   call is put to me as a ❓ of its own, and the round waits: it stages the
+   option I pick, never one it picks itself. Such a round fixes every MUST
+   HAVE still open, every bycatch row whose call is 🔧 Add fix, the check
+   of every bycatch row whose call is 🧪 Run it, and every NICE TO HAVE
    finding and ⏸ Leave for now bycatch row in a file this procedure covers
    whose fix is rated super easy, or small and easy, with Evidence at least
    CONFIDENT - on the commit's Fix 🟡⚪ line or the row's own Fix Profile -

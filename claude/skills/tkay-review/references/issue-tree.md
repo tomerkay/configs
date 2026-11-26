@@ -34,7 +34,9 @@ to see it, or ask whether we are done while anything is still open. While we
 are still talking about the same item - a follow-up, a
 clarification, another round on it - the reply has no tree.
 
-**The reply that closes the last open item ends with one plain line,
+**The reply that leaves nothing open - every item of the tree closed, and
+no hard-blocking row we never talked about, as the check below defines
+it - ends with one plain line,
 "Are we done? Say yes and I'll check for anything still open, running or
 left to clean up."**, the question I would otherwise ask myself: a yes
 runs the check exactly as if I had asked it, so it saves a round, and the
@@ -42,7 +44,7 @@ line names what the check looks for to someone who does not know it
 exists. A plain line, never a ❓: the reply stops for nothing. It is the
 reply's last line, below its TL;DR and any steps to run. A reply that
 asks a ❓ leaves it to the next reply that asks none, since that question
-is still open. It comes once each time the tree empties, and a session
+is still open. It comes once each time nothing is left open, and a session
 with no tree gets none. The case that taught it:
 
 ```
@@ -54,10 +56,29 @@ with no tree gets none. The case that taught it:
 **When I ask whether we are done, the answer is checked, never given from
 memory**: every proposal or question with no answer, every step staged or
 waiting on me, every drawback I have not answered, every change left
-uncommitted, every background run still going. While any is open, the reply
-opens with the tree, written in full whatever its size. An item I have
-answered - accepted, waved off, told you to leave - is closed, and so is a
-question a later one replaced.
+uncommitted, every background run still going, and every hard-blocking
+row we never talked about - a row of a to-do list the session wrote that
+only its fix or my decision clears, such as a review's hard merge blocker;
+a row I can wave, such as a review's soft merge blocker, is not one. While
+any is open, the reply opens with "No - some things are still open.", then
+the tree, written in full whatever its size, when anything in it is open,
+then the hard-blocking rows in a table of their own, each keeping the
+number it was given, then a ⚠️ line for each thing still running, as
+below - and nothing else: the bycatch waits for the closing. A
+hard-blocking row never goes in the tree. An item I have answered -
+accepted, waved off, told you to leave - is closed, and so is a question a
+later one replaced.
+
+**What holds nothing back is bycatch at the closing**: the check writes it
+into the bycatch file, as `bycatch.md` says, and it never makes the answer
+no. The case that taught it:
+
+```
+❌ "Yes - nothing open left" over a review's three To do rows, none of
+   them shown, and the cleanup then deleted the review
+✅ the three rows, none of them blocking, shown in the bycatch table
+   before the cleanup
+```
 
 **When nothing is open, the closing comes in three steps:**
 
@@ -86,10 +107,10 @@ question a later one replaced.
 port-forward - makes the answer no**, until it is stopped or I say to
 leave it. A background run still going is open work, as the check above
 says, and never one of these. While one is up, the reply that answers
-whether we are done takes none of the three steps yet: its top is a
+whether we are done takes none of the three steps yet: it shows a
 ⚠️ line for each - "⚠️ No - <what> is still running (`<the command that
-stops it>`)." - right under the tree when anything else is still open.
-It shows the bycatch file under the last of them, and ends by asking
+stops it>`)." - at its top, or below the tree and the hard-blocking table
+when anything else is still open. It shows no bycatch, and ends by asking
 whether to stop each: a ❓ line for each, with no assessment
 under it, as `assessment.md` says. On my yes, run the stop command.
 Once each is stopped or I say to leave it, the closing takes its step,
@@ -103,8 +124,6 @@ started a local VM:
    Here's a short summary of the session:
    - 5. Colima is still running from the tests; colima stop stops it.
 ✅ ⚠️ No - Colima is still running from the tests (`colima stop`).
-   # 🎣 Bycatch
-   ...
    ❓ Q9 Stop Colima: stop it now?
    (I say to leave it)
    Yes, you can exit now.
@@ -112,9 +131,8 @@ started a local VM:
    - 5. ⚠️ Colima is still running from the tests, left up by you.
 ```
 
-**The reply that answers whether we are done always shows the bycatch
-file**, whichever step it takes, right under its opening line, or under
-the last ⚠️ line of a reply that says no for what is still running: the
+**The reply that answers yes to whether we are done always shows the
+bycatch file**, whichever step it takes, right under its opening line: the
 `# 🎣 Bycatch` heading and both subheadings, each with its table or
 "None." when it is empty. A session with no bycatch file shows the same
 heading and subheadings, with "None." under both. The case that taught

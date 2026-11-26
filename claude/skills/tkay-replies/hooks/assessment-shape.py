@@ -210,6 +210,9 @@ def selftest():
          commit.replace("✅ Ship it", "🧪 Needs test (accepted untested) (🙌 Stops harm)"), False),
         ("a CR's Missing description block is the review hook's",
          commit.replace("✅ Ship it", "📭 Missing description"), False),
+        ("a bycatch Run it block is the review hook's",
+         "- **Call:** 🧪 Run it\n- **Bycatch:** **Evidence:** CONFIDENT · **Size:** small · "
+         "**Difficulty:** easy\n", False),
         ("broken shape inside a code fence is an example",
          "```\n- **Call:** ✅ Do it · **Evidence:** LIKELY\n```\n", False),
         ("plain text", "no assessment here\n", False),

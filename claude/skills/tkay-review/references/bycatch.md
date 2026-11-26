@@ -9,10 +9,17 @@ bycatch file.** Three things it never is:
   in the reply that hits it, whoever owns it.
 - **Harm happening now** - a leak, data being lost, a hole letting
   dangerous calls through: raised at once, whatever it bears on.
-- **Something that bears on the work in hand**, by your judgement: a find
-  worth talking about during the session is part of the work, raised in
-  the reply that finds it as a ❓ proposal or question of its own, never
-  under a bycatch heading.
+- **Something that bears on the work in hand while the work goes on**, by
+  your judgement: a find worth talking about during the session is part
+  of the work, raised in the reply that finds it as a ❓ proposal or
+  question of its own, never under a bycatch heading.
+
+**At the closing, the file also takes what the work leaves that blocks
+nothing and that we never talked about** - a to-do row that is no hard
+blocker, a find a review left for later - written in when the check
+`issue-tree.md` gives finds it. Each takes the next `B<n>`, names the row
+it came from, and keeps that row's colour or its 🧪, as `severity.md`
+gives them; a row with neither is coloured on its hazard.
 
 **Bycatch is how a session leaves the next one faster and better.** Ask
 it of every snag the session hit, in the work and in the setup it runs
@@ -92,27 +99,34 @@ Two rows per item, under its heading:
   instead of describing it back to you.
 - **What the bycatch is** — one sentence with the file, so I can tell a
   lying doc from a typo without re-reading anything.
-- **Findings** — its colour, from `severity.md`, and a count of one: `🟠 1`.
+- **Findings** — its colour or its 🧪, from `severity.md`, and a count of
+  one: `🟠 1`.
 - **Call** — what you think I should do, as a recommendation I can
   overrule, in the frame of `assessment.md`:
-  - **🔧 Add fix** - you recommend fixing it as part of this work. It stays
-    a recommendation: the fix is made only when I say so in words that name
-    it, never folded into another change or its approval.
+  - **🔧 Add fix** - for a row with a colour, you recommend fixing it as
+    part of this work. It stays a recommendation: the fix is made only when
+    I say so in words that name it, never folded into another change or
+    its approval.
+  - **🧪 Run it** - for a 🧪 row, you recommend running the check its
+    `Test 🧪` Profile names as part of this work. It stays a
+    recommendation in the same way: the check runs only when I say so in
+    words that name it.
   - **⏸ Leave for now** - not in this work, with the reason in a few words:
     out of scope, another owner's file, not worth the cost today.
 - **The second row**: the Bycatch Profile is the problem as it sits in the
   work - the Evidence that it is real as described, how much it touches,
   how hard it is to understand - and the Fix Profile under Findings is the
-  fix, as `severity.md` gives it. The cell under the call stays empty,
-  since a call carries no Evidence; its `#` cell stays empty, which is what
-  makes it read as part of the row above.
+  fix, as `severity.md` gives it, or the `Test 🧪` Profile for a 🧪 row.
+  The cell under the call stays empty, since a call carries no Evidence;
+  its `#` cell stays empty, which is what makes it read as part of the row
+  above.
 
-**Bycatch is a finding, so what has no colour gets no row.** Something with
-nothing to fix in the work - a folder a tool left behind, state the harness
-keeps for itself, a leftover the session made, a change going live, such as
-a running session still holding a hook it loaded before a commit removed
-it - is no defect. It is named in a line of prose if at all, never as a
-row.
+**Bycatch is a finding, so what has neither a colour nor a 🧪 gets no
+row.** Something with nothing to fix in the work - a folder a tool left
+behind, state the harness keeps for itself, a leftover the session made, a
+change going live, such as a running session still holding a hook it
+loaded before a commit removed it - is no defect. It is named in a line
+of prose if at all, never as a row.
 
 The cases that taught it, a row with no colour and no call, in columns made
 up for it, and a row whose only fix was a new session:

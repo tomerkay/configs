@@ -21,11 +21,16 @@ named and visible, the new bug is neither.
   narrower set: every NICE TO HAVE finding whose fix is cheap; every
   bycatch row whose call is 🔧 Add fix, fixed when its fix is at least
   LIKELY, easy or super easy and medium or smaller, and otherwise asked as
-  "fix it now or leave it?" - a large or hard one is always mine; and
-  every ⏸ Leave for now bycatch row whose fix is cheap. **A fix is cheap
-  when the review rates it super easy, or small and easy, with Evidence at
-  least CONFIDENT**: a NICE TO HAVE or ⏸ Leave for now fix the review only
-  believes would work is not made untried, and not asked about either.
+  "fix it now or leave it?" - a large or hard one is always mine; every
+  bycatch row whose call is 🧪 Run it, run when its check is small or
+  medium and otherwise asked as "run it now or leave it?" - a large one,
+  or one that needs what only I have, is always mine; and every ⏸ Leave
+  for now bycatch row whose fix, or for a 🧪 row whose check, is cheap.
+  **A fix is cheap when the review rates it super easy, or small and easy,
+  with Evidence at least CONFIDENT**: a NICE TO HAVE or ⏸ Leave for now
+  fix the review only believes would work is not made untried, and not
+  asked about either. **A check is cheap when its `Test 🧪` Profile reads
+  super easy, or small and easy, and it needs nothing only I have.**
   Anything else optional is left unfixed, listed, and fixed only when I
   ask for it: every extra fix is one more chance at a new bug. A bycatch
   fix is a commit of its own.

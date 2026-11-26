@@ -154,7 +154,10 @@ def selftest():
          True),
         ("bycatch calls",
          "- **Call:** 🗑 Drop\n- **Call:** 🗑️ Drop\n"
-         "- **Call:** ⏸ Leave for now (out of scope)\n- **Call:** 🔧 Add fix\n", False),
+         "- **Call:** ⏸ Leave for now (out of scope)\n- **Call:** 🔧 Add fix\n"
+         "- **Call:** 🧪 Run it\n", False),
+        ("an Evidence on a bycatch Run it call",
+         commit.replace("✅ Ship it", "🧪 Run it · **Evidence:** LIKELY"), True),
         ("plan calls",
          "- **Call:** ✅ Build it\n- **Call:** 🔧 Build after fixes (Section 5)\n"
          "- **Call:** 🧪 Build after a spike (the cache hit rate)\n"
