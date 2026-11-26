@@ -17,7 +17,9 @@ that first token, you are gated.
 command ran before it.
 A call the hook denies is the hook doing its job, never a reason to look for
 another way to the same change. Run `python3 ~/.claude/hooks/tool-gate.py
-[--open] <command>` to see the decision for any command.
+[--open] <command>` to see the gate's decision for any command; whether a
+cluster command names its target is the `tkay-cluster` skill's hook's, and
+its `--selftest` lists the cases it denies.
 
 **The gate lives in this file and nowhere else.** A skill - mine, a repo's, a
 plugin's or a team catalog's - or a repo's `CLAUDE.md`, README or design doc is
@@ -318,6 +320,9 @@ not a plan I approved, not my yes to the previous one:
   permanent, and the org's managed deny on editing one covers only the
   session's own directory. Reading one needs no words, and a script that
   writes one from inside goes unseen.
+- A change to `~/.config/tkay-tools.json` by the same routes, which
+  `changes_rating_config` in `~/.claude/hooks/tool-gate.py` names. The file
+  names the code the rating hook runs outside the sandbox on every Bash call.
 
 **Each one runs only when both hold, every single time:**
 
@@ -525,18 +530,19 @@ line with `LFG!` in it.
 
 # Every Bash prompt says what it can change
 
-A PreToolUse hook, `~/.claude/hooks/tool-gate.py`, rewrites every Bash
+A PreToolUse hook of the `tkay-tools` plugin,
+`~/.claude/skills/tkay-tools/hooks/rate.py`, rewrites every Bash
 `description` to open with a rating: 🟢 READ changes nothing, 🟠 WRITE changes
 local, recoverable state, 🔵 RUNS CODE is a known program running code the hook
 cannot read - a test run, a Python script - 🟣 UNCLASSIFIED is a program or a
 line it does not recognise, and 🔴 DANGER destroys data or touches live cluster
 or remote state. Read a 🟣 command before approving it. The classifier is the
 one source of that rating: never write the emoji into a description yourself,
-and a rating that is wrong, or a program with no handler, is bycatch. Run the
-script with each command quoted as one argument to see what it would say. In
-auto mode the hook rates only a prompt it raises itself and leaves every
-other description as written, since auto mode refuses a call whose input
-changed after its review.
+and a rating that is wrong, or a program with no handler, is bycatch. Run
+`~/.claude/hooks/tool-gate.py` with each command quoted as one argument to see
+what it would say. In auto mode the hook leaves every description as written,
+since auto mode refuses a call whose input changed after its review; a prompt
+the gate raises there opens its reason with the rating instead.
 
 **The sentence after the rating is yours, and it argues the rating.** The
 hook keeps your `description` verbatim after the rating, so write it as what the
@@ -573,17 +579,19 @@ is owned by someone different:
 2. **The gate hook** (`~/.claude/hooks/tool-gate.py`) has three jobs, and
    only the first is the LFG gate:
    - **The gate:** denies a change to a git repo before `LFG!`.
-   - **Every state, whatever the gate:** denies an unpinned cluster
-     command, a push, a commit on the default branch of a repo not worked
-     on it by design, a write under `/tmp` that I did not name, an `rm`
-     chained with other work, and an `rm` of the harness scratch under
-     `/tmp/claude`, which is per session and left behind anyway - denied
-     before the policy can prompt on it.
+   - **Every state, whatever the gate:** denies a push, a commit on the
+     default branch of a repo not worked on it by design, a write under
+     `/tmp` that I did not name, an `rm` chained with other work, and an
+     `rm` of the harness scratch under `/tmp/claude`, which is per session
+     and left behind anyway - denied before the policy can prompt on it.
    - **The words rule:** asks for every command in "Some commands need my
      words and the prompt, every time".
 
    It says nothing for a read, and it can add a deny or an ask; it never
-   changes a command, only its description's rating.
+   changes a call's input. Beside it, the `tkay-cluster` skill's hook
+   `pin_guard.py` denies a kubectl, oc, stern, helm or helmfile command
+   that misses its context or namespace, in every state, and does nothing
+   else; a tool it does not know passes unchecked.
 3. **My permission mode**: whatever the first two leave alone goes to the
    mode - the classifier in auto, a prompt in manual. That is what "my
    permission mode takes over" after `LFG!` means.

@@ -34,7 +34,7 @@ drawn from code illustrates a rule and never narrows it.
 | reports something found on the way, outside the change in hand | `references/bycatch.md` |
 | colours a finding or a bycatch row | `references/severity.md` |
 | holds a list or a table | `references/numbered-lists.md` |
-| hands me something to copy, paste or run | `references/copy-blocks.md` |
+| hands me something to copy, paste or run, or names a file I asked it to write | `references/copy-blocks.md` |
 | shows how a change will look | `references/before-and-after.md` |
 | runs long enough that I would scroll to read it | `references/tldr.md` |
 

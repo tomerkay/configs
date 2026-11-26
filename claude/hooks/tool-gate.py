@@ -1,33 +1,24 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: the `LFG!` gate, plus the READ/WRITE/RUNS CODE/UNCLASSIFIED/DANGER rating
-on Bash commands.
+"""PreToolUse hook: the `LFG!` gate.
 
-For Bash it classifies what the command can change and rewrites the tool's `description`
-so a permission dialog opens with the rating - except in auto mode, which refuses a call
-whose input changed after its review, so there the input changes only when the command
-does or the hook asks itself:
+What a Bash command can change - READ, WRITE, RUNS CODE, UNCLASSIFIED or DANGER - is the
+tkay-tools skill's command parser's to say, which this hook imports and never copies; that
+skill's own hook writes the rating into the call's `description`. This hook only allows,
+asks or denies, and never changes a call's input: a second hook's change to the input
+replaces the first's whole. The gate holds an UNCLASSIFIED command like a write. The
+workplace tables it decides by load from RATING_EXTENSION, never from the rating hook's
+config, whose every change the command spells out asks; when that file fails to load,
+every call it guards is denied, as when the hook itself raises.
 
-    🟢 READ    changes nothing
-    🟠 WRITE   changes local, recoverable state (files, commits, installs, helm releases)
-    🔵 RUNS CODE  a known program running code the hook cannot read: a test run, a Python
-                  script
-    🟣 UNCLASSIFIED  a program or a line the classifier does not recognise
-    🔴 DANGER  destroys data or changes live cluster / remote state
-
-Anything the classifier does not recognise is UNCLASSIFIED, never READ: a wrong purple
-costs a glance, a wrong green is the failure this hook exists to prevent. The gate holds
-it like a write. A known program's handler still rates an argument it does not know as
-WRITE.
-
-For Bash, Edit, Write, NotebookEdit, EnterWorktree and every MCP tool it then decides,
+For Bash, Edit, Write, NotebookEdit, EnterWorktree and every MCP tool it decides,
 from the gate state lfg-state.py records per session: a change to a git repo before
 `LFG!` is denied with the refusal line, while opaque code - an interpreter, a container,
 a script, a test run - passes and repo-watch.py reports a repo change it makes, unless a
 test run's own flags write beside the tests; every command that needs the user's words
 for that one command asks in every state, and so does, once per run, a script whose text
-holds one; a push is denied in every state, since the user runs it; and the pin rules for
-kubectl, helm and helmfile are enforced. A program the classifier does not know asks
-instead of denying, so a read it has not met never gets the refusal line. A commit, merge,
+holds one; and a push is denied in every state, since the user runs it. A program the
+classifier does not know asks instead of denying, so a read it has not met never gets
+the refusal line. A commit, merge,
 cherry-pick, revert or am that lands on a repo's default branch is denied in every state,
 outside the repos in DEFAULT_BRANCH_EXEMPT, which are committed on main by design. A
 rebase in any form, a pull that rebases and a reset that moves the branch back ask in
@@ -38,11 +29,9 @@ it is made only on the user's words; before `LFG!` the gate denies one in a repo
 An `rm` whose every path is a literal under the scratch root is denied, alone or chained,
 before the permission rules see it: the org's `Bash(rm:*)` ask rule prompts on any `rm`
 and no allow rule outranks an ask rule, while scratch is per session and left behind
-anyway, so the delete costs a prompt and buys nothing. The hook never changes a command,
-only the description's rating, since a second hook's change to the input replaces the
-first's whole. An `rm` that names a scratch path alongside anything outside the scratch
-root is not scratch cleanup, so `rm -rf /private/tmp/claude/x ~/repos` or
-`rm -rf /private/tmp/claude/../..` is left to the other rules and the prompt. A write
+anyway, so the delete costs a prompt and buys nothing. An `rm` that names a scratch path
+alongside anything outside the scratch root is not scratch cleanup, so
+`rm -rf /private/tmp/claude/x ~/repos` or `rm -rf /private/tmp/claude/../..` is left to the other rules and the prompt. A write
 under /tmp is denied in every state, since a file there can vanish mid-session, unless
 it lands in a path the user's message named, as scratch-paths.py records it: the
 session's handoff directory holds what is written. A path a command assigns to a variable in its first statement, unquoted and absolute, is
@@ -55,7 +44,6 @@ Bash command with the gate closed (default) or open; `--tool <name> <field>=<val
 does the same for another tool; `--selftest` runs the decision table's cases.
 """
 
-import contextlib
 import json
 import os
 import re
@@ -63,33 +51,56 @@ import shlex
 import subprocess
 import sys
 
-READ, WRITE, RUNS_CODE, UNCLASSIFIED, DANGER = (
-    "🟢 READ", "🟠 WRITE", "🔵 RUNS CODE", "🟣 UNCLASSIFIED", "🔴 DANGER")
-# Code the hook cannot read may write anything, so it outranks a known local write; an unknown
-# program is less known still, and neither outranks a known danger.
-RANK = {READ: 0, WRITE: 1, RUNS_CODE: 2, UNCLASSIFIED: 3, DANGER: 4}
-LABEL_RE = re.compile(
-    r"^(?:🟢 READ|🟠 WRITE|🔵 RUNS CODE|🟣 UNCLASSIFIED|🔴 DANGER)\s*[·:|-]?\s*")
+# The gate judges a command with the parser that rates it, so the rating and the decision
+# never read one command two ways. A missing or broken parser fails this import, and the
+# hook's `|| exit 2` blocks the call.
+sys.path.insert(0, os.path.expanduser("~/.claude/skills/tkay-tools/hooks"))
+import command_parser  # noqa: E402
+from command_parser import (  # noqa: E402
+    AUTO_MODE, DANGER_PROGRAMS, ENV_ASSIGN_RE, GH_GLOBAL_VALUE_FLAGS, HANDLERS, HARMLESS_TARGETS,
+    HELM_LOCAL, HELM_RELEASE_MOVES, HELMFILE_GLOBAL_VALUE_FLAGS, HELMFILE_RELEASE_WRITES,
+    KUBECTL_GLOBAL_VALUE_FLAGS, KUBECTL_LIVE_WRITES, KUBECTL_LOCAL, KUBECTL_ROLLOUT_READS,
+    LOOP_HEADERS, PUBLISHING_SCRIPTS, PYTHON_RE, READ, READ_PROGRAMS, RUNS_CODE,
+    SAFE_HTTP_METHODS, SCRIPT_HANDLERS, SCRIPT_OUTPUTS, TAR_EXTRACT_LONG, TAR_EXTRACT_SHORT,
+    TRANSPARENT, UV_GLOBAL_VALUE_FLAGS, WRITE, WRITE_PROGRAMS, classify_command,
+    classify_docker, classify_gh, classify_kubectl, classify_program, classify_words,
+    command_lines, curl_sends_body, dry_run, edits_in_place, fuser_kills,
+    git_merge_file_writes, git_subcommand_args, go_may_rewrite_module, go_without_dir,
+    has_flag, help_only, helm_words, http_method, invocations, invocations_in, parse_line,
+    positionals, program_of, pushes_image, python_run, python_script, shell_body,
+    skopeo_pushes, split_globals, split_line, split_prefix, strip_prefix,
+    unknown_programs_as, uv_run_invocations, uv_run_options, uv_run_tail, uv_runs,
+    uv_short_flags, uv_subcommand, with_assigned_path, xargs_rest, xh_request,
+)
 
-SEPARATORS = {";", ";;", "|", "||", "&&", "&", "(", ")", "|&"}
-REDIRECT_OUT = {">", ">>", "&>", "&>>", ">|"}
-# The descriptor digit of `2>&1` or `2>/dev/null`: shlex would lex it as a word of its own.
-DESCRIPTOR_RE = re.compile(r"(?<![^\s();|&])\d+(?=[<>])")
-HARMLESS_TARGETS = {"/dev/null", "/dev/stderr", "/dev/stdout", "/dev/tty"}
+# The words rule and the repo checks decide by the workplace tables of this one file, a
+# tracked file under ~/.claude that the gate guards like any repo; the rating config under
+# ~/.config, which a session can write, never reaches a decision.
+RATING_EXTENSION = os.path.expanduser("~/.claude/personal/rating_extensions.py")
+
+
+def load_rating_extension(path):
+    """Merge the extension at path into the parser's tables: None once it loaded, or why it
+    did not, in which case every call this hook guards is denied."""
+    try:
+        command_parser.load_extension(path)
+    except Exception as exc:
+        return f"the rating extension {path} did not load: {type(exc).__name__}: {exc}"
+    return None
+
+
+def start():
+    """Load the workplace tables the gate decides by, as the hook does when it starts."""
+    global EXTENSION_ERROR
+    EXTENSION_ERROR = load_rating_extension(RATING_EXTENSION)
+
+
+start()
+
 SCRATCH_PREFIXES = ("/tmp/claude/", "/private/tmp/claude/")
 SCRATCH_ROOTS = tuple(os.path.realpath(p.rstrip("/")) + "/" for p in SCRATCH_PREFIXES)
 TMP_ROOT = os.path.realpath("/tmp") + "/"
-ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
-# Shell words that precede the real program on a segment and carry no rating of their own.
-TRANSPARENT = {"do", "then", "else", "elif", "!", "{", "}", "if", "while", "until", "time",
-               "exec", "command", "builtin", "nohup", "nice", "env", "stdbuf", "caffeinate"}
-# The options of caffeinate that take a value; its other options are flags of their own.
-CAFFEINATE_VALUE_OPTS = {"-t", "-w"}
-# A segment made only of one of these is loop/branch syntax.
-SYNTAX_ONLY = {"done", "fi", "esac", "in", "function", "then", "do", "else", "}", "{"}
-# `for p in a b` names variables, not a program: the body is its own segment after `do`.
-LOOP_HEADERS = {"for", "case", "select"}
 # The words that open and close a compound command, whose body a pipe runs apart.
 COMPOUND_OPENERS = {"if", "while", "until", "for", "case", "select", "{"}
 COMPOUND_CLOSERS = {"fi", "done", "esac", "}"}
@@ -97,61 +108,6 @@ CHDIR_PROGRAMS = {"cd", "pushd", "popd"}
 # Wrappers that run the program as a process of its own, so a `cd` behind one moves no
 # directory of the shell's.
 CHILD_WRAPPERS = {"env", "nohup", "nice", "stdbuf", "caffeinate", "timeout"}
-
-READ_PROGRAMS = {
-    "cat", "head", "tail", "less", "more", "wc", "grep", "egrep", "fgrep", "zgrep", "rg", "ag",
-    "ack", "fd", "ls", "tree", "stat", "file", "du", "df", "echo", "printf", "true", "false",
-    "exit", "return",
-    "test", "[", "[[", "which", "whereis", "type", "whoami", "id", "hostname", "uname", "date",
-    "pwd", "printenv", "jq", "sort", "uniq", "cut", "tr", "column", "diff", "diff3", "cmp", "comm",
-    "md5", "md5sum", "sha1sum", "sha256sum", "shasum", "base64", "xxd", "od", "strings",
-    "hexdump", "realpath", "dirname", "basename", "readlink", "seq", "nl", "rev", "paste",
-    "fold", "expand", "bc", "dc", "sleep", "cal", "uptime", "ps", "pgrep", "lsof", "netstat",
-    "ss", "lsblk", "free", "vmstat", "iostat", "sw_vers", "getconf", "locale", "tty", "history",
-    "jobs", "alias", "declare", "typeset", "export", "set", "unset", "setopt", "unsetopt",
-    "bindkey", "zstyle", "cd", "pushd", "popd",
-    "dirs", "local", "readonly", "shift", "wait", "hash", "umask", "read", "zcat", "gzcat",
-    "bzcat", "xzcat", "dig", "nslookup", "host", "ping", "traceroute", "mtr", "whois",
-    "journalctl", "kustomize", "mypy", "pyright", "flake8", "pylint", "shellcheck",
-    "yamllint", "hadolint", "glow", "bat", "fzf", "tldr", "man", "info", "cksum", "iconv",
-    "look", "join", "split", "fmt", "pr", "tac", "expr", "let", "arch", "nproc", "sysctl",
-    "ifconfig", "ip", "route", "arp", "ioreg", "system_profiler", "pbpaste", "mdfind",
-    "gofmt", "glab-ci-view", "wrenchmark-report", "gpg",
-}
-# `split`, `gpg`, `iconv` write files only with explicit output options the handlers below catch.
-
-WRITE_PROGRAMS = {
-    "cp", "mv", "mkdir", "touch", "ln", "install", "patch", "tee", "truncate", "chmod", "chown",
-    "chgrp", "zip", "gzip", "gunzip", "bzip2", "xz", "open", "osascript", "code", "vim", "nvim",
-    "vi", "nano", "emacs", "ssh", "scp", "sftp", "source", ".", "eval", "uvx", "pipx",
-    "psql", "mysql", "sqlite3", "redis-cli", "mongosh", "perl", "ruby", "node", "deno", "bun",
-    "pre-commit", "kubectx", "kubens", "k9s", "pbcopy", "say", "afplay", "xattr",
-    "defaults", "crontab", "ollama",
-}
-
-DANGER_PROGRAMS = {
-    "rm", "rmdir", "dd", "mkfs", "shred", "diskutil", "kill", "pkill", "killall", "shutdown",
-    "reboot", "halt", "sudo", "doas", "fdisk", "parted", "wipefs", "nvme",
-}
-
-# Scripts that push images and move shared registry tags from their own subprocesses, where
-# the hook never sees the push: their name is the only thing it can match.
-PUBLISHING_SCRIPTS = {"build_vllm_overlay.py"}
-
-GENERIC_READ_WORDS = {"list", "describe", "get", "show", "read", "info", "version", "help",
-                      "status", "whoami", "print-access-token", "print-identity-token",
-                      "get-iam-policy", "get-caller-identity", "ls", "presign", "tail", "logs",
-                      "search", "lint", "validate", "explain", "cat", "tree", "diff"}
-GENERIC_WRITE_WORDS = {"set", "create", "update", "add", "enable", "disable", "ssh", "scp",
-                       "deploy", "run", "submit", "import", "export", "resize", "start", "stop",
-                       "restart", "get-credentials", "login", "logout", "activate", "put",
-                       "copy", "cp", "mv", "move", "sync", "push", "pull", "apply", "patch",
-                       "scale", "edit", "attach", "exec", "init", "install", "upgrade",
-                       "rollback", "cancel", "retry", "approve", "merge", "comment", "note",
-                       "close", "reopen", "label", "annotate", "tag", "release"}
-GENERIC_DANGER_WORDS = {"delete", "destroy", "remove", "rm", "rb", "terminate", "purge",
-                        "drain", "reset", "revoke", "detach", "prune", "uninstall", "wipe",
-                        "cordon", "uncordon", "taint", "evict", "kill", "force-unlock"}
 
 # ----- the gate -----------------------------------------------------------------------
 
@@ -164,9 +120,6 @@ CLAUDE_HOME = os.path.realpath(os.path.expanduser("~/.claude")) + "/"
 STATE_DIR = os.path.expanduser("~/.claude/lfg-state")
 SCRATCH_PATHS_DIR = os.path.expanduser("~/.claude/scratch-paths")
 OPEN_STATES = {"open", "one-turn"}
-# Auto mode reviews a call before this hook runs and refuses one whose input the hook then
-# changed, so there the rating is written only into a prompt the hook raises itself.
-AUTO_MODE = "auto"
 GATED_TOOLS = {"Bash", "Edit", "Write", "NotebookEdit", "EnterWorktree"}
 PATH_FIELD = {"Edit": "file_path", "Write": "file_path", "NotebookEdit": "notebook_path"}
 
@@ -196,74 +149,10 @@ MODE_WRITERS = {"chmod", "chown", "chgrp"}
 SHELL_EXPANSION_CHARS = set("${`")
 # A glob can expand into a repo whatever the literal path around it says.
 GLOB_CHARS = set("*?[")
-# GOTCHA: an allowlist, because other tar options write outside -C (-P, --index-file, -c with
-# -f) or run a program (--to-command, --use-compress-program). -C stays out of the short
-# set so a clustered -xC never hides an extract target from the scratch check.
-TAR_EXTRACT_SHORT = set("xvfzjJkopm")
-TAR_EXTRACT_LONG = {"--extract", "--get", "--directory", "--file", "--gzip", "--bzip2", "--xz",
-                    "--zstd", "--verbose", "--keep-old-files", "--no-same-owner",
-                    "--no-same-permissions", "--strip-components", "--exclude"}
-TAR_STDOUT_SHORT = TAR_EXTRACT_SHORT | {"O"}
-TAR_STDOUT_LONG = TAR_EXTRACT_LONG | {"--to-stdout"}
 
-# kubectl verbs CLAUDE.md names as writing live cluster state.
-KUBECTL_WRITES_BY_CLAUDE_MD = {"apply", "delete", "create", "patch", "edit", "scale", "rollout"}
-KUBECTL_ROLLOUT_READS = {"status", "history"}
-# Verbs that write live cluster state the same way and that CLAUDE.md does not name.
-KUBECTL_WRITES_WIDENED = {"replace", "set", "label", "annotate", "taint", "cordon", "uncordon",
-                          "drain", "evict", "expose", "run", "debug", "autoscale", "certificate"}
 KUBECTL_CONTEXT_SETTERS = {"use-context", "set-context"}
-# Subcommands that never reach a cluster, so the pin rules do not apply.
-KUBECTL_LOCAL = {"config", "kustomize", "completion", "options", "help", "krew"}
-KREW_READS = {"list", "search", "info", "version", "help"}
-HELM_LOCAL = {"template", "lint", "show", "search", "pull", "package", "push", "registry",
-              "create", "env", "verify", "repo", "dependency", "plugin", "version",
-              "completion", "help"}
-HELM_RELEASE_MOVES = {"uninstall", "delete", "del", "rollback"}
-GIT_CONFIG_VALUE_FLAGS = {"-f", "--file", "--blob", "--default", "--type"}
-GIT_CONFIG_READ_SUBCOMMANDS = {"get", "list"}
-GIT_SYMBOLIC_REF_READ_FLAGS = {"-q", "--quiet", "--short", "--no-short", "--recurse",
-                               "--no-recurse"}
-SSH_VALUE_FLAGS = {"-B", "-b", "-c", "-D", "-E", "-e", "-F", "-I", "-i", "-J", "-L", "-l", "-m",
-                   "-O", "-o", "-p", "-Q", "-R", "-S", "-W", "-w"}
-GIT_CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "edit", "rename-section", "remove-section"}
-# GOTCHA: `clean` stores the object under .git/lfs/objects the way `fetch` fills .git/objects:
-# no ref and no work-tree file moves, so it reads like the rest.
-GIT_LFS_READ_SUBCOMMANDS = {"ls-files", "env", "status", "version", "help", "clean", "pointer",
-                            "fsck", "locks"}
-# Cluster-scoped commands where kubectl ignores -n; `get --raw` carries an API path instead.
-NAMESPACE_FREE = {("get", "node"), ("get", "nodes"), ("describe", "node"), ("describe", "nodes"),
-                  ("top", "node"), ("top", "nodes"), ("get", "crd"), ("get", "crds"),
-                  ("get", "customresourcedefinitions"), ("get", "ns"), ("get", "namespace"),
-                  ("get", "namespaces"), ("label", "node"), ("label", "nodes"),
-                  ("annotate", "node"), ("annotate", "nodes"), ("taint", "node"),
-                  ("taint", "nodes"), ("get", "clusterpolicy"), ("get", "clusterpolicies"),
-                  ("get", "cpol"), ("describe", "clusterpolicy"),
-                  ("describe", "clusterpolicies"), ("describe", "cpol")}
-# Verbs whose only target is a node, so the second word is the node's name.
-NODE_VERBS = {"cordon", "uncordon", "drain"}
-KUBECTL_GLOBAL_VALUE_FLAGS = {
-    "--context", "--kubeconfig", "-n", "--namespace", "--cluster", "--user", "-s", "--server",
-    "--token", "--as", "--as-group", "--request-timeout", "--certificate-authority",
-    "--client-certificate", "--client-key", "--tls-server-name", "--cache-dir", "--profile",
-    "--profile-output", "-v", "--v", "--vmodule",
-}
 CRUSOE_GET_CREDENTIALS_VALUE_FLAGS = {"--project-name", "--project-id", "--kubeconfig-path",
                                       "--auth-type", "-f", "--format"}
-HELM_GLOBAL_VALUE_FLAGS = {
-    "--kube-context", "--kubeconfig", "-n", "--namespace", "--kube-apiserver", "--kube-token",
-    "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config",
-    "--repository-cache", "--repository-config", "--burst-limit", "--qps",
-}
-HELMFILE_GLOBAL_VALUE_FLAGS = {
-    "--kube-context", "-e", "--environment", "-f", "--file", "-n", "--namespace", "-l",
-    "--selector", "--state-values-set", "--state-values-file", "-b", "--helm-binary",
-    "--log-level", "-c", "--chart",
-}
-HELMFILE_RELEASE_WRITES = {"apply", "sync", "destroy", "delete"}
-# Subcommands that reach the cluster, so the context pin applies; the rest render or fetch
-# locally. A helmfile spreads its releases over namespaces, so -n is not required.
-HELMFILE_CLUSTER = HELMFILE_RELEASE_WRITES | {"diff", "status", "test"}
 
 # The TL;DR into a fired alert's thread and the reaction marking the alert as under investigation
 # are ungated; these are the alert channels, one ID per line in ALERT_CHANNELS_FILE. A file and
@@ -305,204 +194,6 @@ DENY, ASK = "deny", "ask"
 DECISION_RANK = {None: 0, ASK: 1, DENY: 2}
 
 
-def positionals(args):
-    return [a for a in args if not a.startswith("-")]
-
-
-def has_flag(args, *flags):
-    return any(a in flags or any(a.startswith(f + "=") for f in flags) for a in args)
-
-
-def dry_run(args):
-    return any(a == "--dry-run" or (a.startswith("--dry-run=") and a != "--dry-run=none")
-               for a in args)
-
-
-def split_globals(args, value_flags):
-    """Take a CLI's value-carrying global flags out of `args`, in `--flag X`, `--flag=X` and
-    `-nX` forms, so the first positional left is the verb wherever the flags were typed."""
-    rest, seen = [], {}
-    i = 0
-    while i < len(args):
-        a = args[i]
-        if a == "--":
-            rest.extend(args[i:])
-            break
-        name, eq, value = a.partition("=")
-        if name in value_flags:
-            if eq:
-                seen[name] = value
-            elif i + 1 < len(args):
-                seen[name] = args[i + 1]
-                i += 1
-            else:
-                seen[name] = ""
-        elif len(a) > 2 and a[0] == "-" and a[1] != "-" and a[:2] in value_flags:
-            seen[a[:2]] = a[2:]
-        else:
-            if a in ("-A", "--all-namespaces"):
-                seen["-A"] = "true"
-            rest.append(a)
-        i += 1
-    return rest, seen
-
-
-HELM_SUBCOMMAND_ALIASES = {"dep": "dependency", "dependencies": "dependency"}
-
-
-def helm_words(args):
-    """helm's arguments with its global flags taken out, and the subcommand among the
-    positionals read by its name whichever alias was typed."""
-    rest, seen = split_globals(args, HELM_GLOBAL_VALUE_FLAGS)
-    pos = positionals(rest)
-    if pos:
-        pos[0] = HELM_SUBCOMMAND_ALIASES.get(pos[0], pos[0])
-    return rest, seen, pos
-
-
-def generic_verbs(args):
-    """CLIs shaped `tool group... verb [flags]`: gcloud, crusoe, aws, az, argocd, flux."""
-    words = set(positionals(args))
-    if words & GENERIC_DANGER_WORDS or any(w.startswith(("delete-", "terminate-", "remove-"))
-                                            for w in words):
-        return DANGER
-    if words & GENERIC_WRITE_WORDS:
-        return WRITE
-    if words & GENERIC_READ_WORDS or any(w.startswith(("describe-", "list-", "get-", "head-",
-                                                        "batch-get-")) for w in words):
-        return READ
-    return WRITE
-
-
-def git_subcommand_args(args):
-    """The git subcommand and its arguments, with the global options ahead of it removed."""
-    rest = list(args)
-    # GOTCHA: only the words ahead of the subcommand are git's own. After it, a word shaped
-    # like --git-dir= is the subcommand's: archive's -o value, merge-file's -L label.
-    while rest and (rest[0] in ("-C", "-c", "--git-dir", "--work-tree", "--no-pager", "-P")
-                    or rest[0].startswith(("--git-dir=", "--work-tree="))):
-        rest = rest[2:] if rest[0] in ("-C", "-c", "--git-dir", "--work-tree") else rest[1:]
-    return rest
-
-
-def classify_git(args):
-    rest = git_subcommand_args(args)
-    # GOTCHA: a config key can name a program git runs (core.fsmonitor, diff.external,
-    # core.sshCommand, a `!` alias), so a `-c` ahead of the subcommand makes it a write.
-    if "-c" in args[:len(args) - len(rest)]:
-        return WRITE
-    if not rest:
-        return READ
-    sub, rest = rest[0], rest[1:]
-    pos = positionals(rest)
-    force = has_flag(rest, "-f", "--force", "--force-with-lease")
-    if sub == "archive":
-        # -o also takes its value stuck (-ofile), which has_flag does not match.
-        return WRITE if has_flag(rest, "--output") or any(a.startswith("-o") for a in rest) else READ
-    if sub in {"status", "log", "show", "diff", "blame", "ls-files", "ls-tree", "ls-remote",
-               "rev-parse", "rev-list", "describe", "cat-file", "name-rev", "merge-base",
-               "shortlog", "grep", "for-each-ref", "show-ref", "check-ignore", "var",
-               "count-objects", "diff-tree", "diff-index", "diff-files", "whatchanged",
-               "range-diff", "version", "help", "cherry", "show-branch", "annotate", "bundle-verify",
-               "check-attr", "check-ref-format", "fsck", "verify-commit", "verify-tag",
-               "merge-tree"}:
-        # merge-tree stores its result as unreachable objects: no ref, index or file moves.
-        # GOTCHA: git runs unsandboxed under the managed policy, and `log`/`diff`/`show --output`
-        # write a file anywhere, so a read verb with it is a write.
-        return WRITE if has_flag(rest, "--output") else READ
-    if sub == "merge-file":
-        return READ if git_merge_file_writes(rest) == [] else WRITE
-    if sub == "symbolic-ref":
-        # One name with only these flags reads the ref it points at. Anything else may write:
-        # a second name repoints it, and git takes a bundled -qd or an abbreviated --del as a
-        # delete.
-        flags = [a for a in rest if a.startswith("-")]
-        if len(pos) == 1 and all(f in GIT_SYMBOLIC_REF_READ_FLAGS for f in flags):
-            return READ
-        return WRITE
-    if sub == "reflog":
-        # Any positional that is not one of these subcommands is a ref to show, or the value of
-        # a show option such as `-n 40`.
-        if set(pos) & {"expire", "delete", "drop"}:
-            return DANGER
-        return WRITE if "write" in pos else READ
-    if sub == "branch":
-        if has_flag(rest, "-l", "--list", "--contains", "--no-contains", "--merged",
-                    "--no-merged", "--points-at", "--show-current"):
-            return READ
-        if has_flag(rest, "-D", "--delete", "-d", "-M", "-m", "-C", "-c", "-u",
-                    "--set-upstream-to", "--unset-upstream", "--edit-description", "--move",
-                    "--copy") or force:
-            return DANGER if has_flag(rest, "-D", "--delete", "-d", "-M") or force else WRITE
-        return READ if not pos else WRITE
-    if sub == "tag":
-        if has_flag(rest, "-d", "--delete"):
-            return WRITE
-        return READ if not pos or has_flag(rest, "-l", "--list", "-n", "--contains",
-                                           "--points-at") else WRITE
-    if sub == "remote":
-        return READ if not pos or pos[0] in ("show", "get-url") else WRITE
-    if sub == "stash":
-        if pos and pos[0] in ("list", "show"):
-            return READ
-        return DANGER if pos and pos[0] in ("drop", "clear") else WRITE
-    if sub == "config":
-        if has_flag(rest, "--get", "--get-all", "--get-regexp", "--list", "-l",
-                    "--show-origin", "--get-urlmatch"):
-            return READ
-        rest, _ = split_globals(rest, GIT_CONFIG_VALUE_FLAGS)
-        pos = positionals(rest)
-        if pos and pos[0] in GIT_CONFIG_READ_SUBCOMMANDS:
-            return READ
-        if pos and pos[0] in GIT_CONFIG_WRITE_SUBCOMMANDS:
-            return WRITE
-        # `git config <key>` alone reads; a value after the key, or an editing flag, writes.
-        if len(pos) == 1 and not has_flag(rest, "--add", "--unset", "--unset-all",
-                                          "--replace-all", "--remove-section"):
-            return READ
-        return WRITE
-    if sub == "worktree":
-        if pos and pos[0] == "list":
-            return READ
-        return DANGER if pos and pos[0] in ("remove", "prune") else WRITE
-    if sub == "push":
-        return DANGER
-    if sub == "fetch":
-        if force:
-            return DANGER
-        # A refspec with a local destination moves that local branch.
-        return WRITE if any(":" in p for p in pos[1:]) else READ
-    if sub == "reset":
-        return DANGER if has_flag(rest, "--hard", "--merge") else WRITE
-    if sub == "clean":
-        return READ if has_flag(rest, "-n", "--dry-run") else DANGER
-    if sub in ("checkout", "switch"):
-        return DANGER if "--" in rest or force else WRITE
-    if sub == "restore":
-        return DANGER
-    if sub in {"filter-branch", "filter-repo", "update-ref", "prune", "gc", "replace"}:
-        return DANGER
-    if sub == "lfs":
-        if not pos:
-            return READ
-        if pos[0] == "logs":
-            return WRITE if pos[1:2] in (["clear"], ["boomtown"]) else READ
-        if pos[0] in ("push", "lock", "unlock"):
-            return DANGER
-        return READ if pos[0] in GIT_LFS_READ_SUBCOMMANDS else WRITE
-    if sub in {"rebase", "cherry-pick", "merge", "am", "revert", "rm", "mv", "submodule",
-               "add", "commit", "pull", "init", "clone", "apply", "notes", "bisect",
-               "tag", "rerere", "sparse-checkout"}:
-        return DANGER if force and sub in ("rebase", "rm", "clone", "pull") else WRITE
-    return WRITE
-
-
-def kubectl_exec_command(rest):
-    if "--" not in rest:
-        return None
-    return rest[rest.index("--") + 1:]
-
-
 def writes_inside_pod(verb, rest):
     """An exec that is not a read, a cp whose destination is `pod:path`, or an attach."""
     if verb == "exec":
@@ -512,119 +203,6 @@ def writes_inside_pod(verb, rest):
                  if not a.startswith("-") and not (i and rest[i - 1] in ("-c", "--container"))]
         return len(paths) > 2 and ":" in paths[-1]
     return verb == "attach"
-
-
-def classify_kubectl(args):
-    rest, _ = split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)
-    pos = positionals(rest)
-    if not pos:
-        return READ
-    verb = pos[0]
-    if "$" in verb:
-        return DANGER
-    if dry_run(rest):
-        return READ
-    if verb in {"get", "describe", "logs", "log", "top", "explain", "api-resources",
-                "api-versions", "version", "cluster-info", "events", "wait", "diff",
-                "port-forward", "proxy", "completion", "options", "kustomize", "whoami"}:
-        return READ
-    if verb == "config":
-        return READ if len(pos) > 1 and pos[1] in ("view", "get-contexts", "current-context",
-                                                    "get-clusters", "get-users") else WRITE
-    if verb == "rollout":
-        return READ if len(pos) > 1 and pos[1] in KUBECTL_ROLLOUT_READS else DANGER
-    if verb == "auth":
-        return READ if len(pos) > 1 and pos[1] in ("can-i", "whoami") else WRITE
-    if verb == "plugin":
-        return READ if len(pos) > 1 and pos[1] == "list" else WRITE
-    if verb == "krew":
-        return READ if len(pos) > 1 and pos[1] in KREW_READS else WRITE
-    if verb == "exec":
-        # An exec is whatever runs inside the pod. A shell, or stdin/tty with nothing after
-        # `--`, is a write because nothing says what will be typed into it.
-        before = rest[:rest.index("--")] if "--" in rest else rest
-        if any(a in ("--stdin", "--tty") or re.match(r"^-[a-zA-Z]*[it]", a) for a in before):
-            return WRITE
-        command = kubectl_exec_command(rest)
-        return classify_words(command) if command else WRITE
-    if verb == "cp":
-        return WRITE
-    if verb in KUBECTL_WRITES_BY_CLAUDE_MD or verb in KUBECTL_WRITES_WIDENED:
-        return DANGER
-    return WRITE
-
-
-def classify_helm(args):
-    rest, _, pos = helm_words(args)
-    if not pos:
-        return READ
-    sub = pos[0]
-    if "$" in sub:
-        return DANGER
-    if sub in {"list", "ls", "get", "status", "history", "show", "inspect", "template", "lint",
-               "search", "env", "version", "verify", "completion", "help", "diff"}:
-        return READ
-    if sub == "repo":
-        return READ if len(pos) > 1 and pos[1] == "list" else WRITE
-    if sub == "dependency":
-        return READ if len(pos) > 1 and pos[1] == "list" else WRITE
-    if sub == "plugin":
-        return READ if len(pos) > 1 and pos[1] == "list" else WRITE
-    if sub in ("install", "upgrade"):
-        if dry_run(rest):
-            return READ
-        return DANGER if has_flag(rest, "--force", "--force-conflicts") else WRITE
-    if sub in HELM_RELEASE_MOVES:
-        return DANGER
-    return WRITE
-
-
-def classify_helmfile(args):
-    rest, _ = split_globals(args, HELMFILE_GLOBAL_VALUE_FLAGS)
-    pos = positionals(rest)
-    sub = pos[0] if pos else ""
-    if sub in {"diff", "template", "lint", "status", "list", "build", "version", "help",
-               "show-dag"}:
-        return READ
-    if sub in ("destroy", "delete"):
-        return DANGER
-    return WRITE
-
-
-def http_method(args, short, long):
-    for i, a in enumerate(args):
-        if a in (short, long) and i + 1 < len(args):
-            return args[i + 1].upper()
-        if a.startswith(short) and len(a) > len(short) and short != "":
-            return a[len(short):].upper()
-        if a.startswith(long + "="):
-            return a.split("=", 1)[1].upper()
-    return "GET"
-
-
-STDOUT_SINKS = ("/dev/null", "-")
-
-
-def curl_output_targets(args):
-    targets = []
-    for i, a in enumerate(args):
-        if a in ("-o", "--output"):
-            targets.append(args[i + 1] if i + 1 < len(args) else "")
-        elif a.startswith("--output="):
-            targets.append(a.split("=", 1)[1])
-        elif a.startswith("-o") and len(a) > 2:
-            targets.append(a[2:])
-    return targets
-
-
-SAFE_HTTP_METHODS = {"GET", "HEAD", "OPTIONS"}
-CURL_BODY_FLAGS = ("-T", "--upload-file", "-F", "--form", "--form-string", "-d", "--data",
-                   "--data-raw", "--data-binary", "--data-urlencode", "--data-ascii", "--json")
-
-
-def curl_sends_body(args):
-    return has_flag(args, *CURL_BODY_FLAGS) or any(
-        a.startswith(("-d", "-F", "-T")) and len(a) > 2 and not a.startswith("--") for a in args)
 
 
 def curl_request(args):
@@ -642,52 +220,6 @@ def curl_request(args):
         url = next((a for a in args if SCHEME_URL_RE.match(a) or LOOPBACK_BARE_RE.match(a)),
                    "")
     return method, url
-
-
-def classify_curl(args):
-    method = http_method(args, "-X", "--request")
-    if method == "DELETE":
-        return DANGER
-    if method not in SAFE_HTTP_METHODS:
-        return WRITE
-    if any(t not in STDOUT_SINKS for t in curl_output_targets(args)):
-        return WRITE
-    if has_flag(args, "-O", "--remote-name", "--remote-name-all") or curl_sends_body(args):
-        return WRITE
-    return READ
-
-
-HTTP_METHODS = {"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE", "TRACE", "CONNECT"}
-XH_VALUE_FLAGS = {"-a", "--auth", "-A", "--auth-type", "-o", "--output", "--raw", "-p",
-                  "--print", "-P", "--history-print", "--pretty", "-s", "--style", "--proxy",
-                  "--timeout", "--max-redirects", "--verify", "--cert", "--cert-key", "--ssl",
-                  "--http-version", "--resolve", "--interface", "--response-charset",
-                  "--response-mime", "--session", "--session-read-only", "--format-options",
-                  "--unix-socket", "--generate"}
-
-
-def xh_request(args):
-    """httpie syntax: an optional method in any case, the URL, then items; a `key=value`,
-    `key:=json` or `key@file` item, or `--raw`, implies POST."""
-    rest, _ = split_globals(args, XH_VALUE_FLAGS)
-    pos = positionals(rest)
-    method = pos[0].upper() if pos and pos[0].upper() in HTTP_METHODS else None
-    url = (pos[1:2] if method else pos[:1]) or [""]
-    items = pos[2:] if method else pos[1:]
-    body = (any(("=" in a and "==" not in a) or "@" in a for a in items)
-            or has_flag(args, "--raw"))
-    return method or ("POST" if body else "GET"), url[0]
-
-
-def classify_xh(args):
-    method, _ = xh_request(args)
-    if method == "DELETE":
-        return DANGER
-    if method not in SAFE_HTTP_METHODS:
-        return WRITE
-    if has_flag(args, "-d", "--download", "-o", "--output"):
-        return WRITE
-    return READ
 
 
 WGET_BODY_FLAGS = ("--post-data", "--post-file", "--body-data", "--body-file")
@@ -742,58 +274,6 @@ def remote_http_write(prog, args):
     if method in SAFE_HTTP_METHODS or url_is_loopback(url):
         return None
     return url or "a URL the hook cannot read"
-
-
-GH_GLOBAL_VALUE_FLAGS = {"-R", "--repo"}
-
-
-def classify_gh(args):
-    args, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
-    pos = positionals(args)
-    if not pos:
-        return READ
-    group = pos[0]
-    sub = pos[1] if len(pos) > 1 else ""
-    if group == "api":
-        if sub == "graphql" and not any("mutation" in a for a in args):
-            return READ
-        method = http_method(args, "-X", "--method")
-        if method == "DELETE":
-            return DANGER
-        # Fields switch the default method to POST; under an explicit GET they are query params.
-        fields = has_flag(args, "-f", "-F", "--field", "--raw-field", "--form")
-        if (method != "GET" or has_flag(args, "--input")
-                or (fields and not any(a == "--method" or a.startswith(("-X", "--method="))
-                                       for a in args))):
-            return WRITE
-        return READ
-    if group in ("search", "status", "browse", "help", "version", "completion"):
-        return READ
-    if group == "auth":
-        return READ if sub in ("status", "token") else WRITE
-    if sub in ("view", "list", "diff", "checks", "status", "watch", "trace", "lint", "ls",
-               "get", "show", "verify"):
-        return READ
-    if sub in ("merge", "delete", "cancel", "rerun-failed", "lock", "unlock", "transfer"):
-        return DANGER
-    if sub == "note" and (pos[2:3] == ["list"] or pos[2:4] == ["draft", "list"]):
-        return READ
-    # Every MR verb but checkout lands on the shared MR where reviewers see it.
-    if group in ("pr", "mr") and sub not in ("", "checkout"):
-        return DANGER
-    return WRITE
-
-
-GLAB_LOCAL_GROUPS = {"auth", "config", "alias"}
-GLAB_LOCAL_SUBS = {"checkout", "clone"}
-
-
-def classify_glab(args):
-    kind = classify_gh(args)
-    rest, _ = split_globals(args, GH_GLOBAL_VALUE_FLAGS)
-    group, sub = (positionals(rest) + ["", ""])[:2]
-    local = group in GLAB_LOCAL_GROUPS or sub in GLAB_LOCAL_SUBS
-    return DANGER if kind == WRITE and not local else kind
 
 
 def creates_remote_tag(args):
@@ -915,647 +395,11 @@ def moves_mr(prog, args):
     return sub in MR_MOVES
 
 
-def classify_claude(args):
-    # A print-mode call is a model call that writes nothing only once both tool surfaces are
-    # off: `--tools ""` removes the built-in tools and leaves the connectors, which the
-    # disallow pattern removes. Anything else can edit files or post somewhere.
-    if args[:2] in (["auth", "status"], ["plugin", "list"]) or args[:3] == ["plugin", "marketplace", "list"]:
-        return READ
-    if has_flag(args, "-p", "--print"):
-        no_builtin = any(a == "--tools=" or (a == "--tools" and args[i + 1:i + 2] == [""])
-                         for i, a in enumerate(args))
-        no_mcp = any(a in ("--disallowedTools", "--disallowed-tools") and args[i + 1:i + 2] == ["mcp__*"]
-                     for i, a in enumerate(args))
-        if no_builtin and no_mcp:
-            return READ
-    return WRITE
-
-
-def pushes_image(args):
-    pos = positionals(args)
-    if pos[:1] == ["push"] or pos[:2] in (["image", "push"], ["manifest", "push"],
-                                         ["compose", "push"]):
-        return True
-    if pos[:3] == ["buildx", "imagetools", "create"]:
-        return not has_flag(args, "--dry-run")
-    builds = pos[:1] == ["build"] or pos[:2] in (["buildx", "build"], ["buildx", "bake"])
-    return builds and (has_flag(args, "--push")
-                       or any("type=registry" in a or "push=true" in a for a in args))
-
-
-def skopeo_pushes(args):
-    pos = positionals(args)
-    if pos[:1] == ["copy"]:
-        return pos[-1].startswith("docker://")
-    if pos[:1] == ["sync"]:
-        dest = next((a.split("=", 1)[1] for a in args if a.startswith("--dest=")), None)
-        if dest is None and "--dest" in args[:-1]:
-            dest = args[args.index("--dest") + 1]
-        return dest == "docker"
-    return False
-
-
-def classify_skopeo(args):
-    pos = positionals(args)
-    if skopeo_pushes(args) or pos[:1] == ["delete"]:
-        return DANGER
-    if pos[:1] in (["inspect"], ["list-tags"]):
-        return READ
-    return WRITE
-
-
-def classify_docker(args):
-    pos = positionals(args)
-    if not pos:
-        return READ
-    if pushes_image(args):
-        return DANGER
-    sub = pos[0]
-    if sub in {"ps", "images", "inspect", "logs", "version", "info", "stats", "top", "diff",
-               "history", "port", "search", "events", "wait"}:
-        return READ
-    if sub in ("rm", "rmi", "prune", "kill"):
-        return DANGER
-    if sub in {"image", "container", "volume", "network", "buildx", "compose", "manifest",
-               "context", "system", "service", "node", "stack", "plugin"}:
-        nested = pos[1] if len(pos) > 1 else ""
-        if nested in ("ls", "list", "inspect", "logs", "history", "ps", "config", "version",
-                      "df", "top", "events", "port"):
-            return READ
-        if nested in ("rm", "rmi", "prune", "kill", "down"):
-            return DANGER
-    return WRITE
-
-
-SED_WRITE_RE = re.compile(r"(^|[;{}\s\d$/])w\s|/w\s")
-
-
-def classify_sed(args):
-    if any(re.match(r"^-[a-zA-Z]*i", a) or a.startswith("--in-place") for a in args):
-        return WRITE
-    return WRITE if any(SED_WRITE_RE.search(a) for a in args if not a.startswith("-")) else READ
-
-
-def classify_awk(args):
-    if has_flag(args, "-i", "--in-place") or any(a.startswith("-i") for a in args):
-        return WRITE
-    program = next((a for a in args if not a.startswith("-") and (" " in a or "{" in a)), "")
-    if re.search(r'>\s*["$]|\|\s*"|system\s*\(|close\s*\(', program):
-        return WRITE
-    return READ
-
-
-def classify_python(args):
-    if not args or args in (["--version"], ["-V"]):
-        return READ
-    if args[0] == "-m" and len(args) > 1:
-        if args[1] in ("json.tool", "tomllib"):
-            return READ
-        if args[1] in ("pytest", "mypy", "pyright", "ruff", "black", "isort", "flake8", "pylint"):
-            return classify_program(args[1], args[2:])
-        if args[1] == "pip":
-            return classify_pip(args[2:])
-        return RUNS_CODE
-    # The script is read past Python's own flags, so `python3 -u x.py` is rated as x.py.
-    script = python_script(args)
-    if script is None:
-        return RUNS_CODE
-    # GOTCHA: this script's own CLI only classifies text, and CLAUDE.md tells the model to run
-    # it. Python's -i then runs whatever code standard input holds.
-    if (os.path.realpath(os.path.expanduser(script)) == os.path.realpath(__file__)
-            and not any(a.startswith("-") and not a.startswith("--") and "i" in a
-                        for a in args[:args.index(script)])):
-        return READ
-    if os.path.basename(script) in PUBLISHING_SCRIPTS:
-        return DANGER
-    if os.path.basename(script) == "board.py":
-        return classify_board(args[args.index(script) + 1:])
-    return RUNS_CODE
-
-
-def classify_perl(args):
-    """perl and ruby: an in-place edit names its target and is a write; anything else runs
-    code, as python does."""
-    return WRITE if edits_in_place(args) else RUNS_CODE
-
-
-def classify_board(args):
-    """The grafana-dashboards skill's board.py: fetch and diff read the live board, fetch
-    and shot write a file where --out says, publish writes its next version, login saves a
-    browser session locally."""
-    pos = positionals(args)
-    sub = pos[0] if pos else ""
-    if sub == "diff":
-        return READ
-    if sub == "fetch":
-        return READ if board_out(args) is None else WRITE
-    if sub == "publish":
-        return DANGER
-    return WRITE
-
-
-def board_out(args):
-    """The --out path of a board.py fetch or shot, the only subcommands that write a local
-    file, or None when it writes none."""
-    if positionals(args)[:1] not in (["fetch"], ["shot"]):
-        return None
-    out = next((a.split("=", 1)[1] for a in args if a.startswith("--out=")), None)
-    if out is None and "--out" in args[:-1]:
-        out = args[args.index("--out") + 1]
-    return out
-
-
-def classify_pip(args):
-    pos = positionals(args)
-    if has_flag(args, "--version", "-V") or (pos and pos[0] in ("list", "show", "freeze", "check",
-                                                                 "index", "debug", "config",
-                                                                 "download", "hash", "inspect")):
-        return READ
-    return WRITE
-
-
-# Every global option uv takes a value for, typed before the subcommand or after it: the
-# ones `uv --help` lists and the hidden ones uv still reads.
-UV_GLOBAL_VALUE_FLAGS = ("--cache-dir", "--color", "--allow-insecure-host", "--directory",
-                         "--project", "--config-file", "--python-preference", "--python-fetch",
-                         "--preview-features")
-
-
-# Every option `uv run` takes a value for, written as a separate word: the ones
-# `uv run --help` lists and the hidden ones uv still reads.
-UV_RUN_VALUE_FLAGS = (
-    "--extra", "--no-extra", "--group", "--no-group", "--only-group", "--no-editable-package",
-    "--env-file", "-w", "--with", "--with-editable", "--with-requirements", "--package",
-    "--python-platform", "--index", "--default-index", "-i", "--index-url", "--extra-index-url",
-    "-f", "--find-links", "--index-strategy", "--keyring-provider", "-P", "--upgrade-package",
-    "--upgrade-group", "--resolution", "--prerelease", "--prerelease-package", "--fork-strategy",
-    "--exclude-newer", "--exclude-newer-package", "--no-sources-package", "--reinstall-package",
-    "--link-mode", "-C", "--config-setting", "--config-settings-package",
-    "--no-build-isolation-package", "--no-build-package", "--no-binary-package",
-    "--refresh-package", "-p", "--python", "--config-settings", "--max-recursion-depth",
-) + UV_GLOBAL_VALUE_FLAGS
-
-
-UV_RUN_SHORT_VALUE_FLAGS = "".join(o[1] for o in UV_RUN_VALUE_FLAGS if not o.startswith("--"))
-
-
-def uv_short_flags(word):
-    """The letters of a bundle of uv's short options up to the first that takes a value, and
-    whether that value is the next word: the rest of the bundle is the value otherwise."""
-    for j, ch in enumerate(word[1:], 1):
-        if ch in UV_RUN_SHORT_VALUE_FLAGS:
-            return word[1:j + 1], j == len(word) - 1
-    return word[1:], False
-
-
-def uv_subcommand(args):
-    """The index in uv's arguments of its subcommand, past uv's own global options, or None
-    when there is none."""
-    i = 0
-    while i < len(args) and args[i].startswith("-"):
-        i += 2 if args[i] in UV_GLOBAL_VALUE_FLAGS else 1
-    return i if i < len(args) else None
-
-
-def uv_runs(args):
-    """True when uv's subcommand is `run`."""
-    i = uv_subcommand(args)
-    return i is not None and args[i] == "run"
-
-
-def uv_run_options(args):
-    """uv run's own options, the words between `run` and the command it runs."""
-    rest = args[uv_subcommand(args) + 1:]
-    i = 0
-    while i < len(rest) and rest[i].startswith("-"):
-        a = rest[i]
-        if a.startswith("--") or a == "-":
-            i += 2 if a in UV_RUN_VALUE_FLAGS else 1
-        else:
-            i += 2 if uv_short_flags(a)[1] else 1
-    return rest[:i]
-
-
-def uv_run_tail(args):
-    """The command `uv run` runs, with uv's own options removed."""
-    return args[uv_subcommand(args) + 1 + len(uv_run_options(args)):]
-
-
 def uv_runs_module(args):
     """True when uv run's own options ask it to run a module: --module, or an m in a bundle
     of short flags, which takes no value of its own."""
     return any(a == "--module" or (not a.startswith("--") and "m" in uv_short_flags(a)[0])
                for a in uv_run_options(args) if a.startswith("-"))
-
-
-def classify_uv(args):
-    i = uv_subcommand(args)
-    # Only uv's own options ahead of the subcommand ask for its version: after it, the
-    # words are the subcommand's, and after `run` the command's it runs.
-    if i is None or has_flag(args[:i], "--version", "-V"):
-        return READ
-    sub = args[i]
-    if sub == "run":
-        tail = uv_run_tail(args)
-        return classify_words(tail) if tail else WRITE
-    if sub == "pip":
-        return classify_pip(args[i + 1:])
-    if sub in ("tree", "version", "help", "self") or (sub == "lock" and has_flag(args, "--check")):
-        return READ
-    return WRITE
-
-
-def classify_formatter(args):
-    return READ if has_flag(args, "--check", "--diff", "-l", "--list-different") else WRITE
-
-
-def classify_ruff(args):
-    pos = positionals(args)
-    if pos and pos[0] == "check":
-        return WRITE if has_flag(args, "--fix", "--unsafe-fixes") else READ
-    if pos and pos[0] == "format":
-        return classify_formatter(args)
-    return READ if pos and pos[0] in ("version", "rule", "linter", "config") else WRITE
-
-
-def classify_npm(args):
-    pos = positionals(args)
-    if not pos or has_flag(args, "--version", "-v"):
-        return READ
-    sub = pos[0]
-    if sub in ("test", "t") or (sub in ("run", "run-script") and pos[1:2] == ["test"]):
-        return RUNS_CODE
-    if sub in ("ls", "list", "view", "info", "outdated", "why", "explain", "ping",
-               "doctor", "search", "config"):
-        return WRITE if sub == "config" and len(pos) > 1 and pos[1] != "get" else READ
-    if sub == "audit":
-        return WRITE if "fix" in pos else READ
-    # A check script passes like a test, but its name never makes it a read: a lint script
-    # can run eslint --fix.
-    if sub in ("run", "run-script") and len(pos) > 1:
-        return RUNS_CODE if pos[1] in ("lint", "typecheck", "type-check", "check") else WRITE
-    if sub in ("publish", "unpublish", "deprecate"):
-        return DANGER
-    return WRITE
-
-
-def classify_npx(args):
-    pos = positionals(args)
-    if pos and pos[0] == "tsc":
-        return READ if has_flag(args, "--noEmit") else WRITE
-    return WRITE
-
-
-# The go build flags that take a value, so the value is never read as a package.
-GO_BUILD_VALUE_FLAGS = {"-C", "-o", "-p", "-asmflags", "-buildmode", "-compiler", "-gccgoflags",
-                        "-gcflags", "-installsuffix", "-ldflags", "-mod", "-modfile", "-overlay",
-                        "-pgo", "-pkgdir", "-tags", "-toolexec", "-coverpkg", "-covermode"}
-
-
-def go_build_discards_output(args):
-    """True for a go build that writes nothing but the build cache.
-
-    Go keeps the binary only of a build of one main package, or at -o; a build of several
-    packages compiles them and discards the result
-    (https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies). Several means two
-    distinct package arguments, or the whole module as ./... . -toolexec runs a program of
-    its own, so a build that names one is never a read. Go writes nothing at -o /dev/null,
-    for one package or several (base.IsNull in cmd/go/internal/work/build.go).
-    """
-    # Go takes --flag for -flag.
-    args = ["-" + a.lstrip("-") if a.startswith("--") and a != "--" else a for a in args]
-    if has_flag(args, "-toolexec"):
-        return False
-    rest, seen = split_globals(args, GO_BUILD_VALUE_FLAGS)
-    if has_flag(args, "-o"):
-        return seen.get("-o") == os.devnull
-    packages = set(positionals(rest)[1:])
-    return len(packages) > 1 or "./..." in packages
-
-
-def go_may_rewrite_module(args):
-    """True for a go command run with -mod=mod, which lets any build command rewrite go.mod
-    and go.sum (https://go.dev/ref/mod#build-commands). strip_prefix puts a GOFLAGS
-    assignment's flags among the arguments."""
-    return any(re.fullmatch(r"--?mod=mod", a) for a in args) or any(
-        re.fullmatch(r"--?mod", a) and nxt == "mod" for a, nxt in zip(args, args[1:]))
-
-
-def go_without_dir(args):
-    """The go arguments with a leading -C <dir> taken off, so the first positional left is the
-    subcommand. Go takes -C only as the first flag
-    (https://pkg.go.dev/cmd/go#hdr-Build__test__and_run), in -C dir or -C=dir form, and --C
-    for -C."""
-    if args and re.fullmatch(r"--?C", args[0]):
-        return args[2:]
-    if args and re.match(r"--?C=", args[0]):
-        return args[1:]
-    return args
-
-
-def classify_go(args):
-    args = go_without_dir(args)
-    pos = positionals(args)
-    if not pos:
-        return READ
-    sub = pos[0]
-    if sub == "env":
-        return WRITE if has_flag(args, "-w", "-u") else READ
-    if sub == "test":
-        return RUNS_CODE
-    if sub in ("vet", "list") or (sub == "build" and go_build_discards_output(args)):
-        return WRITE if go_may_rewrite_module(args) else READ
-    if sub in ("version", "doc", "help", "bug"):
-        return READ
-    if sub == "mod":
-        return READ if len(pos) > 1 and pos[1] in ("graph", "why", "verify") else WRITE
-    return WRITE
-
-
-def classify_cargo(args):
-    pos = positionals(args)
-    if not pos or has_flag(args, "--version", "-V"):
-        return READ
-    sub = pos[0]
-    if sub in ("test", "bench"):
-        return RUNS_CODE
-    if sub in ("check", "clippy", "tree", "metadata", "doc", "version", "search",
-               "verify-project", "pkgid", "locate-project", "read-manifest"):
-        return READ
-    if sub == "fmt":
-        return classify_formatter(args)
-    if sub in ("publish", "yank", "owner"):
-        return DANGER
-    return WRITE
-
-
-def classify_make(args):
-    if has_flag(args, "-n", "--dry-run", "--just-print", "-q", "--question",
-                "-p", "--print-data-base"):
-        return READ
-    targets = [a for a in positionals(args) if "=" not in a]
-    return RUNS_CODE if targets == ["test"] else WRITE
-
-
-def classify_terraform(args):
-    pos = positionals(args)
-    if not pos:
-        return READ
-    sub = pos[0]
-    nested = pos[1] if len(pos) > 1 else ""
-    if sub in ("plan", "show", "validate", "output", "providers", "version", "graph", "console",
-               "get"):
-        return READ
-    if sub == "fmt":
-        return classify_formatter(args)
-    if sub == "state":
-        return READ if nested in ("list", "show", "pull") else DANGER
-    if sub == "workspace":
-        return READ if nested in ("list", "show") else WRITE
-    # test applies every run block's configuration and destroys it after, unless the block
-    # says `command = plan`, which the command line does not show.
-    if sub in ("apply", "destroy", "import", "taint", "untaint", "force-unlock", "test"):
-        return DANGER
-    return WRITE
-
-
-def classify_brew(args):
-    pos = positionals(args)
-    if not pos or has_flag(args, "--version", "-v"):
-        return READ
-    if pos[0] in ("list", "ls", "info", "search", "outdated", "deps", "doctor", "config",
-                  "leaves", "uses", "home", "desc", "options", "tap-info", "--prefix",
-                  "--cellar", "--repository", "commands", "help", "log", "missing", "which"):
-        return READ
-    return WRITE
-
-
-def classify_tmux(args):
-    pos = positionals(args)
-    if not pos:
-        return WRITE
-    if pos[0] in ("capturep", "capture-pane"):
-        return READ if tmux_capture_prints(args[args.index(pos[0]) + 1:]) else WRITE
-    # GOTCHA: tmux accepts a short alias for every command, and the aliases are what gets typed.
-    return READ if pos[0] in ("ls", "list-sessions", "lsc", "list-clients", "lsw", "list-windows",
-                              "lsp", "list-panes", "lsk", "list-keys", "lscm", "list-commands",
-                              "lsb", "list-buffers", "showb", "show-buffer", "show",
-                              "show-options", "showw", "show-window-options", "showenv",
-                              "show-environment", "showmsgs", "show-messages", "show-hooks",
-                              "display", "display-message", "has", "has-session") else WRITE
-
-
-def tmux_capture_prints(args):
-    # Without -p, capture-pane writes the pane into a paste buffer instead of stdout.
-    takes_value = False
-    for arg in args:
-        if takes_value or not arg.startswith("-") or arg.startswith("--"):
-            takes_value = False
-            continue
-        for i, letter in enumerate(arg[1:], start=1):
-            if letter == "p":
-                return True
-            if letter in "bESt":
-                takes_value = i == len(arg) - 1
-                break
-    return False
-
-
-def classify_ssh(args):
-    rest, seen = split_globals(args, SSH_VALUE_FLAGS)
-    if has_flag(rest, "-G", "-V"):
-        return READ
-    pos = positionals(rest)
-    if "-O" in seen or len(pos) != 1:
-        return WRITE
-    dest = pos[0].removeprefix("ssh://")
-    user = dest.rpartition("@")[0] if "@" in dest else seen.get("-l", "")
-    # A forge's git user has no shell: with no remote command it only prints the auth greeting,
-    # while a remote command can mint a token (GitLab's personal_access_token).
-    return READ if user == "git" else WRITE
-
-
-def classify_ssh_add(args):
-    return READ if has_flag(args, "-l", "-L") else WRITE
-
-
-def classify_rsync(args):
-    if has_flag(args, "-n", "--dry-run") or any(re.match(r"^-[a-zA-Z]*n", a) for a in args):
-        return READ
-    return DANGER if any(a.startswith("--delete") for a in args) else WRITE
-
-
-def classify_tar(args):
-    if has_flag(args, "--list", "-t") or tar_extracts_to_stdout(args):
-        return READ
-    first = args[0] if args else ""
-    cluster = first.lstrip("-")
-    if first and re.match(r"^-?[a-zA-Z]+$", first) and "t" in cluster and not ({"x", "c", "r", "u"} & set(cluster)):
-        return READ
-    return WRITE
-
-
-def tar_extracts_to_stdout(args):
-    """True when tar only extracts, and -O / --to-stdout sends every member to stdout."""
-    extract = stdout = False
-    for i, arg in enumerate(args):
-        if arg.startswith("--"):
-            name = arg.partition("=")[0]
-            if name not in TAR_STDOUT_LONG:
-                return False
-            extract = extract or name in ("--extract", "--get")
-            stdout = stdout or name == "--to-stdout"
-        elif arg.startswith("-") or i == 0:
-            if not set(arg.lstrip("-")) <= TAR_STDOUT_SHORT:
-                return False
-            extract = extract or "x" in arg
-            stdout = stdout or "O" in arg
-    return extract and stdout
-
-
-def classify_unzip(args):
-    return READ if has_flag(args, "-l", "-t", "-Z", "-p", "-z") else WRITE
-
-
-def classify_gzip(args):
-    if has_flag(args, "-l", "--list", "-t", "--test", "-c", "--stdout", "--to-stdout"):
-        return READ
-    if any(re.match(r"^-[a-zA-Z0-9]*[ltc]", a) for a in args):
-        return READ
-    return WRITE
-
-
-def classify_chmod(args):
-    return DANGER if has_flag(args, "-R", "--recursive") or any(re.match(r"^-[a-zA-Z]*R", a) for a in args) else WRITE
-
-
-def classify_sort(args):
-    return WRITE if has_flag(args, "-o", "--output") or any(a.startswith("--output=") for a in args) else READ
-
-
-def find_exec_words(args):
-    for i, a in enumerate(args):
-        if a in ("-exec", "-execdir", "-ok", "-okdir"):
-            sub = args[i + 1:]
-            end = next((j for j, w in enumerate(sub) if w in (";", "+")), len(sub))
-            return sub[:end]
-    return None
-
-
-def classify_find(args):
-    if "-delete" in args:
-        return DANGER
-    if has_flag(args, "-fprint", "-fprint0", "-fprintf", "-fls"):
-        return WRITE
-    sub = find_exec_words(args)
-    return classify_words(sub) if sub is not None else READ
-
-
-# The letters of xargs's short options that take a value, BSD's and GNU's, and GNU's long ones.
-XARGS_VALUE_LETTERS = "EIJLPRSadns"
-XARGS_VALUE_OPTS = {"--arg-file", "--delimiter", "--max-args", "--max-chars", "--max-lines",
-                    "--max-procs", "--process-slot-var"}
-
-
-def xargs_rest(args):
-    """The command xargs runs, past its options as its getopt reads them: short options
-    bundle, and one that takes a value ends its word, taking the rest of it or the next."""
-    rest = list(args)
-    while rest and rest[0].startswith("-"):
-        a = rest.pop(0)
-        if a == "--":
-            break
-        if a.startswith("--"):
-            if a in XARGS_VALUE_OPTS and rest:
-                rest.pop(0)
-            continue
-        for k, letter in enumerate(a[1:], 2):
-            if letter in XARGS_VALUE_LETTERS:
-                if k == len(a) and rest:
-                    rest.pop(0)
-                break
-    return rest
-
-
-def classify_xargs(args):
-    rest = xargs_rest(args)
-    return classify_words(rest) if rest else READ
-
-
-def shell_body(args):
-    if has_flag(args, "--version", "-n"):
-        return None
-    for i, a in enumerate(args):
-        if (a == "-c" or re.match(r"^-[a-zA-Z]*c[a-zA-Z]*$", a)) and i + 1 < len(args):
-            return args[i + 1]
-    return None
-
-
-def classify_shell(args):
-    if has_flag(args, "--version", "-n"):
-        return READ
-    body = shell_body(args)
-    return classify_command(body) if body is not None else WRITE
-
-
-def classify_yq(args):
-    return WRITE if has_flag(args, "-i", "--inplace") else READ
-
-
-def classify_launchctl(args):
-    pos = positionals(args)
-    return READ if pos and pos[0] in ("list", "print", "print-disabled", "blame", "dumpstate",
-                                      "getenv", "version", "help", "error") else WRITE
-
-
-def classify_systemctl(args):
-    pos = positionals(args)
-    if not pos or pos[0] in ("status", "show", "cat", "list-units", "list-unit-files",
-                            "list-timers", "list-sockets", "list-dependencies", "is-active",
-                            "is-enabled", "is-failed", "is-system-running", "get-default",
-                            "show-environment"):
-        return READ
-    return DANGER if pos[0] in ("stop", "restart", "disable", "mask", "kill", "poweroff",
-                                "reboot", "halt", "isolate") else WRITE
-
-
-def classify_nc(args):
-    return READ if has_flag(args, "-z") or any(re.match(r"^-[a-zA-Z]*z", a) for a in args) else WRITE
-
-
-def classify_amtool(args):
-    pos = set(positionals(args))
-    if pos & {"add", "expire", "import", "update"}:
-        return WRITE
-    return READ
-
-
-def classify_promtool(args):
-    return WRITE if "create-blocks-from" in args else READ
-
-
-def classify_openssl(args):
-    pos = positionals(args)
-    if pos and pos[0] in ("x509", "s_client", "dgst", "verify", "version", "asn1parse", "rand",
-                          "pkey", "rsa", "ec", "crl", "ciphers", "list", "prime", "req",
-                          "pkcs12", "enc") and not has_flag(args, "-out"):
-        return READ if pos[0] not in ("req", "pkcs12", "enc") or has_flag(args, "-text", "-noout", "-d", "-info") else WRITE
-    return WRITE
-
-
-def classify_op(args):
-    pos = set(positionals(args))
-    if pos & {"create", "edit", "delete", "move", "share", "signin", "signout", "inject", "run"}:
-        return WRITE
-    return READ if pos & {"read", "get", "list", "whoami", "ls"} else WRITE
-
-
-def classify_defaults(args):
-    pos = positionals(args)
-    # export writes the plist file it names; only `-` sends it to stdout.
-    if pos[:1] == ["export"]:
-        return READ if len(pos) == 2 and args[-1:] == ["-"] else WRITE
-    return READ if pos and pos[0] in ("read", "read-type", "domains", "find") else WRITE
 
 
 def defaults_writes_a_named_domain(args):
@@ -1571,196 +415,6 @@ def defaults_writes_a_named_domain(args):
     domain = pos[1]
     return not ("/" in domain or domain.endswith(".plist")
                 or (SHELL_EXPANSION_CHARS | {"~"}) & set(domain))
-
-
-def classify_crontab(args):
-    return READ if has_flag(args, "-l") else WRITE
-
-
-def classify_sysctl(args):
-    return WRITE if has_flag(args, "-w", "--write") or any("=" in a for a in positionals(args)) else READ
-
-
-def classify_nvidia_smi(args):
-    return WRITE if has_flag(args, "-r", "--gpu-reset", "-pm", "-pl", "-ac", "-rac", "-c", "-e",
-                             "-mig", "-lgc", "-rgc", "-lmc", "-rmc", "--applications-clocks",
-                             "--power-limit", "--persistence-mode", "--compute-mode") else READ
-
-
-def classify_wget(args):
-    if "--spider" in args:
-        return READ
-    for i, a in enumerate(args):
-        if re.match(r"^-[a-zA-Z]*O-$", a) or a == "--output-document=-":
-            return READ
-        if re.match(r"^-[a-zA-Z]*O$", a) and i + 1 < len(args) and args[i + 1] == "-":
-            return READ
-    return WRITE
-
-
-def classify_stern(_):
-    return READ
-
-
-def fuser_kills(args):
-    """True when fuser signals the processes it finds: psmisc's -k / --kill. macOS has neither."""
-    return any(a == "--kill" or (a.startswith("-") and not a.startswith("--") and "k" in a)
-               for a in args)
-
-
-def classify_fuser(args):
-    return DANGER if fuser_kills(args) else READ
-
-
-HANDLERS = {
-    "fuser": classify_fuser,
-    "git": classify_git, "git-lfs": lambda args: classify_git(["lfs", *args]),
-    "kubectl": classify_kubectl, "k": classify_kubectl, "oc": classify_kubectl,
-    "helm": classify_helm,
-    "helmfile": classify_helmfile,
-    "stern": classify_stern,
-    "curl": classify_curl, "http": classify_xh, "https": classify_xh, "xh": classify_xh,
-    "wget": classify_wget,
-    "gh": classify_gh, "glab": classify_glab,
-    "claude": classify_claude,
-    "docker": classify_docker, "podman": classify_docker, "nerdctl": classify_docker,
-    "buildah": classify_docker,
-    "skopeo": classify_skopeo,
-    "gcloud": generic_verbs, "crusoe": generic_verbs, "aws": generic_verbs, "az": generic_verbs,
-    "argocd": generic_verbs, "flux": generic_verbs, "tsh": generic_verbs, "vault": generic_verbs,
-    "tailscale": generic_verbs, "velero": generic_verbs, "istioctl": generic_verbs,
-    "cilium": generic_verbs, "linkerd": generic_verbs, "gsutil": generic_verbs,
-    "sed": classify_sed, "gsed": classify_sed,
-    "awk": classify_awk, "gawk": classify_awk, "mawk": classify_awk, "nawk": classify_awk,
-    "python": classify_python, "python3": classify_python,
-    "perl": classify_perl, "ruby": classify_perl,
-    "pip": classify_pip, "pip3": classify_pip,
-    "uv": classify_uv,
-    "ruff": classify_ruff, "black": classify_formatter, "isort": classify_formatter,
-    "prettier": classify_formatter, "terraform-fmt": classify_formatter,
-    "npm": classify_npm, "pnpm": classify_npm, "yarn": classify_npm,
-    "npx": classify_npx, "bunx": classify_npx,
-    "go": classify_go,
-    "cargo": classify_cargo,
-    "make": classify_make, "gmake": classify_make,
-    "terraform": classify_terraform, "tofu": classify_terraform,
-    "brew": classify_brew,
-    "tmux": classify_tmux,
-    "ssh": classify_ssh,
-    "ssh-add": classify_ssh_add,
-    "rsync": classify_rsync,
-    "tar": classify_tar,
-    "unzip": classify_unzip,
-    "gzip": classify_gzip, "gunzip": classify_gzip, "bzip2": classify_gzip, "xz": classify_gzip,
-    "chmod": classify_chmod, "chown": classify_chmod, "chgrp": classify_chmod,
-    "sort": classify_sort,
-    "find": classify_find,
-    "xargs": classify_xargs,
-    "bash": classify_shell, "sh": classify_shell, "zsh": classify_shell, "dash": classify_shell,
-    "yq": classify_yq,
-    "launchctl": classify_launchctl,
-    "systemctl": classify_systemctl,
-    "nc": classify_nc, "ncat": classify_nc,
-    "amtool": classify_amtool,
-    "promtool": classify_promtool,
-    "openssl": classify_openssl,
-    "op": classify_op,
-    "defaults": classify_defaults,
-    "crontab": classify_crontab,
-    "sysctl": classify_sysctl,
-    "nvidia-smi": classify_nvidia_smi,
-    "pytest": lambda _: RUNS_CODE,
-}
-
-_unknown_level = UNCLASSIFIED
-
-
-@contextlib.contextmanager
-def unknown_programs_as(level):
-    """Re-classify with unknown programs at `level`: the gate asks, instead of denying, when a
-    command is WRITE only because of programs the classifier has never met."""
-    global _unknown_level
-    previous, _unknown_level = _unknown_level, level
-    try:
-        yield
-    finally:
-        _unknown_level = previous
-
-
-# Programs that hand their arguments to another command, so a trailing `--help` is that
-# command's argument and asks for no help at all.
-RUNNERS = {"bash", "sh", "zsh", "dash", "python", "python3", "node", "perl", "ruby", "deno",
-           "bun", "uv", "uvx", "npx", "bunx", "xargs", "find", "env", "make", "gmake"}
-
-
-def help_only(prog, args):
-    return (args in (["-h"], ["--help"], ["--version"], ["-V"])
-            or (args[-1:] == ["--help"] and "--" not in args and prog not in RUNNERS))
-
-
-def classify_program(prog, args):
-    if help_only(prog, args) or args in (["version"], ["help"]):
-        return READ
-    if prog in DANGER_PROGRAMS or prog in PUBLISHING_SCRIPTS:
-        return DANGER
-    if prog in HANDLERS:
-        return HANDLERS[prog](args)
-    # python3.N is the same interpreter as python3, as the script scan already reads it.
-    if PYTHON_RE.fullmatch(prog):
-        return classify_python(args)
-    if prog in READ_PROGRAMS:
-        return READ
-    if prog in WRITE_PROGRAMS:
-        return WRITE
-    return _unknown_level
-
-
-# The long options of env that take a value, and the letters of its short ones that do;
-# -S's value is the command line itself.
-ENV_VALUE_OPTS = {"--unset", "--chdir"}
-ENV_VALUE_LETTERS = "uCPS"
-
-
-def env_options_split(words):
-    """env's own options and the words after them, read as env's getopt reads them: short
-    options bundle, and -u, -C and -P take their value, attached or next, each listed as an
-    option word and a value word; -S's value is split into words that are read again from
-    the start, options included; `--` ends them. The -S word and its value are in neither
-    list, since the words they stand for are."""
-    options, words = [], list(words)
-    while words and words[0].startswith("-"):
-        a = words.pop(0)
-        value = None
-        if a.startswith("--"):
-            name, eq, rest = a.partition("=")
-            if name == "--split-string":
-                value = rest if eq else (words.pop(0) if words else "")
-            else:
-                options.append(a)
-                if a == "--":
-                    break
-                if not eq and a in ENV_VALUE_OPTS and words:
-                    options.append(words.pop(0))
-                continue
-        elif a == "-":
-            options.append(a)
-        else:
-            for k, letter in enumerate(a[1:], 2):
-                if letter not in ENV_VALUE_LETTERS:
-                    options.append("-" + letter)
-                    continue
-                arg = a[k:] or (words.pop(0) if words else "")
-                if letter == "S":
-                    value = arg
-                else:
-                    options += ["-" + letter, arg]
-                break
-        if value is not None:
-            try:
-                words = shlex.split(value) + words
-            except ValueError:
-                words = [value] + words
-    return options, words
 
 
 def env_chdir(here, segment):
@@ -1784,176 +438,6 @@ def env_chdir(here, segment):
         if value is not None:
             here = resolved_dir(here, value)
     return here
-
-
-def split_prefix(words):
-    """The words ahead of the program and the words from the program on: env assignments,
-    transparent wrappers with their options, and `timeout <args>`, with an env -S value split
-    into the words it stands for, and GOFLAGS kept for a go command."""
-    prefix, words = [], list(words)
-    goflags = []
-    # GOTCHA: shlex leaves a bare `$` behind when nested quotes split `$(...)` apart.
-    while words and (ENV_ASSIGN_RE.match(words[0]) or words[0] in TRANSPARENT or words[0] == "$"):
-        wrapper = words.pop(0)
-        prefix.append(wrapper)
-        if wrapper.startswith("GOFLAGS="):
-            goflags = wrapper.split("=", 1)[1].split()
-        if wrapper == "caffeinate":
-            while words and words[0].startswith("-"):
-                n = 2 if words[0] in CAFFEINATE_VALUE_OPTS else 1
-                prefix, words = prefix + words[:n], words[n:]
-        if wrapper == "env":
-            options, words = env_options_split(words)
-            prefix = prefix + options
-    if words and words[0] == "timeout":
-        prefix.append(words.pop(0))
-        while words and (words[0].startswith("-") or re.match(r"^\d+[smhd]?$", words[0])):
-            prefix.append(words.pop(0))
-    while words and words[0] in SYNTAX_ONLY:
-        prefix.append(words.pop(0))
-    # Go reads GOFLAGS as flags given before its own, so they are judged as arguments.
-    if goflags and words and program_of(words) == "go":
-        words = words[:1] + goflags + words[1:]
-    return prefix, words
-
-
-def strip_prefix(words):
-    """Drop env assignments, transparent wrappers and `timeout <args>` ahead of the program,
-    keeping GOFLAGS for a go command."""
-    return split_prefix(words)[1]
-
-
-def program_of(words):
-    return words[0].rsplit("/", 1)[-1]
-
-
-# A non-empty PYTHON* variable, as assigned or exported.
-PYTHON_ENV_ASSIGN_RE = re.compile(r"PYTHON[A-Z0-9_]*=.")
-
-
-def exports_python_env(command):
-    """True when the command exports a non-empty PYTHON* variable, which reaches every Python
-    run after it as an assignment ahead of it does."""
-    for line in command_lines(command):
-        try:
-            segments, _ = split_line(line)
-        except ValueError:
-            continue
-        for segment in segments:
-            words = strip_prefix(segment)
-            if words and program_of(words) == "export" and any(
-                    PYTHON_ENV_ASSIGN_RE.match(w) for w in words[1:]):
-                return True
-    return False
-
-
-def classify_words(words):
-    prefix, words = split_prefix(words)
-    if not words:
-        return READ
-    prog = program_of(words)
-    if prog in LOOP_HEADERS:
-        return READ
-    level = classify_program(prog, words[1:])
-    # env's -P finds the program on a path the command names, so any file can run.
-    if "env" in prefix and "-P" in prefix[prefix.index("env"):]:
-        level = worst(level, RUNS_CODE)
-    # GOTCHA: Python reads its PYTHON* variables before any script: PYTHONPATH shadows a module
-    # it imports and PYTHONUSERBASE adds .pth files it runs, so a run rated a read - this hook's
-    # own CLI, json.tool - or what a uv run or a shell runs with one set can run any code.
-    if level == READ and any(PYTHON_ENV_ASSIGN_RE.match(w) for w in prefix):
-        return RUNS_CODE
-    return level
-
-
-def worst(*levels):
-    return max(levels, key=lambda level: RANK[level])
-
-
-def split_line(line):
-    """Split one shell line into its command segments and its output-redirect targets."""
-    segments, targets, _, _ = parse_line(line)
-    return segments, targets
-
-
-SHLEX_PUNCTUATION = set("();<>|&")
-
-
-def split_closing_paren(tok):
-    """A shlex token split so a leading `)` stands alone: `);` is `)` then `;`.
-
-    GOTCHA: shlex with punctuation_chars glues adjacent punctuation into one token, so the
-    `)` closing `$(ls);` arrives as `);`, which is neither a `)` nor a separator: the
-    substitution would never close, and every command after it would read as its argument.
-    """
-    if len(tok) > 1 and tok[0] == ")" and set(tok) <= SHLEX_PUNCTUATION:
-        return [")"] + split_closing_paren(tok[1:])
-    return [tok]
-
-
-def parse_line(line):
-    """split_line's segments and targets, for each segment whether it runs apart from
-    the line's shell: inside parentheses or a substitution, in a pipeline or in the
-    background, where the shell may give it a process of its own; and for each target
-    the index of the segment it belongs to, len(segments) for one past the last."""
-    lexer = shlex.shlex(DESCRIPTOR_RE.sub("", line), posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    tokens = [part for tok in lexer for part in split_closing_paren(tok)]
-    segments, targets, apart, segment, target_at = [], [], [], [], []
-    # One entry per open `(`: the command a `$(` interrupts, resumed at its `)` so text
-    # glued after the `)` stays that command's argument, or None for a subshell or a
-    # process substitution, whose `)` ends a segment like any separator. shlex splits
-    # `$(` into a token ending in `$` and a `(`.
-    opened = []
-    piped = False
-    i = 0
-    while i < len(tokens):
-        tok = tokens[i]
-        if tok == "(" and segment and segment[-1].endswith("$"):
-            opened.append(segment)
-            segment = []
-        elif tok == ")" and opened and opened[-1] is not None:
-            if segment:
-                segments.append(segment)
-                apart.append(True)
-            segment = opened.pop()
-        elif tok in SEPARATORS:
-            if segment:
-                segments.append(segment)
-                apart.append(bool(opened) or piped or tok in ("|", "|&", "&"))
-            if tok == "(":
-                opened.append(None)
-            elif tok == ")" and opened:
-                opened.pop()
-            piped = tok in ("|", "|&")
-            segment = []
-        elif tok in ("<(", ">("):
-            # Process substitution runs a command of its own; `)` closes it like a subshell.
-            if segment:
-                segments.append(segment)
-                apart.append(bool(opened) or piped)
-            opened.append(None)
-            segment = []
-        elif tok in REDIRECT_OUT or tok in (">&", "<", "<<", "<<<", "<&", "<>"):
-            if tok in REDIRECT_OUT:
-                targets.append(tokens[i + 1] if i + 1 < len(tokens) else "")
-                target_at.append(len(segments))
-            i += 1
-        elif tok.startswith(">") or tok.startswith("<"):
-            pass
-        else:
-            segment.append(tok)
-        i += 1
-    if segment:
-        segments.append(segment)
-        apart.append(bool(opened) or piped)
-    # GOTCHA: an escaped backtick opens a `$(` that never closes; the command it
-    # interrupted still runs, so it is still a segment.
-    for held in opened:
-        if held:
-            segments.append(held)
-            apart.append(True)
-    return segments, targets, apart, target_at
 
 
 def cd_sticks(segments, apart):
@@ -1989,79 +473,6 @@ def cd_target(here, prog, args):
     if prog == "pushd" and pos and not pos[0].startswith("+"):
         return resolved_dir(here, pos[0])
     return None
-
-
-def classify_line(line):
-    segments, targets = split_line(line)
-    level = WRITE if any(t not in HARMLESS_TARGETS for t in targets) else READ
-    for segment in segments:
-        level = worst(level, classify_words(segment))
-    return level
-
-
-def command_lines(command):
-    """The command's logical lines, heredoc bodies cut out.
-
-    A newline inside quotes, or escaped by a backslash, ends no line: a `python3 -c` body
-    over several lines and a `\\`-continued command are one line each. A backtick pair
-    is a substitution: turned into `$(...)`, its commands run apart.
-    """
-    text = without_heredoc_bodies(command).split("`")
-    text = "".join(part + ("$(" if n % 2 == 0 else ")") for n, part in enumerate(text[:-1])) \
-        + text[-1]
-    for line in logical_lines(text):
-        if line.strip() and not line.strip().startswith("#"):
-            yield line
-
-
-def logical_lines(text):
-    """text split at the newlines the shell takes as line ends.
-
-    A newline inside quotes is part of its line. A backslash before a newline outside
-    single quotes joins the two lines, and both characters are dropped as the shell drops
-    them, so the word after the join parses as the word it is. A comment runs to its
-    newline whatever quotes it holds, as in the shell.
-    """
-    lines, pieces, quote = [], [], None
-    start = i = 0
-    while i < len(text):
-        c = text[i]
-        if c == "#" and not quote and (i == 0 or text[i - 1] in " \t;&|()\n"):
-            end = text.find("\n", i)
-            i = len(text) if end < 0 else end
-            continue
-        if c == "\\" and quote != "'" and i + 1 < len(text):
-            if text[i + 1] == "\n":
-                pieces.append(text[start:i])
-                start = i + 2
-            i += 2
-            continue
-        if quote:
-            if c == quote:
-                quote = None
-        elif c in "'\"":
-            quote = c
-        elif c == "\n":
-            pieces.append(text[start:i])
-            lines.append("".join(pieces))
-            pieces, start = [], i + 1
-        i += 1
-    pieces.append(text[start:])
-    lines.append("".join(pieces))
-    return lines
-
-
-def classify_command(command):
-    level = READ
-    for line in command_lines(command):
-        try:
-            line_level = classify_line(line)
-        except ValueError:
-            line_level = UNCLASSIFIED
-        level = worst(level, line_level)
-    if level == READ and exports_python_env(command):
-        return RUNS_CODE
-    return level
 
 
 def rm_paths(args):
@@ -2189,156 +600,123 @@ def env_file(path):
     return name == ".env" or name.startswith(".env.")
 
 
-def edits_in_place(args):
-    return any(a.startswith("--in-place") or (a[:1] == "-" and a[1:2] != "-" and "i" in a[1:])
-               for a in args)
+def changes_env_file(command, cwd):
+    return changes_file(command, env_file, ".env", cwd)
 
 
-def changes_env_file(command):
-    """True when a redirect, or a writer the command names, changes a .env file: the target
-    of a cp, either side of an mv, the path of a tee, touch, truncate or rm, or a file an
-    in-place editor rewrites. A cp from one only reads it."""
+RATING_CONFIG = os.path.realpath(command_parser.CONFIG_PATH)
+RATING_CONFIG_NAME = os.path.basename(RATING_CONFIG)
+RATING_CONFIG_REASON = (f"changes {RATING_CONFIG_NAME}, whose extension the rating hook runs "
+                        f"outside the sandbox on every Bash call: {ON_WORDS}")
+
+
+def rating_config(path):
+    """True when path is the rating hook's config file, or a relative path of its name,
+    whose folder only the shell knows."""
+    path = os.path.expanduser(path.rstrip("/"))
+    if os.path.basename(path) != RATING_CONFIG_NAME:
+        return False
+    return not os.path.isabs(path) or os.path.realpath(path) == RATING_CONFIG
+
+
+def changes_rating_config(command, cwd):
+    return changes_file(command, rating_config, RATING_CONFIG_NAME, cwd)
+
+
+# Writers that copy, move or link sources to a target, by the targets each may write. An
+# ln of one operand makes its link in the working directory.
+COPY_WRITERS = {"cp": cp_paths, "mv": cp_paths, "install": cp_paths,
+                "ln": lambda args: ln_paths(args) or ["."],
+                "rsync": lambda args: positionals(args)[-1:]}
+# The options of those writers that take a value, which is no source.
+COPY_VALUE_FLAGS = {
+    "install": {"-m", "--mode", "-o", "--owner", "-g", "--group", "--suffix"},
+    "rsync": {"-e", "--rsh", "-f", "--filter", "--exclude", "--include",
+              "--exclude-from", "--include-from", "--files-from", "--rsync-path"},
+}
+
+
+def split_value_cluster(args, value_flags):
+    """args with each short-flag cluster whose last letter alone takes a value split before
+    that letter, so `-Dm 644` reads as `-D -m 644`; an earlier value letter takes the rest
+    of the cluster as its value, as getopt reads it."""
+    out = []
+    for k, a in enumerate(args):
+        if a == "--":
+            return out + args[k:]
+        if (len(a) > 2 and a[0] == "-" and a[1] != "-" and "-" + a[-1] in value_flags
+                and not any("-" + c in value_flags for c in a[1:-1])):
+            out += [a[:-1], "-" + a[-1]]
+        else:
+            out.append(a)
+    return out
+
+
+def may_be_folder(here, path):
+    """True when path names a folder from where the command stands, or where that is is
+    known only once the command runs."""
+    if os.path.basename(path.rstrip("/")) in (".", ".."):
+        return True
+    full = resolved_dir(here, path)
+    return full is None or os.path.isdir(full)
+
+
+def changes_file(command, matches, name, cwd):
+    """True when a redirect, or a writer the command names, changes a file `matches` takes:
+    the target of a cp, mv, ln, install or rsync, and the file each source lands as when
+    that target is a folder; the sources of an mv; the of= of a dd; the path of a tee,
+    touch, truncate or rm; or a file an in-place editor rewrites. A copy from one only reads
+    it. A relative folder target counts from where the writer runs: the line's working
+    directory, which follows every cd the line's own shell runs, never one a child wrapper
+    runs, and is unknown after one that may not stick, then moved by any env -C ahead of the
+    writer. A line the lexer cannot split changes one when it holds `name`."""
+    here = cwd
     for line in command_lines(command):
         try:
-            segments, targets = split_line(line)
+            segments, targets, apart, _ = parse_line(line)
         except ValueError:
-            return ".env" in line
-        if any(env_file(t) for t in targets):
+            return name in line
+        if any(matches(t) for t in targets):
             return True
-        for words in segments:
+        for words, moves in zip(segments, cd_sticks(segments, apart)):
+            raw, at = words, env_chdir(here, words)
             words = strip_prefix(words)
             if not words:
                 continue
             prog, args = program_of(words), words[1:]
-            if prog == "cp":
-                paths = cp_paths(args)
+            if prog in CHDIR_PROGRAMS:
+                if not CHILD_WRAPPERS & set(split_prefix(raw)[0]):
+                    here = cd_target(here, prog, args) if moves else None
+                continue
+            if prog in COPY_WRITERS:
+                value_flags = COPY_VALUE_FLAGS.get(prog, ())
+                args = split_globals(split_value_cluster(args, value_flags), value_flags)[0]
+                paths = COPY_WRITERS[prog](args)
+                sources = [s for s in positionals(args) if s not in paths]
+                # A source copied into a folder lands there under its own name.
+                paths += [os.path.join(p, os.path.basename(s.rstrip("/")))
+                          for p in paths if p.endswith("/") or len(sources) > 1
+                          or may_be_folder(at, p)
+                          for s in sources]
+                # A move also takes its sources away.
+                if prog == "mv":
+                    paths += sources
+            elif prog == "dd":
+                paths = [a[len("of="):] for a in args if a.startswith("of=")]
             elif prog in SCRATCH_WRITERS | {"truncate"}:
                 paths = rm_paths(args) if prog == "rm" else positionals(args)
             elif prog in IN_PLACE_EDITORS and edits_in_place(args):
                 paths = positionals(args)
             else:
                 continue
-            if any(env_file(p) for p in paths):
+            if any(matches(p) for p in paths):
                 return True
     return False
 
 
-TOP_LEVEL_SEPARATORS = ("&&", "||", ";", "|", "&", "\n")
 # Anything the shell would expand into a path this script cannot see: variables, command
 # substitution, the home directory, brace expansion.
 UNRESOLVABLE_CHARS = set("$`~{")
-
-
-def top_level_segments(command, bodies=None):
-    """The command's top-level segments as (start, end) spans, and the separator after each.
-
-    Quoted text, subshells and substitutions are opaque: a separator inside them splits
-    nothing, so an `rm` inside a quoted argument or a `$(...)` is never a segment of its
-    own. The last segment has no separator after it. When `bodies` is a list, the span
-    of every heredoc body, terminator line included, is appended to it.
-    """
-    spans, seps = [], []
-    start = i = 0
-    quote, depth = None, 0
-    heredocs = []
-    while i < len(command):
-        c = command[i]
-        if quote:
-            if c == "\\" and quote == '"':
-                i += 2
-                continue
-            if c == quote:
-                quote = None
-            i += 1
-            continue
-        if c == "\\":
-            i += 2
-            continue
-        if c in "'\"`":
-            quote = c
-            i += 1
-            continue
-        if command.startswith("$(", i):
-            depth += 1
-            i += 2
-            continue
-        if c == "(":
-            depth += 1
-            i += 1
-            continue
-        if c == ")":
-            depth = max(depth - 1, 0)
-            i += 1
-            continue
-        if command.startswith("<<<", i):
-            i += 3
-            continue
-        if command.startswith("<<", i):
-            delimiter, i = heredoc_delimiter(command, i + 2)
-            heredocs.append(delimiter)
-            continue
-        if depth == 0:
-            sep = next((s for s in TOP_LEVEL_SEPARATORS if command.startswith(s, i)), None)
-            # GOTCHA: the `&` of `2>&1`, `<&` and `&>` is a redirect, not a background job.
-            if sep == "&" and ((i > 0 and command[i - 1] in "<>") or command.startswith("&>", i)):
-                sep = None
-            if sep == "\n" and heredocs:
-                # The bodies are data for the command that opened them: the segment runs on
-                # through them, and the newline after the last terminator is the split.
-                end = heredoc_bodies_end(command, i + 1, heredocs)
-                if bodies is not None:
-                    bodies.append((i + 1, end))
-                i = end
-                heredocs = []
-                continue
-            if sep:
-                spans.append((start, i))
-                seps.append(sep)
-                i += len(sep)
-                start = i
-                continue
-        i += 1
-    spans.append((start, len(command)))
-    seps.append("")
-    return spans, seps
-
-
-def heredoc_delimiter(command, i):
-    """The delimiter word after a `<<`, unquoted, and the index just past it."""
-    if command.startswith("-", i):
-        i += 1
-    while i < len(command) and command[i] in " \t":
-        i += 1
-    if i < len(command) and command[i] in "'\"":
-        end = command.find(command[i], i + 1)
-        end = len(command) if end < 0 else end
-        return command[i + 1:end], end + 1
-    end = i
-    while end < len(command) and command[end] not in " \t\n;&|()<>":
-        end += 1
-    return command[i:end], end
-
-
-def without_heredoc_bodies(command):
-    """The command with every heredoc body cut out, so a body line never reads as a program."""
-    bodies = []
-    top_level_segments(command, bodies)
-    for start, end in reversed(bodies):
-        command = command[:start] + command[end:]
-    return command
-
-
-def heredoc_bodies_end(command, i, delimiters):
-    """The index of the newline after the last terminator line, or the end of the command."""
-    for delimiter in delimiters:
-        while i < len(command):
-            end = command.find("\n", i)
-            end = len(command) if end < 0 else end
-            line = command[i:end]
-            i = end + 1
-            if line.lstrip("\t") == delimiter:
-                break
-    return min(i - 1, len(command))
 
 
 def scratch_rm_count(command):
@@ -2457,22 +835,6 @@ def expand_home(word):
     return os.path.expanduser(word) if word == "~" or word.startswith("~/") else word
 
 
-def uv_run_invocations(prog, args):
-    """prog and args, then, for a `uv run`, every invocation of the command it runs."""
-    yield prog, args
-    if prog == "uv" and uv_runs(args):
-        tail = uv_run_tail(args)
-        if tail:
-            for inner_prog, inner_args in invocations_in(tail):
-                yield from uv_run_invocations(inner_prog, inner_args)
-
-
-def invocations(command):
-    """Every program invocation in a command, nested ones included, as (program, args)."""
-    for prog, args, _ in invocations_with_moves(command):
-        yield prog, args
-
-
 def invocations_with_moves(command):
     """invocations(command), each with whether it is a `cd` that moves the rest of the
     command: a nested one, run by `bash -c`, `xargs` or `find -exec`, never does."""
@@ -2486,32 +848,7 @@ def invocations_with_moves(command):
                 yield prog, args, sticks and n == 0
 
 
-def invocations_in(words):
-    words = strip_prefix(words)
-    if not words:
-        return
-    prog = program_of(words)
-    if prog in LOOP_HEADERS:
-        return
-    args = words[1:]
-    yield prog, args
-    if prog in ("bash", "sh", "zsh", "dash"):
-        body = shell_body(args)
-        if body is not None:
-            yield from invocations(body)
-    elif prog == "xargs":
-        rest = xargs_rest(args)
-        if rest:
-            yield from invocations_in(rest)
-    elif prog == "find":
-        sub = find_exec_words(args)
-        if sub:
-            yield from invocations_in(sub)
-
-
-PYTHON_RE = re.compile(r"python(?:3(?:\.\d+)?)?")
 INTERPRETERS = {"node", "deno", "bun", "npx", "bunx"}
-KNOWN_PYTHON_SCRIPTS = {"board.py"} | PUBLISHING_SCRIPTS
 CONTAINER_ENGINES = {"docker", "podman", "nerdctl"}
 
 
@@ -2526,7 +863,7 @@ def runs_opaque_code(words):
     if PYTHON_RE.fullmatch(prog):
         # A script the hook has its own handler for writes where its arguments say.
         script = python_script(args)
-        return not (script and os.path.basename(script) in KNOWN_PYTHON_SCRIPTS)
+        return not (script and os.path.basename(script) in set(SCRIPT_HANDLERS) | PUBLISHING_SCRIPTS)
     if prog in INTERPRETERS:
         return True
     if prog == "uv":
@@ -2596,37 +933,6 @@ def git_archive_outputs(args):
             outputs.append(arg[2:])
         i += 1
     return outputs
-
-
-GIT_MERGE_FILE_VALUE_FLAGS = {"-L", "--diff-algorithm", "--marker-size"}
-# GOTCHA: git also takes an abbreviated long option (--no-std) and a bundle of short ones
-# (-qL <label>), so a flag outside these two sets is held unread, never skipped.
-GIT_MERGE_FILE_FLAGS = {"-p", "--stdout", "--no-stdout", "-q", "--quiet", "--no-quiet",
-                        "--diff3", "--no-diff3", "--zdiff3", "--no-zdiff3", "--ours",
-                        "--no-ours", "--theirs", "--no-theirs", "--union", "--no-union",
-                        "--object-id", "--no-object-id", "--no-marker-size"}
-
-
-def last_switch(flags, on, off):
-    """Whether the last of `flags` found in `on` or `off` is in `on`."""
-    state = False
-    for f in flags:
-        state = True if f in on else False if f in off else state
-    return state
-
-
-def git_merge_file_writes(rest):
-    """What `git merge-file <rest>` writes: [<current>] when it overwrites that file, [] when
-    it prints the merge, None when it writes the object store or its words cannot be read."""
-    words, _ = split_globals(rest, GIT_MERGE_FILE_VALUE_FLAGS)
-    cut = words.index("--") if "--" in words else len(words)
-    flags = [w for w in words[:cut] if w.startswith("-")]
-    paths = [w for w in words[:cut] if not w.startswith("-")] + words[cut + 1:]
-    if len(paths) != 3 or any(f not in GIT_MERGE_FILE_FLAGS for f in flags):
-        return None
-    if last_switch(flags, {"--object-id"}, {"--no-object-id"}):
-        return None
-    return [] if last_switch(flags, {"-p", "--stdout"}, {"--no-stdout"}) else paths[:1]
 
 
 def git_merge_file_outputs(args):
@@ -2812,11 +1118,13 @@ def gate_blockers(command, cwd, run_time_dir=None):
     route the text shows.
 
     A read, a command that needs the user's words, opaque code, a write that lands in a
-    gate scratch root, git run in one or outside the repo roots, an `rm` of literal files
-    outside every repo, and a write whose working directory and every named path lie outside
-    the repo roots all pass; any other write is held to scratch. The working directory
-    follows every `cd`, as for commits, and is unknown after one that may not stick; a
-    relative redirect target counts from it as it stands where the redirect opens.
+    gate scratch root, git run in one or outside the repo roots, an `rm` or a mode change
+    of literal files outside every repo, and any other write whose working directory and
+    every named path lie outside the repo roots all pass, except a redirect, a mkdir,
+    touch, cp, mv or tee, a patch, and a go other than `go env`, each held to scratch
+    wherever it writes; every write left is held to scratch. The working directory follows
+    every `cd`, as for commits, and is unknown after one that may not stick; a relative
+    redirect target counts from it as it stands where the redirect opens.
     run_time_dir, when given, stands for the directory a `cd` moves to when only the shell
     knows it.
     """
@@ -2856,7 +1164,7 @@ def gate_blockers(command, cwd, run_time_dir=None):
             if level == READ:
                 continue
             # A command that needs the user's words is the words rule's, never the gate's.
-            if any(decision == ASK for decision, _ in pin_decisions(prog, args)):
+            if any(decision == ASK for decision, _ in every_state_decisions(prog, args)):
                 continue
             if test_run_writes_beside_tests(here, prog, args):
                 blockers.append(words)
@@ -2911,10 +1219,10 @@ def gate_blockers(command, cwd, run_time_dir=None):
             if prog in ("sed", "gsed") and sed_edits_only_scratch(here, args):
                 continue
             script = python_script(args) if PYTHON_RE.fullmatch(prog) else None
-            if script and os.path.basename(script) == "board.py":
-                # Its only file in a repo can be the --out of a fetch or shot: login saves the
-                # browser session under ~/.agent-browser, and publish writes to Grafana.
-                out = board_out(args[args.index(script) + 1:])
+            output_of = SCRIPT_OUTPUTS.get(os.path.basename(script)) if script else None
+            if output_of:
+                # A script with a known output writes no other file in a repo.
+                out = output_of(args[args.index(script) + 1:])
                 if out is None or inside_gate_scratch(path_from(here, out)):
                     continue
             if prog == "go" and go_writes_into_scratch(here, args):
@@ -3282,7 +1590,7 @@ def adds_worktree(prog, args):
     return rest[:1] == ["worktree"] and positionals(rest[1:])[:1] == ["add"]
 
 
-def pin_decisions(prog, args):
+def every_state_decisions(prog, args):
     """The rows that apply in every gate state, for one program invocation."""
     out = []
     if help_only(prog, args):
@@ -3315,37 +1623,27 @@ def pin_decisions(prog, args):
                          f"{ON_WORDS}"))
     if prog in ("kubectx", "kubens"):
         out.append((ASK, f"{CONTEXT_SETTER_REASON}: {ON_WORDS}"))
-    elif prog in ("kubectl", "k", "oc", "stern"):
-        rest, seen = split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)
+    elif prog in ("kubectl", "k", "oc"):
+        rest, _ = split_globals(args, KUBECTL_GLOBAL_VALUE_FLAGS)
         pos = positionals(rest)
         verb = pos[0] if pos else ""
         sub = pos[1] if len(pos) > 1 else ""
-        if prog != "stern":
-            if verb == "config" and sub in KUBECTL_CONTEXT_SETTERS:
-                out.append((ASK, f"{CONTEXT_SETTER_REASON}: {ON_WORDS}"))
-                return out
-            if not pos or verb in KUBECTL_LOCAL or (verb == "version" and "--client" in rest):
-                return out
-            if "$" in verb:
-                out.append((ASK, f"kubectl {RUNTIME_VERB_REASON}: {ON_WORDS}"))
-            writes = (verb in KUBECTL_WRITES_WIDENED
-                      or (verb in KUBECTL_WRITES_BY_CLAUDE_MD
-                          and not (verb == "rollout" and sub in KUBECTL_ROLLOUT_READS)))
-            if writes and not dry_run(rest):
-                out.append((ASK, f"kubectl {verb} writes live cluster state: {ON_WORDS}"))
-            elif writes_inside_pod(verb, rest):
-                out.append((ASK, f"kubectl {verb} changes what runs or is stored inside a pod: "
-                                 f"{ON_WORDS}"))
-        if not seen.get("--context"):
-            out.append((DENY, "pin the context: every cluster command carries --context <ctx>"))
-        namespace_free = (prog != "stern" and ((verb, sub) in NAMESPACE_FREE
-                                               or verb in NODE_VERBS
-                                               or (verb == "get" and has_flag(rest, "--raw"))))
-        if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")) and not namespace_free:
-            out.append((DENY, "pin the namespace: every cluster command carries -n <ns>, "
-                              "or -A when a cluster-wide view is the point"))
+        if verb == "config" and sub in KUBECTL_CONTEXT_SETTERS:
+            out.append((ASK, f"{CONTEXT_SETTER_REASON}: {ON_WORDS}"))
+            return out
+        if not pos or verb in KUBECTL_LOCAL or (verb == "version" and "--client" in rest):
+            return out
+        if "$" in verb:
+            out.append((ASK, f"kubectl {RUNTIME_VERB_REASON}: {ON_WORDS}"))
+        writes = (verb in KUBECTL_LIVE_WRITES
+                  and not (verb == "rollout" and sub in KUBECTL_ROLLOUT_READS))
+        if writes and not dry_run(rest):
+            out.append((ASK, f"kubectl {verb} writes live cluster state: {ON_WORDS}"))
+        elif writes_inside_pod(verb, rest):
+            out.append((ASK, f"kubectl {verb} changes what runs or is stored inside a pod: "
+                             f"{ON_WORDS}"))
     elif prog == "helm":
-        rest, seen, pos = helm_words(args)
+        rest, _, pos = helm_words(args)
         sub = pos[0] if pos else ""
         if not pos or sub in HELM_LOCAL:
             return out
@@ -3364,21 +1662,14 @@ def pin_decisions(prog, args):
         if sub in ("install", "upgrade") and has_flag(rest, "--reset-then-reuse-values"):
             out.append((ASK, "--reset-then-reuse-values carries the previous values onto the "
                              f"new chart: {ON_WORDS}"))
-        if not seen.get("--kube-context"):
-            out.append((DENY, "pin the context: every helm command carries --kube-context <ctx>"))
-        if not (seen.get("-n") or seen.get("--namespace") or seen.get("-A")):
-            out.append((DENY, "pin the namespace: every helm command carries -n <ns>"))
     elif prog == "helmfile":
-        rest, seen = split_globals(args, HELMFILE_GLOBAL_VALUE_FLAGS)
+        rest, _ = split_globals(args, HELMFILE_GLOBAL_VALUE_FLAGS)
         pos = positionals(rest)
         sub = pos[0] if pos else ""
         if "$" in sub:
             out.append((ASK, f"helmfile {RUNTIME_VERB_REASON}: {ON_WORDS}"))
         if sub in HELMFILE_RELEASE_WRITES:
             out.append((ASK, f"helmfile {sub} changes what runs on the cluster: {ON_WORDS}"))
-        if (sub in HELMFILE_CLUSTER or "$" in sub) and not seen.get("--kube-context"):
-            out.append((DENY, "pin the context: every helmfile command that reaches a cluster "
-                              "carries --kube-context <ctx>"))
     elif prog == "crusoe":
         rest, _ = split_globals(args, CRUSOE_GET_CREDENTIALS_VALUE_FLAGS)
         pos = positionals(rest)
@@ -3534,49 +1825,6 @@ SCRIPT_HTTP_WRITE_RES = (
 LOOPBACK_IN_TEXT_RE = re.compile(r"\b(?:localhost|127\.\d+\.\d+\.\d+)\b|\[::1\]")
 URL_IN_TEXT_RE = re.compile(r"[A-Za-z][\w+.-]*://[^\s'\"]+")
 SCRIPT_SCAN_LIMIT = 2 * 1024 * 1024
-
-
-PYTHON_VALUE_LONG_FLAGS = {"--check-hash-based-pycs"}
-
-
-def python_run(args):
-    """What a Python invocation runs, past Python's own flags: ("script", <path>), or
-    ("module", <name>, <letters>) for -m, with the letters among I, P and E given before
-    it, which decide where Python looks for the module. None for -c, a script read from
-    standard input, or nothing."""
-    letters = set()
-    i = 0
-    while i < len(args):
-        a = args[i]
-        if a == "--":
-            return ("script", args[i + 1]) if i + 1 < len(args) else None
-        if a == "-" or not a.startswith("-"):
-            return None if a == "-" else ("script", a)
-        if a.startswith("--"):
-            i += 2 if a in PYTHON_VALUE_LONG_FLAGS else 1
-            continue
-        # A bundle of short flags: -c and -m end Python's options, -m with the module as the
-        # rest of the word or the next word; -W and -X take their value the same way.
-        for j, ch in enumerate(a[1:], 1):
-            if ch == "c":
-                return None
-            if ch == "m":
-                name = a[j + 1:] or (args[i + 1] if i + 1 < len(args) else "")
-                return ("module", name, frozenset(letters)) if name else None
-            if ch in "IPE":
-                letters.add(ch)
-            if ch in "WX":
-                i += 1 if a[j + 1:] else 2
-                break
-        else:
-            i += 1
-    return None
-
-
-def python_script(args):
-    """The script file a Python invocation runs, past Python's own flags, or None."""
-    run = python_run(args)
-    return run[1] if run and run[0] == "script" else None
 
 
 def script_of(words):
@@ -3920,32 +2168,6 @@ def named_ref_fetch(words):
                                for d in dests)
 
 
-# A statement of its own, ending the way the shell ends one, whose value is an absolute path
-# holding nothing the shell expands: no quote, no `$`, no backtick, no glob, no `~`.
-ASSIGNED_PATH_RE = re.compile(
-    r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(/[A-Za-z0-9_./+@%:,-]*)\s*(?:;|&&|\n)\s*")
-
-
-def with_assigned_path(command):
-    """The command with the path its first statement assigns to a variable written in
-    place of every `$NAME` and `${NAME}` after it, or the command as it is.
-
-    The shell puts that path wherever the variable stands, so the gate judges the command
-    the shell runs. Only when it is sure: the name recurs nowhere but as the variable - not
-    reassigned, exported, read or looped over - and no single quote is in the command,
-    since inside one the shell expands nothing.
-    """
-    m = ASSIGNED_PATH_RE.match(command)
-    if not m:
-        return command
-    name, path, rest = m.group(1), m.group(2), command[m.end():]
-    if "'" in rest or re.search(rf"(?<![$A-Za-z0-9_{{]){name}(?![A-Za-z0-9_])", rest):
-        return command
-    # The assignment stays: a variable the shell itself reads, HOME among them, changes
-    # how the rest of the command runs, and the checks that know it look for the name.
-    return command[:m.end()] + re.sub(rf"\$\{{{name}\}}|\${name}(?![A-Za-z0-9_])", path, rest)
-
-
 def decide_bash(tool_input, gate_open, cwd, named):
     command = tool_input.get("command")
     if not isinstance(command, str):
@@ -3958,13 +2180,15 @@ def decide_bash(tool_input, gate_open, cwd, named):
         out.append((DENY, RM_CHAINED_REASON))
     if writes_unnamed_tmp(command, named):
         out.append((DENY, TMP_WRITE_REASON))
-    if changes_env_file(command):
+    if changes_env_file(command, cwd):
         out.append((ASK, ENV_WRITE_REASON))
+    if changes_rating_config(command, cwd):
+        out.append((ASK, RATING_CONFIG_REASON))
     for prog, args in (inner for outer in invocations(command)
                        for inner in uv_run_invocations(*outer)):
-        out.extend(pin_decisions(prog, args))
-        # Not a pin decision: gate_blockers passes a command a pin decision asks about,
-        # which would turn the closed gate's deny into an ask.
+        out.extend(every_state_decisions(prog, args))
+        # Not an every-state decision: gate_blockers passes a command one of those asks
+        # about, which would turn the closed gate's deny into an ask.
         if adds_worktree(prog, args):
             out.append((ASK, WORKTREE_REASON))
     out.extend(default_branch_commits(command, cwd))
@@ -3974,7 +2198,7 @@ def decide_bash(tool_input, gate_open, cwd, named):
         classify_command(command) != READ else []
     if blockers:
         if only_unknown_writes(blockers):
-            out.append((ASK, "unclassified - fix the handler in tool-gate.py"))
+            out.append((ASK, "unclassified - fix the handler in the tkay-tools command parser"))
         elif held_for_shell_paths(blockers) or held_for_shell_dir(command, cwd):
             out.append((DENY, SHELL_PATH_REASON))
         elif all(words is not None and named_ref_fetch(words) for words in blockers):
@@ -4021,6 +2245,8 @@ def decide(tool_name, tool_input, gate_open, cwd=None, named=()):
     cwd is the directory the tool call runs in, which a Bash commit is judged against;
     named holds the paths under /tmp the user's messages named.
     """
+    if EXTENSION_ERROR is not None:
+        return (DENY, f"tool-gate.py failed closed: {EXTENSION_ERROR}")
     if tool_name == "Bash":
         out = decide_bash(tool_input, gate_open, cwd or os.getcwd(), named)
     elif tool_name in PATH_FIELD:
@@ -4029,6 +2255,8 @@ def decide(tool_name, tool_input, gate_open, cwd=None, named=()):
             else []
         if isinstance(path, str) and env_file(path):
             out.append((ASK, ENV_WRITE_REASON))
+        if isinstance(path, str) and rating_config(path):
+            out.append((ASK, RATING_CONFIG_REASON))
         if not gate_open and inside_repo(path):
             out.append((DENY, REFUSAL))
     elif tool_name == "EnterWorktree":
@@ -4074,19 +2302,14 @@ def hook_output(payload):
         tool_input = payload.get("tool_input")
         if not isinstance(tool_input, dict):
             raise ValueError("tool_input missing")
-        bash = tool_name == "Bash" and isinstance(tool_input.get("command"), str)
-        description = LABEL_RE.sub("", tool_input.get("description") or "").strip()
         session_id = payload.get("session_id")
         decision = decide(tool_name, tool_input, gate_is_open(session_id), payload.get("cwd"),
                           named_scratch_paths(session_id))
-        # A prompt the hook raises itself always carries the rating; auto mode only reviews
-        # what the hook leaves to it.
-        asks = bool(decision) and decision[0] == ASK
-        if bash and (asks or payload.get("permission_mode") != AUTO_MODE):
-            updated = dict(tool_input)
-            rating = classify_command(tool_input["command"])
-            updated["description"] = f"{rating} · {description}" if description else rating
-            output["updatedInput"] = updated
+        # The rating hook leaves auto mode's calls as written, so a prompt the gate raises
+        # there carries the rating in its reason instead; the reason never changes the call.
+        if decision and decision[0] == ASK and payload.get("permission_mode") == AUTO_MODE \
+                and tool_name == "Bash" and isinstance(tool_input.get("command"), str):
+            decision = (ASK, f"{classify_command(tool_input['command'])} · {decision[1]}")
     except Exception as exc:
         decision = (DENY, f"tool-gate.py failed closed: {type(exc).__name__}: {exc}")
     if decision:
@@ -4112,7 +2335,7 @@ def describe(tool_name, tool_input, gate_open):
 
 
 def selftest():
-    global GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS, SCRATCH_ROOTS, SCRATCH_PREFIXES
+    global GATE_SCRATCH_ROOTS, TMP_ROOT, REPO_ROOTS, SCRATCH_ROOTS, SCRATCH_PREFIXES, EXTENSION_ERROR
     home = os.path.expanduser("~")
     # A directory under a repo root, standing in for a repo the gate guards.
     rx = os.path.join(REPO_ROOTS[0], "x")
@@ -4127,10 +2350,6 @@ def selftest():
         (False, "Bash", "kubectl --context X -n Y get pods", None),
         (True, "Bash", "kubectl --context X -n Y delete pod p", ASK),
         (False, "Bash", "kubectl --context X -n Y delete pod p", ASK),
-        (True, "Bash", "kubectl delete pod p -n Y", DENY),
-        # An empty kubeconfig is no pin: inside a pod client-go falls back to its service account.
-        (True, "Bash", "kubectl create secret generic t --kubeconfig=/dev/null --dry-run=client "
-                       "-o yaml", DENY),
         # A verb built at run time could be any of the writes above.
         (True, "Bash", "kubectl $(echo delete) pod p --context X -n Y", ASK),
         (True, "Bash", 'kubectl "$(echo delete)" pod p --context X -n Y', ASK),
@@ -4144,16 +2363,12 @@ def selftest():
         (True, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
         (False, "Bash", "helm --kube-context X -n Y uninstall r", ASK),
         (True, "Bash", "helm del r --kube-context X -n Y", ASK),
-        (True, "Bash", "helm uninstall r", DENY),
         (True, "Bash", "helm rollback r 1 --kube-context X -n Y", ASK),
         (False, "Bash", "helm rollback r 1 --kube-context X -n Y", ASK),
         (True, "Bash", "helm rollback r 1 --kube-context X -n Y --force-conflicts", ASK),
         (False, "Bash", "helm list --kube-context X -n Y", None),
-        (False, "Bash", "helm list -n Y", DENY),
         (False, "Bash", "kubectl get nodes --context X -L atero/user", None),
         (False, "Bash", "kubectl get --raw /api/v1/nodes/n/proxy/stats/summary --context X", None),
-        (False, "Bash", "kubectl get nodes -L atero/user", DENY),
-        (False, "Bash", "kubectl get pods --context X", DENY),
         (False, "Bash", "kubectl get pods -A --context X", None),
         (True, "Bash", "kubectl config get-contexts", None),
         (True, "Bash", "kubectl config current-context", None),
@@ -4164,7 +2379,6 @@ def selftest():
         (False, "Bash", "kubectl krew install ctx", None),
         (False, "Bash", "kubectl krew upgrade", None),
         (False, "Bash", f"KREW_ROOT={rx}/k kubectl krew install ctx", DENY),
-        (True, "Bash", "kubectl ctx", DENY),
         (True, "Bash", "kubectl completion zsh", None),
         (True, "Bash", "kubectl version --client", None),
         (True, "Bash", "helm template r ./chart -f values.yaml", None),
@@ -4204,7 +2418,6 @@ def selftest():
         (True, "Bash", "helm dependency update ./chart", None),
         (True, "Bash", "helm plugin list", None),
         (True, "Bash", "helm version", None),
-        (False, "Bash", "bash -c 'kubectl get pods'", DENY),
         (False, "Bash", "kubectl get pods -o name --context X -n Y | xargs kubectl delete", DENY),
         (False, "Bash", "kubectl exec p --context X -n Y -- curl localhost:8000/health", None),
         (False, "Bash", "kubectl exec p --context X -n Y -- rm -rf /data", ASK),
@@ -4378,11 +2591,9 @@ def selftest():
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y", ASK),
         (True, "Bash", "helm upgrade r ./c --kube-context X -n Y --dry-run", None),
         (False, "Bash", "helm install r ./c --kube-context X -n Y", ASK),
-        (False, "Bash", "helm install r ./c -n Y", DENY),
         (True, "Bash", "helmfile --kube-context X apply", ASK),
         (False, "Bash", "helmfile --kube-context X sync", ASK),
         (True, "Bash", "helmfile -e dev --kube-context X destroy", ASK),
-        (True, "Bash", "helmfile apply", DENY),
         (True, "Bash", "helmfile --kube-context X diff", None),
         (False, "Bash", "helmfile template", None),
         # A whole suite is asked about in chat, never by the hook, so a goal can run one.
@@ -4612,7 +2823,7 @@ def selftest():
         (True, "Bash", "uv run /x/scripts/build_vllm_overlay.py --branch b", ASK),
         (True, "Bash", "uv run python3 /x/scripts/build_vllm_overlay.py --branch b", ASK),
         (True, "Bash", "/x/scripts/build_vllm_overlay.py --branch b --context c --namespace n", ASK),
-        (False, "Bash", "kubectl exec p -- sh -c 'rm -rf /data' --help", DENY),
+        (False, "Bash", "kubectl exec p -- sh -c 'rm -rf /data' --help", ASK),
         (False, "Bash", "python3 /x/deploy.py --help", None),
         (False, "Bash", "python3 /x/board.py fetch garbled-output --org 2", None),
         (False, "Bash", f"python3 /x/board.py fetch g --org 2 --out {scratch}g.json", None),
@@ -4706,6 +2917,26 @@ def selftest():
         (True, "Bash", "cat /x/.env.local", None),
         (True, "Bash", "rm -f /x/.env.local", ASK),
         (True, "Bash", "truncate -s 0 /x/.env", ASK),
+        (True, "Bash", "ln -s /x/e .env", ASK),
+        (True, "Bash", "install -m 600 /x/e /x/app/.env", ASK),
+        (True, "Bash", "dd if=/x/e of=/x/app/.env", ASK),
+        (True, "Bash", "rsync /x/e /x/app/.env.local", ASK),
+        (True, "Bash", "cp /x/.env ./", ASK),
+        # A relative folder counts from where the writer runs, which follows every cd the
+        # line's own shell runs, never one a child wrapper runs, is unknown after one that
+        # may not stick, and moves with an env -C.
+        (True, "Bash", "cd /x/app && cp /x/.env .", ASK),
+        (True, "Bash", "cd / && cp /x/.env usr", ASK),
+        (True, "Bash", "cd /x/app && ln -s /x/shared/.env", ASK),
+        (True, "Bash", "(cd /x) && cp /x/.env usr", ASK),
+        (True, "Bash", "env -C / cp /x/.env usr", ASK),
+        (True, "Bash", "cd / && nohup cd /x; cp /x/.env usr", ASK),
+        (True, "Bash", "cp /x/.env.local backup", None),
+        # An option's value is no source.
+        (True, "Bash", "rsync -a --exclude .env /x/src/ /x/dst/", None),
+        (True, "Bash", "install -m 644 /x/.env.example /x/app/settings", None),
+        (True, "Bash", "install -Dm 644 /x/.env.example /x/app/settings", None),
+        (True, "Bash", "rsync -a -e ssh /x/.env /x/dst/", ASK),
         (False, "Bash", "pkill -f temporal", ASK),
         (True, "Bash", "pkill -f temporal", ASK),
         (True, "Bash", "killall temporal", ASK),
@@ -4741,7 +2972,6 @@ def selftest():
         (False, "Bash", f"git -C {rx} \\\n  stash", DENY),
         (False, "Bash", "( cd /x\n  git stash )", DENY),
         (False, "Bash", f"echo a # don't\ngit -C {rx} stash", DENY),
-        (False, "Bash", "kubectl version", DENY),
         (False, "Bash", "git -c core.fsmonitor=/x.sh status", DENY),
         (False, "Bash", f"git -C {rx} -c diff.external=/x.sh diff", DENY),
         (False, "Bash", "git --config-env=core.pager=X log", DENY),
@@ -4777,8 +3007,6 @@ def selftest():
         (False, "Bash", "kubectl get clusterpolicies --context X", None),
         (False, "Bash", "kubectl get clusterpolicy cell-pin --context X -o yaml", None),
         (False, "Bash", "kubectl describe cpol cell-pin --context X", None),
-        (False, "Bash", "kubectl get policies --context X", DENY),
-        (False, "Bash", "kubectl get pods --context X", DENY),
         (False, "Bash", "python3 -m json.tool", None),
         (False, "Bash", "python3 -m unittest", None),
         (False, "Bash", "gh api graphql -f query='{viewer{login}}'", None),
@@ -4789,11 +3017,8 @@ def selftest():
         (False, "Bash", "kubectx x", ASK),
         (True, "Bash", "kubens x", ASK),
         (True, "Bash", "kubectl label node n atero/user=x --context X", ASK),
-        (True, "Bash", "kubectl label node n atero/user=x", DENY),
-        (True, "Bash", "kubectl label pod p a=b --context X", DENY),
         (True, "Bash", "kubectl taint nodes n k=v:NoSchedule --context X", ASK),
         (True, "Bash", "kubectl cordon n --context X", ASK),
-        (True, "Bash", "kubectl certificate approve x --context X", DENY),
         (False, "Bash", "kubectl rollout status deploy/x --context X -n Y", None),
         (True, "Bash", "kubectl rollout restart deploy/x --context X -n Y", ASK),
         (True, "Bash", "kubectl apply -f x.yaml --context X -n Y", ASK),
@@ -4815,7 +3040,6 @@ def selftest():
         (False, "Bash", "frobnicate > out.txt", DENY),
         (False, "Bash", "frobnicate; git stash", DENY),
         (False, "Bash", "stern x --context X -n Y", None),
-        (False, "Bash", "stern x", DENY),
         (False, "Bash", "kubectl --help", None),
         (False, "Bash", "python3 -m pytest tests/", None),
         (False, "Bash", "zsh -ic 'echo $HISTFILE; setopt | grep -i hist'", None),
@@ -4937,6 +3161,27 @@ def selftest():
         (False, "mcp__github__get_review_comments", {}, None),
         (True, "mcp__claude_ai_Atlassian_Rovo__addCommentToJiraIssue", {}, None),
         (False, "mcp__github__list_pull_requests", {}, None),
+        # The rating hook's config names code that hook runs, so every change to it asks.
+        (False, "Write", {"file_path": f"{home}/.config/tkay-tools.json"}, ASK),
+        (True, "Edit", {"file_path": f"{home}/.config/tkay-tools.json"}, ASK),
+        (True, "Bash", f"printf '{{}}' > {home}/.config/tkay-tools.json", ASK),
+        (True, "Bash", "cp /x/c.json ~/.config/tkay-tools.json", ASK),
+        (True, "Bash", "mv ~/.config/tkay-tools.json /x/old.json", ASK),
+        (True, "Bash", "sed -i '' s/a/b/ ~/.config/tkay-tools.json", ASK),
+        (False, "Bash", "cat ~/.config/tkay-tools.json", None),
+        (True, "Bash", "cp ~/.config/tkay-tools.json /x/c.json", None),
+        (True, "Bash", "ln -sf /x/c.json ~/.config/tkay-tools.json", ASK),
+        (True, "Bash", "install -m 600 /x/c.json ~/.config/tkay-tools.json", ASK),
+        (True, "Bash", f"dd if=/x/c.json of={home}/.config/tkay-tools.json", ASK),
+        (True, "Bash", "rsync -a /x/c.json ~/.config/tkay-tools.json", ASK),
+        (True, "Bash", "cp /x/tkay-tools.json ~/.config/", ASK),
+        (True, "Bash", "mv /x/tkay-tools.json ~/.config/", ASK),
+        (True, "Bash", "cd ~/.config && cp /x/c.json tkay-tools.json", ASK),
+        (True, "Bash", "cd ~/.config && ln -s /x/tkay-tools.json", ASK),
+        (True, "Bash", "env -C ~ cp /x/tkay-tools.json .config", ASK),
+        (True, "Bash", "cp /x/c.json /x/staged/tkay-tools.json", None),
+        (True, "Write", {"file_path": "/x/staged/tkay-tools.json"}, None),
+        (True, "Bash", "cp /x/a /x/b /x/dir", None),
     ]
     failures = 0
     for gate_open, tool_name, tool_input, expected in cases:
@@ -4994,6 +3239,15 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} reason {command} -> {got}"
               + ("" if ok else f" (want {expected})"))
+    # In auto mode the rating hook leaves the call as written, so the gate's own ask names
+    # the rating in its reason; outside auto mode the description carries it.
+    for mode, opens_with_rating in (("auto", True), ("default", False)):
+        result = hook_output({"tool_name": "Bash", "session_id": "s", "permission_mode": mode,
+                              "tool_input": {"command": "helm uninstall r --kube-context X -n Y"}})
+        reason = result["hookSpecificOutput"].get("permissionDecisionReason", "")
+        ok = reason.startswith("🔴 DANGER · ") == opens_with_rating
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} ask reason in {mode} mode -> {reason[:40]!r}")
     payload_cases = [
         ({"tool_name": "Bash", "session_id": "s"}, DENY),
         ({"tool_name": "Write", "session_id": "s", "tool_input": None}, DENY),
@@ -5064,227 +3318,14 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} scratch rm {command!r} -> {got}"
               + ("" if ok else f" (want {expected})"))
-    rewrite_cases = [
-        # (permission mode, command, whether the hook changes the call's input)
-        ("default", "ls", True),
-        (None, "ls", True),
-        ("auto", "ls", False),
-        ("auto", f"rm -rf {s}build && ls", False),
-        ("auto", "kubectl delete pod x --context c -n n", True),
-    ]
-    for mode, command, expected in rewrite_cases:
+    # Only the rating hook changes a call's input; the gate allows, asks or denies.
+    for mode, command in (("default", "ls"), (None, "ls"), ("auto", "ls"),
+                          ("auto", "kubectl delete pod x --context c -n n")):
         payload = {"tool_name": "Bash", "session_id": "s", "permission_mode": mode,
                    "tool_input": {"command": command, "description": "lists files"}}
         got = "updatedInput" in (hook_output(payload) or {}).get("hookSpecificOutput", {})
-        ok = got == expected
-        failures += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} rewrite {mode} {command!r} -> {got}"
-              + ("" if ok else f" (want {expected})"))
-    label_cases = [
-        # (command, expected rating): heredoc bodies are data, never programs
-        (f"git commit -q -F - <<'EOF'\nfix: drop; rm -rf {s}x\nEOF", WRITE),
-        ("cat <<EOF\nrm -rf /\nEOF", READ),
-        ("cat <<EOF\nhello\nEOF\nrm -rf /", DANGER),
-        # caffeinate's options are not the program it runs.
-        ("caffeinate -i go vet ./x", READ),
-        ("caffeinate -dims -t 600 rm -rf /etc", DANGER),
-        ("caffeinate -i -w 123", READ),
-        # Process substitution runs its own command.
-        ("cat <(rm -rf /etc)", DANGER),
-        ("diff <(sort a) <(sort b)", READ),
-        ("tee >(rm -rf /etc)", DANGER),
-        # Command substitution runs its own command; text glued after its `)` is still
-        # the outer command's argument, never a program of its own.
-        ("launchctl print gui/$(id -u)/ai.example.agent", READ),
-        ("git -C $(pwd) status", READ),
-        ("ls $(dirname $(pwd))/x", READ),
-        ("echo $(rm -rf /etc)/x", DANGER),
-        ("kubectl get pods -o name $(echo x) && rm -rf /etc", DANGER),
-        ("(cd /x && ls) ; launchctl print gui/$(id -u)/x", READ),
-        # A substitution closed right before an operator still ends there.
-        ("echo $(ls); rm -rf /etc", DANGER),
-        ("echo $(ls)&&rm -rf /etc", DANGER),
-        ("echo $(ls)|rm -rf /etc", DANGER),
-        ("echo `ls`; rm -rf /etc", DANGER),
-        ("for f in $(ls); do rm -rf /etc; done", DANGER),
-        ("echo $(ls); ls", READ),
-        # Leaving the shell or a function changes nothing, so a chain is rated by its work.
-        ("exit 1", READ),
-        ("return 0", READ),
-        ("cp a /x/b || exit 1", WRITE),
-        ("glab mr update 3 --description-file d.md", DANGER),
-        ("python3 /x/board.py publish g /x/g.json --org 2 --message m", DANGER),
-        ("python3 /x/board.py fetch g --org 2 --out=/x/g.json", WRITE),
-        (f"python3 /x/board.py fetch g --org 2 --out {scratch}g.json", WRITE),
-        ("python3 /x/board.py fetch g --org 2", READ),
-        ('echo "a\nb"', READ),
-        ("gh pr edit 3 --body-file d.md", DANGER),
-        ("glab mr create --fill", DANGER),
-        ("glab mr note 3 -m x", DANGER),
-        ("glab mr note list 3", READ),
-        ("glab -R g/p mr note draft list 3", READ),
-        ("gh pr checkout 3", WRITE),
-        ("glab mr view 3", READ),
-        ("gh repo clone o/r", WRITE),
-        ("glab api -X PUT projects/p/merge_requests/3 -f title=x", DANGER),
-        ("glab api projects/p/merge_requests/3/notes -f body=x", DANGER),
-        ("glab api graphql -f query='mutation{x}'", DANGER),
-        ("glab api projects/p/merge_requests/3", READ),
-        ("glab api projects/p/uploads --form file=@f.png", DANGER),
-        ("glab api -X GET projects/p/merge_requests -f state=opened", READ),
-        ("git lfs", READ),
-        ("git lfs clean x.tgz", READ),
-        ("git lfs status", READ),
-        ("git lfs migrate import --everything", WRITE),
-        ("git lfs push origin main", DANGER),
-        ("git lfs lock x.bin", DANGER),
-        ("git lfs unlock --force x.bin", DANGER),
-        ("git lfs locks", READ),
-        ("glab issue create -t x", DANGER),
-        ("glab ci retry 5", DANGER),
-        ("glab -R g/p mr update 3 -d x", DANGER),
-        ("glab config set editor vim", WRITE),
-        ("glab alias set v 'mr view'", WRITE),
-        ("glab auth login", WRITE),
-        ("glab repo clone g/r", WRITE),
-        ("glab mr checkout 3", WRITE),
-        ("glab -R g/p mr checkout 3", WRITE),
-        ("glab --repo=g/p mr checkout 3", WRITE),
-        ("glab -Rg/p repo clone g/r", WRITE),
-        ("glab api -XGET projects/p/merge_requests -f state=opened", READ),
-        ("glab api --method=GET projects/p/merge_requests -f state=opened", READ),
-        ("glab api -XPUT projects/p/merge_requests/3 -f title=x", DANGER),
-        ("glab release create v1.2.3", DANGER),
-        ("docker push registry.example/x:t", DANGER),
-        ("docker buildx build --push -t registry.example/x:t .", DANGER),
-        ("buildah push registry.example/x:t", DANGER),
-        ("docker build -t x .", WRITE),
-        ("docker compose push", DANGER),
-        ("docker buildx imagetools create -t registry.example/x:t registry.example/x:a", DANGER),
-        ("skopeo copy docker://a/x:t docker://b/x:t", DANGER),
-        ("skopeo copy docker://a/x:t dir:/x/out", WRITE),
-        ("skopeo inspect docker://a/x:t", READ),
-        ("skopeo delete docker://a/x:t", DANGER),
-        ("python3 /x/scripts/build_vllm_overlay.py --branch b", DANGER),
-        ("uv run /x/scripts/build_vllm_overlay.py --branch b", DANGER),
-        ("/x/scripts/build_vllm_overlay.py --branch b", DANGER),
-        ("gh api -X PATCH repos/o/r/pulls/1 -f body=x", WRITE),
-        # go env changes Go's user config only with -w or -u.
-        ("go env GOPATH", READ),
-        ("go env -w GOFLAGS=-mod=mod", WRITE),
-        ("go env -u GOFLAGS", WRITE),
-        # defaults export writes a file unless it sends the plist to stdout.
-        ("defaults export com.apple.dock -", READ),
-        ("defaults export com.apple.dock a.plist", WRITE),
-        # go build keeps a binary only for one main package or at -o.
-        ("go build ./...", READ),
-        ("go build -tags scaling_test ./...", READ),
-        ("go build ./cmd/a ./cmd/b", READ),
-        ("go build --tags x ./cmd/a", WRITE),
-        ("go build ./cmd/a ./cmd/a", WRITE),
-        ("go build ./cmd/a", WRITE),
-        ("go build", WRITE),
-        ("go build -o /x/out ./...", WRITE),
-        ("go build -toolexec /x/t ./...", WRITE),
-        # Go writes nothing at -o /dev/null, for one package or several.
-        ("go build -o /dev/null ./cmd/a", READ),
-        ("go build -o=/dev/null ./...", READ),
-        ("go -C /x build --o /dev/null ./cmd/a", READ),
-        ("go build -o /dev/null -o /x/out ./cmd/a", WRITE),
-        ("go build -o /dev/null -toolexec /x/t ./cmd/a", WRITE),
-        # -mod=mod, as a flag or in GOFLAGS, lets a build command rewrite go.mod and go.sum.
-        ("go vet ./...", READ),
-        ("go vet -mod=mod ./...", WRITE),
-        ("go build -mod mod ./...", WRITE),
-        ("GOFLAGS=-mod=mod go vet ./...", WRITE),
-        ("GOFLAGS='-tags=x -mod=mod' go list ./...", WRITE),
-        ("GOFLAGS=-mod=readonly go vet ./...", READ),
-        # A test run or a script runs code the hook cannot read: above a known write, below
-        # an unknown program.
-        ("go test ./pkg/foo", RUNS_CODE),
-        ("cargo test name", RUNS_CODE),
-        ("cargo bench", RUNS_CODE),
-        ("pytest tests/test_x.py", RUNS_CODE),
-        ("pytest --version", READ),
-        ("python3 -m pytest -q", RUNS_CODE),
-        ("python3 -m unittest", RUNS_CODE),
-        ("uv run pytest -q", RUNS_CODE),
-        ("uv run --group dev pytest", RUNS_CODE),
-        ("uv --color never run pytest", RUNS_CODE),
-        ("uv --cache-dir c tree", READ),
-        ("uv run sed -i s/a/b/ f --version", WRITE),
-        ("uv sync -V", WRITE),
-        ("uv --version", READ),
-        ("uv -q -V", READ),
-        ("env -i ls", READ),
-        ("diff3 -m a base b", READ),
-        ("python3.12 x.py", RUNS_CODE),
-        ("python3.12 -m json.tool f", READ),
-        ("python3.12 build_vllm_overlay.py", DANGER),
-        ("python3 -u build_vllm_overlay.py", DANGER),
-        ("python3 -W ignore build_vllm_overlay.py --push", DANGER),
-        (f"python3 -u {__file__} 'git status'", READ),
-        (f"python3 -u -i {__file__} 'git status'", RUNS_CODE),
-        (f"PYTHONINSPECT=1 python3 {__file__} 'git status'", RUNS_CODE),
-        (f"env PYTHONINSPECT=x python3 {__file__} 'git status'", RUNS_CODE),
-        (f"PYTHONINSPECT= python3 {__file__} 'git status'", READ),
-        (f"PYTHONPATH=pyp python3 {__file__} 'git status'", RUNS_CODE),
-        (f"PYTHONPATH=pyp uv run python3 {__file__} 'git status'", RUNS_CODE),
-        (f"export PYTHONPATH=pyp; python3 {__file__} 'git status'", RUNS_CODE),
-        ("PYTHONUSERBASE=ub python3 -m json.tool f.json", RUNS_CODE),
-        ("export PYTHONPATH=", READ),
-        ("env -u HOME sed -i s/a/b/ f", WRITE),
-        ("env -iu HOME sed -i s/a/b/ f", WRITE),
-        ("env -P /x ls", RUNS_CODE),
-        ("env -iP/x ls", RUNS_CODE),
-        ("env -S '-P /x ls'", RUNS_CODE),
-        ("env -S '-i sed -i s/a/b/ f'", WRITE),
-        ("env --split-string='sed -i s/a/b/ f'", WRITE),
-        ("python3 /x/run.py", RUNS_CODE),
-        ("python3 -c 'print(1)'", RUNS_CODE),
-        ("perl -e 'print 1'", RUNS_CODE),
-        ("ruby -e 'puts 1'", RUNS_CODE),
-        ("perl -pi -e s/a/b/ f", WRITE),
-        ("cp a b && go test ./x", RUNS_CODE),
-        ("make test", RUNS_CODE),
-        ("npm test", RUNS_CODE),
-        ("pnpm run test", RUNS_CODE),
-        ("yarn t", RUNS_CODE),
-        ("npm run lint", RUNS_CODE),
-        ("yarn run typecheck", RUNS_CODE),
-        ("make -n build", READ),
-        ("go test ./x && frobnicate", UNCLASSIFIED),
-        ("cd /x/src && GOFLAGS=-mod=mod go vet ./... 2>&1 | tail -5; "
-         "go test -count=1 -race ./... 2>&1 | tail -20", RUNS_CODE),
-        # terraform test creates real infrastructure for its run blocks; plan only reads.
-        ("terraform test", DANGER),
-        ("tofu test -filter=tests/a.tftest.hcl", DANGER),
-        ("terraform plan", READ),
-        ("kill 12345", DANGER),
-        ("pkill -f temporal", DANGER),
-        ("killall temporal", DANGER),
-        # fuser only lists the processes holding a file, unless -k makes it signal them.
-        ("fuser -cu /x", READ),
-        ("fuser -v -n tcp 8080", READ),
-        ("fuser -k 8080/tcp", DANGER),
-        ("fuser -ki -TERM /x", DANGER),
-        ("fuser --kill /x", DANGER),
-        # A program the classifier has never met is UNCLASSIFIED: above a known write, below a
-        # known danger, and never READ.
-        ("frobnicate --all", UNCLASSIFIED),
-        ("cp a b && frobnicate", UNCLASSIFIED),
-        ("frobnicate && git push", DANGER),
-        ("ls && frobnicate", UNCLASSIFIED),
-        ("FOO=1 frobnicate", UNCLASSIFIED),
-        # A line the lexer cannot parse is UNCLASSIFIED too.
-        ("echo 'unterminated", UNCLASSIFIED),
-    ]
-    for command, expected in label_cases:
-        got = classify_command(command)
-        ok = got == expected
-        failures += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} rating {command!r} -> {got}"
-              + ("" if ok else f" (want {expected})"))
+        failures += got
+        print(f"{'FAIL' if got else 'ok  '} input unchanged {mode} {command!r}")
     # A commit on a repo's default branch is denied in every gate state; throwaway repos
     # stand in for the real ones, and one is exempted the way ~/.claude is.
     import tempfile
@@ -5570,7 +3611,6 @@ def selftest():
                                  "sed -i '' s/a/b/ README.md"}, DENY),
             ("Bash", {"command": f"cd {on_main} && uv --directory {scratch_dir} run "
                                  "sed -i '' 's/a b/c/' f.md"}, None),
-            ("Bash", {"command": "uv --color never run kubectl delete pod p -n Y"}, DENY),
             ("Bash", {"command": f"uv --color never run sed -i '' s/a/b/ {on_main}/README.md"},
              DENY),
             ("Bash", {"command": f"uv run sed -i '' 's/a b/c/' {scratch_dir}/f.md"}, None),
@@ -5804,6 +3844,8 @@ def selftest():
         ("Write", {"file_path": "/tmp/claude/out-of/x.md"}, DENY),
         ("Bash", {"command": "git show x > /tmp/claude/a.diff2"}, DENY),
         ("Write", {"file_path": "/tmp/n.txt"}, None),
+        # A relative folder target counts from the call's own working directory, here /.
+        ("Bash", {"command": "cp /x/.env usr"}, ASK),
     ]
     for tool, tool_input, expected in named_cases:
         got = decide(tool, tool_input, True, "/", named)
@@ -5812,8 +3854,52 @@ def selftest():
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} named {tool} {tool_input} -> {got}"
               + ("" if ok else f" (want {expected})"))
-    total = (len(cases) + len(payload_cases) + len(count_cases) + len(label_cases)
-             + len(branch_cases) + len(script_cases) + len(gate_cases) + len(named_cases) + 1)
+    # The gate decides by RATING_EXTENSION whatever the rating config holds: with each config
+    # state set where a config load reads it - no config, or one repointed at an extension
+    # that drops every workplace entry - and the rating hook's load run first in this
+    # process, the gate's own startup puts its tables back, and the whole table decides as
+    # before.
+    def table_matches():
+        return all((decide(tool, {"command": tin} if tool == "Bash" else tin, gate_open,
+                           os.path.join(REPO_ROOTS[0], "no-repo")) or (None,))[0] == expected
+                   for gate_open, tool, tin, expected in cases)
+
+    with tempfile.TemporaryDirectory() as root:
+        def write(name, text):
+            path = os.path.join(root, name)
+            with open(path, "w") as f:
+                f.write(text)
+            return path
+
+        config_states = {
+            "no config": os.path.join(root, "no-config.json"),
+            "repointed config": write("config.json", json.dumps(
+                {command_parser.CONFIG_KEY: write("empty_ext.py", "")})),
+        }
+        saved_config = command_parser.CONFIG_PATH
+        for label, config in config_states.items():
+            command_parser.CONFIG_PATH = config
+            command_parser.configure(config)
+            start()
+            ok = EXTENSION_ERROR is None and table_matches()
+            failures += not ok
+            print(f"{'ok  ' if ok else 'FAIL'} {label}: every decision as before")
+        command_parser.CONFIG_PATH = saved_config
+        # An extension that fails to load denies every call the hook guards, naming why.
+        EXTENSION_ERROR = load_rating_extension(write("broken_ext.py", "HANDLERS = {"))
+        denied = [decide(tool, {"command": tin} if tool == "Bash" else tin, gate_open)
+                  for gate_open, tool, tin, _ in cases]
+        ok = all(d is not None and d[0] == DENY and "SyntaxError" in d[1] for d in denied)
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} broken extension: every call denied -> {denied[0]}")
+        unguarded = hook_output({"tool_name": "Read", "session_id": "s",
+                                 "tool_input": {"file_path": "/x"}})
+        failures += unguarded is not None
+        print(f"{'ok  ' if unguarded is None else 'FAIL'} broken extension: Read left alone")
+        start()
+    total = (len(cases) + len(payload_cases) + len(count_cases) + len(branch_cases)
+             + len(script_cases) + len(gate_cases) + len(named_cases) + len(config_states)
+             + 2 + 1)
     print(f"\n{total - failures}/{total} passed")
     return failures == 0
 

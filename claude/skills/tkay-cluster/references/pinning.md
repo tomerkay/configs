@@ -5,6 +5,11 @@ and the namespace for anything namespaced, explicitly, in the command itself.**
 A cluster-scoped read - nodes, CRDs - carries the context alone. Read-only or mutating, one-off or inside a loop, typed by you or emitted
 by a script you wrote, whatever else is allowed. No command is too small, too harmless or too read-only for this rule.
 
+**This skill's hook backs it for the common tools**: `hooks/pin_guard.py`
+denies a kubectl or helm-family command that misses a flag this rule asks
+for, nested ones included, and its reason names the flag to add. A tool it
+does not know passes it unchecked, so the rule stays yours to keep.
+
 **Why it is absolute:** I switch contexts constantly. The current context is
 whatever I last pointed at, in another terminal, for another cluster - so an
 unpinned command is a command aimed at a cluster nobody chose. Reading `dev` when I

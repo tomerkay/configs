@@ -87,33 +87,82 @@ never puts the review rules into this session.
 
 - **Here** lets the review go on in this session.
 - **A fresh agent** is a subagent the session starts for that review alone,
-  never one that inherits the session's context. It is told to load a
-  review standard first and no writing standard, and that it wrote none of
-  what it reviews. It gets the repo, what to review, the spec the
-  request names, the plan the session wrote the work from, the
-  session's record of the tests it ran on that work, and the answers to
-  the questions asked before a CR: whether it runs tests, and whether
-  there is a plan. The plan and the record go by their paths, when the
-  session has them. It gets nothing of the session's history: none of
-  its reasoning, and no review the session wrote. A repeat review also
-  gets the file of an earlier review a fresh agent wrote. The agent
-  writes the review and its file, and the session shows me that review
-  in chat, whole and unchanged. A question the agent hands back in place
-  of its review is put to me as any question of the session's own is,
-  and my answer goes back to the same agent, which carries on with what
-  it has read. A review a goal run starts is never relayed this way:
-  its prompt says nobody can answer it, so where it would stop it
-  takes the answer it would recommend and lists it as assumed, and a
-  question it sends back anyway is the goal's to settle, never one
-  this rule puts to me. The session has written no review, so
-  the review carries no ⚠️ line, and work asked for after it asks
-  nothing - unless the session opened a review skill before it asked,
-  which is loading a review standard. A session that cannot start a
-  subagent leaves this pick out of the question.
+  never one that inherits the session's context. **Its prompt is the
+  template below, filled in, with nothing added**: the session that wrote
+  the work also writes this prompt, so a sentence of its own about the
+  work would carry its reasoning to the reviewer. Every slot takes a
+  path, a range of commits, a fixed word or my own words quoted:
+  - **What to review** is the commits, as a range; for a change not yet
+    committed, the path of a file holding its diff; or the plan's path.
+  - **The spec** is the path of the spec the request names.
+  - **My decisions** are each decision I made in chat on the work under
+    review, in my own words. One I made by picking an option the session
+    wrote goes in as the decision that option names, marked as picked,
+    never the reasons, the assessment or the alternatives the session
+    wrote beside it.
+  - **The plan** is the path of the plan the session wrote the work from.
+  - **The test record** is the path of the session's record of the tests
+    it ran on that work.
+  - **Running the tests** answers whether the review runs tests, and
+    **the plan** and **the spec**, each a path or none, whether there is
+    one: the questions asked before a CR. A plan review or a doc review
+    leaves the tests line out.
+  - **The earlier review** is, for a repeat review, the file of an
+    earlier review a fresh agent wrote.
+
+  ```
+  Load a standard for reviewing <code | plans | docs> before anything else, and no standard for writing them. You wrote none of what you review.
+  Write a <CR | plan review | doc review> of: <what to review>
+  Repo: <path>
+  Spec: <path | none>
+  My decisions, quoted: <each decision | none>
+  Plan: <path | none>
+  Test record: <path | none>
+  Run the tests: <yes | read only>
+  Earlier review: <path | none>
+  Write the review and its file, and return the review. If you cannot go on without an answer, return the question in place of the review.
+  ```
+
+  It gets nothing else of the session: none of its reasoning, and no
+  review the session wrote. The agent writes the review and its file,
+  and the session shows me that review in chat, whole and unchanged. A
+  question the agent hands back in place of its review is put to me as
+  any question of the session's own is, and my answer goes back to the
+  same agent, which carries on with what it has read. A review a goal
+  run starts takes its prompt from the goal, never from this template,
+  and is never relayed this way: its prompt says nobody can answer it,
+  so where it would stop it takes the answer it would recommend and
+  lists it as assumed, and a question it sends back anyway is the
+  goal's to settle, never one this rule puts to me. The session has
+  written no review, so the review carries no ⚠️ line, and work asked
+  for after it asks nothing - unless the session opened a review skill
+  before it asked, which is loading a review standard. A session that
+  cannot start a subagent leaves this pick out of the question.
 - **A fresh session** leaves every file as it is and writes no review.
 
 **The work's question is a yes or no**: a yes lets the work go on, and a no
 leaves every file as it is.
+
+## When the code is finished, a fresh-agent CR is offered
+
+**The reply that reports the code I asked for as committed, with its
+tests passing, ends by offering a CR of it in a fresh agent**, so the
+review comes before the session closes, and before the plan and the test
+record the agent needs are cleaned up. It comes once for the piece of
+work, never after each commit or at an inner step of a plan.
+
+- **A yes is the "a fresh agent" pick** of the review's question, which
+  is then not asked, and "Asked once" holds for it as for the pick.
+- **The offer says the agent runs the tests**, which reads what the test
+  record covers and runs only what it misses; my answer can make it
+  read only. It is the answer to whether the CR runs tests.
+- **The offer also says what the review judges against**: the plan or
+  the spec the work was written from, or, with neither, the branch and
+  my decisions alone, so a yes answers whether there is one as well.
+- **It is not offered** when a fresh agent already reviewed the code as
+  it now stands, when I picked "a fresh session" for this work, while a
+  goal runs, which starts its own reviews, when this session cannot
+  start a subagent, or in a session the exemption below covers.
 
 ## Asked once
 

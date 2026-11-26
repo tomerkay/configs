@@ -1,0 +1,4 @@
+{
+  "name": "tkay-cluster",
+  "description": "Denies a cluster command that does not name its context, and its namespace where the command needs one"
+}

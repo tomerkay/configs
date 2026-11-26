@@ -3,10 +3,11 @@
 **A reply long enough that I would scroll to read it ends with a
 `**TL;DR:**` line**: what you found, did or propose, in two or three plain
 sentences. It goes after everything it sums up and above whatever I am to
-run or answer - the steps `copy-blocks.md` puts last, then the ❓ block - so
-it is the last thing I read before I act. A reply I take in at a glance gets
-none: a summary of a short answer only repeats it. How long is long is your
-judgement of the reply, never a count of lines.
+open, run or answer - the path of a file I asked for, the steps
+`copy-blocks.md` puts last, then the ❓ block - so it is the last thing I
+read before I act. A reply I take in at a glance gets none: a summary of a
+short answer only repeats it. How long is long is your judgement of the
+reply, never a count of lines.
 
 - **It says the outcome, not the route**: the answer, the call, what changed
   or is proposed - never which files were read or which commands ran.

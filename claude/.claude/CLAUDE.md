@@ -282,6 +282,13 @@ of its own:
   has one, and put every case the change is about through the copy before
   the live file is touched. Time it there too, as "A hook is small and
   fast" says.
+- **A change to a file another hook imports tests that hook too**: a
+  change to `skills/tkay-tools/hooks/command_parser.py` runs the gate's
+  selftest and `skills/tkay-cluster/hooks/pin_guard.py --selftest`
+  against the staged parser, since either one failing to import blocks
+  every Bash call. Neither reaches it as it stands - the gate imports the
+  parser from its live path, the pin guard through the link beside it -
+  so each runs with the staged parser put in the live one's place.
 - **Install it in one `cp`**, behind step 4's compare, then run the same
   tests against the live file before the commit. No allow rule passes a
   hook's install: a wildcard rule matched copies out of the hooks

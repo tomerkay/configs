@@ -33,7 +33,7 @@ showing me, a summary you are about to post yourself, an illustrative snippet of
 my own code. Bracketing those buries the real ones. Two blocks I am meant to copy
 get two bracketed blocks, never one bracket around both.
 
-## What I am to run comes last
+## What I act on comes last
 
 **Everything I am to run or paste goes at the end of the reply**, after
 every explanation and right above the ❓ block, which stays last: a
@@ -51,4 +51,23 @@ the `! cp` that had to run before it came a turn later, once I asked.
 ✅ reply 1: <the goal and its reasoning>
    1. ! cp <...>
    2. /goal <...>
+```
+
+**A file I asked you to write is named at the end of the reply too**,
+so I see where it landed without hunting for it: its full path, in
+backticks and not bracketed - it is there to open, not to paste - on a
+line of its own, below every explanation and the TL;DR, and above the
+steps to run, the ❓ block and the closing "Are we done?" line, which
+stay last; a note another rule puts right under the path stays there,
+between it and them. A path given earlier in the reply, beside what the
+file holds, does not stand in for it, and each file I asked for gets a
+line of its own. The case that taught it:
+
+```
+❌ <the path, mid-reply, beside what the file holds>
+   <a screen of findings>
+   **TL;DR:** <the outcome>
+✅ <a screen of findings>
+   **TL;DR:** <the outcome>
+   `<the full path of the file>`
 ```

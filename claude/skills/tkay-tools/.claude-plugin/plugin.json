@@ -1,0 +1,4 @@
+{
+  "name": "tkay-tools",
+  "description": "Opens every Bash call's description with what the command can change: READ, WRITE, RUNS CODE, UNCLASSIFIED or DANGER"
+}
