@@ -124,10 +124,30 @@ never puts the review rules into this session.
   ```
 
   It gets nothing else of the session: none of its reasoning, and no
-  review the session wrote. The agent writes the review and its file,
-  and the session shows me that review in chat, whole and unchanged. A
-  question the agent hands back in place of its review is put to me as
-  any question of the session's own is, and my answer goes back to the
+  review the session wrote. The agent writes the whole review and its
+  file, and the session shows me, in this order:
+  1. The review's call on the whole work, and its summary table, each
+     verbatim.
+  2. Everything the review says holds the merge, or for a plan the
+     build - each finding, each piece of work not built yet, each
+     untested claim, each commit or change it drops or carves out - and
+     every decision it asks of me. Each opens with its own heading or
+     row from the review, verbatim, and at most a few more of its lines
+     follow, quoted unchanged.
+  3. The full path of the review's file, on a line of its own.
+
+  **What it shows is set by those kinds, never by the session's
+  judgement of what matters**: otherwise the session that wrote the
+  work would choose what I read first of its own review, and could
+  soften it. So nothing that holds the merge or the build is left
+  out. What it quotes is unchanged, what it leaves out it leaves out
+  whole, never reworded, and it never edits the file. Any part of the
+  review is printed verbatim from the file when I ask; a review with no
+  call or summary table is shown whole. The session's own notes come
+  after, marked as its own.
+
+  A question the agent hands back in place of its review is put to me
+  as any question of the session's own is, and my answer goes back to the
   same agent, which carries on with what it has read. A review a goal
   run starts takes its prompt from the goal, never from this template,
   and is never relayed this way: its prompt says nobody can answer it,
